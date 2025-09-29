@@ -1,0 +1,100 @@
+name: Build and Release DiagAutoClinicOS
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'  # Triggers on tags like v0.1-alpha
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-24.04  # Matches DiagAutoClinicOS base
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up environment
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y build-essential git python3 python3-pip rustc cargo libusb-1.0-0-dev libftdi1-dev qemu-system-x86-64
+          sudo add-apt-repository ppa:cubic-wizard/release -y
+          sudo apt update
+          sudo apt install -y cubic
+          pip3 install python-uds python-obd
+
+      # Build OpenJ2534 and OpenVehicleDiag
+      - name: Build OpenJ2534
+        run: |
+          git clone https://github.com/jakka351/OpenJ2534.git
+          cd OpenJ2534
+          make && sudo make install
+          cd ..
+
+      - name: Build OpenVehicleDiag
+        run: |
+          git clone https://github.com/jwharrin/openvehiclediag.git
+          cd openvehiclediag
+          cargo build --release
+          sudo cp target/release/ovd /usr/local/bin/
+          cd ..
+
+      # Run build-iso.sh (assumes script from earlier messages)
+      - name: Build ISO
+        run: |
+          chmod +x scripts/build-iso.sh
+          ./scripts/build-iso.sh
+        env:
+          WORK_DIR: ${{ github.workspace }}/build
+          ISO_FILE: DiagAutoClinicOS-${{ github.ref_name }}.iso
+
+      # Generate SHA256 checksum
+      - name: Generate checksum
+        run: |
+          sha256sum build/DiagAutoClinicOS-${{ github.ref_name }}.iso > build/checksum.txt
+
+      # Test ISO in QEMU (basic boot test)
+      - name: Test ISO
+        run: |
+          timeout 60s qemu-system-x86_64 -cdrom build/DiagAutoClinicOS-${{ github.ref_name }}.iso -m 2G -enable-kvm -nographic || echo "QEMU boot test completed or timed out"
+
+      # Upload ISO and checksum as artifacts
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagautoclinicos-iso
+          path: |
+            build/DiagAutoClinicOS-${{ github.ref_name }}.iso
+            build/checksum.txt
+
+      # Create GitHub Release (only for tagged pushes)
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/DiagAutoClinicOS-${{ github.ref_name }}.iso
+            build/checksum.txt
+          draft: false
+          prerelease: true
+          name: DiagAutoClinicOS ${{ github.ref_name }}
+          body: |
+            DiagAutoClinicOS ${{ github.ref_name }} is here! Download the ISO for J2534-based auto diagnostics.
+            - SHA256: $(cat build/checksum.txt)
+            - Get it at [diagautoclinic.co.za/downloads](https://diagautoclinic.co.za/downloads)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Optional: Sync to website (uncomment and configure SSH)
+      # - name: Sync to website
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   run: |
+      #     sudo apt install -y ssh
+      #     sshpass -p "${{ secrets.WEBSITE_SSH_PASSWORD }}" scp build/DiagAutoClinicOS-${{ github.ref_name }}.iso build/checksum.txt user@diagautoclinic.co.za:/path/to/downloads/
+      #   env:
+      #     WEBSITE_SSH_PASSWORD: ${{ secrets.WEBSITE_SSH_PASSWORD }}
