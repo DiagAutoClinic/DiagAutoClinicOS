@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # DiagAutoClinicOS ISO Builder Script
-# This script creates a bootable ISO with DiagAutoClinicOS pre-installed
+# This script creates an ISO with DiagAutoClinicOS pre-installed
 
 set -e  # Exit on any error
 
@@ -32,14 +32,14 @@ echo -e "${YELLOW}Installing required packages...${NC}"
 apt-get update
 apt-get install -y \
     genisoimage \
-    syslinux \
-    isolinux \
-    squashfs-tools \
     python3 \
     python3-pip \
-    python3-pyqt6 \
-    obd \
-    git
+    git \
+    imagemagick
+
+# Install Python dependencies
+echo -e "${YELLOW}Installing Python dependencies...${NC}"
+pip3 install PyQt6 obd
 
 # Create ISO directory structure
 echo -e "${YELLOW}Creating ISO directory structure...${NC}"
@@ -48,12 +48,13 @@ mkdir -p "${ISO_DIR}"
 mkdir -p "${APP_DIR}"
 mkdir -p "${DESKTOP_DIR}"
 mkdir -p "${ICON_DIR}"
-mkdir -p "${ISO_DIR}/boot"
-mkdir -p "${ISO_DIR}/live"
 
 # Copy current DiagAutoClinicOS files
 echo -e "${YELLOW}Copying application files...${NC}"
-cp -r ~/DiagAutoClinicOS/* "${APP_DIR}/"
+cp -r "/home/flame/DiagAutoClinicOS/"* "${APP_DIR}/"
+
+# Remove any __pycache__ directories
+find "${APP_DIR}" -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
 
 # Create desktop shortcuts
 echo -e "${YELLOW}Creating desktop shortcuts...${NC}"
@@ -97,17 +98,12 @@ Type=Application
 Categories=Utility;Automotive;
 EOF
 
-# Create icons (placeholder icons - you can replace these later)
+# Create placeholder icons
 echo -e "${YELLOW}Creating placeholder icons...${NC}"
-# Create simple placeholder icons
-convert -size 256x256 xc:blue -pointsize 20 -fill white -gravity center -annotate +0+0 "AD" "${ICON_DIR}/autodiag.png"
-convert -size 256x256 xc:green -pointsize 20 -fill white -gravity center -annotate +0+0 "AE" "${ICON_DIR}/autoecu.png"
-convert -size 256x256 xc:red -pointsize 20 -fill white -gravity center -annotate +0+0 "AK" "${ICON_DIR}/autokey.png"
-
-# Install ImageMagick if not present for icon creation
-if ! command -v convert &> /dev/null; then
-    apt-get install -y imagemagick
-fi
+# Create simple colored icons with text
+convert -size 256x256 xc:blue -pointsize 40 -fill white -gravity center -annotate +0+0 "AD" "${ICON_DIR}/autodiag.png"
+convert -size 256x256 xc:green -pointsize 40 -fill white -gravity center -annotate +0+0 "AE" "${ICON_DIR}/autoecu.png"
+convert -size 256x256 xc:red -pointsize 40 -fill white -gravity center -annotate +0+0 "AK" "${ICON_DIR}/autokey.png"
 
 # Create launcher script
 echo -e "${YELLOW}Creating launcher script...${NC}"
@@ -115,41 +111,25 @@ cat > "${APP_DIR}/launch_all.sh" << EOF
 #!/bin/bash
 # Launcher script for DiagAutoClinicOS applications
 echo "Starting DiagAutoClinicOS Applications..."
-python3 /opt/DiagAutoClinicOS/AutoDiag/main.py &
-python3 /opt/DiagAutoClinicOS/AutoECU/main.py &
-python3 /opt/DiagAutoClinicOS/AutoKey/main.py &
+cd /opt/DiagAutoClinicOS
+python3 AutoDiag/main.py &
+python3 AutoECU/main.py &
+python3 AutoKey/main.py &
 echo "Applications started!"
 EOF
 
 chmod +x "${APP_DIR}/launch_all.sh"
 
-# Create boot files (simplified)
-echo -e "${YELLOW}Creating boot files...${NC}"
-cat > "${ISO_DIR}/boot/grub.cfg" << EOF
-set default=0
-set timeout=10
-
-menuentry "DiagAutoClinicOS Live" {
-    linux /live/vmlinuz boot=live quiet
-    initrd /live/initrd.img
-}
-EOF
-
 # Create ISO filesystem
 echo -e "${YELLOW}Creating ISO filesystem...${NC}"
 cd "${ISO_DIR}"
 
-# Create the ISO
+# Create the ISO (simplified - no boot files)
 genisoimage -o "/tmp/${ISO_NAME}-${ISO_VERSION}.iso" \
-    -r -J -no-emul-boot \
-    -boot-load-size 4 -boot-info-table \
-    -b boot/grub.cfg \
+    -r -J \
     -V "${ISO_NAME}" \
     .
 
 echo -e "${GREEN}=== ISO Build Complete! ===${NC}"
 echo -e "ISO created at: ${YELLOW}/tmp/${ISO_NAME}-${ISO_VERSION}.iso${NC}"
 echo -e "Size: $(du -h "/tmp/${ISO_NAME}-${ISO_VERSION}.iso" | cut -f1)"
-
-# Make script executable
-chmod +x ~/DiagAutoClinicOS/build_ISO.sh
