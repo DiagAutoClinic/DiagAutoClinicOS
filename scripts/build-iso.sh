@@ -1,62 +1,155 @@
 #!/bin/bash
-# build-iso.sh: Builds DiagAutoClinicOS ISO using Cubic
-# Usage: ./build-iso.sh (run on Ubuntu 24.04 host)
-# Output: DiagAutoClinicOS-v0.1-alpha.iso in current dir
 
-set -e  # Exit on error
+# DiagAutoClinicOS ISO Builder Script
+# This script creates a bootable ISO with DiagAutoClinicOS pre-installed
 
-UBUNTU_VERSION="24.04"
-ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/ubuntu-${UBUNTU_VERSION}-desktop-amd64.iso"
-ISO_FILE="ubuntu-${UBUNTU_VERSION}-desktop-amd64.iso"
-WORK_DIR="$HOME/diagauto-build"
-CHROOT_DIR="${WORK_DIR}/chroot"
+set -e  # Exit on any error
 
-# Download base ISO
-if [ ! -f "$ISO_FILE" ]; then
-    wget "$ISO_URL" -O "$ISO_FILE"
+# Configuration
+ISO_NAME="DiagAutoClinicOS"
+ISO_VERSION="1.0"
+ISO_DIR="/tmp/${ISO_NAME}_build"
+APP_DIR="${ISO_DIR}/opt/DiagAutoClinicOS"
+DESKTOP_DIR="${ISO_DIR}/usr/share/applications"
+ICON_DIR="${ISO_DIR}/usr/share/icons/hicolor/256x256/apps"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}=== DiagAutoClinicOS ISO Builder ===${NC}"
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${RED}Please run as root: sudo ./build_ISO.sh${NC}"
+    exit 1
 fi
 
-# Launch Cubic (manual: Load ISO, then run chroot commands below)
-echo "Launch Cubic GUI: Create project in $WORK_DIR, load $ISO_FILE."
-echo "In Cubic's chroot terminal, paste these commands:"
+# Install required packages
+echo -e "${YELLOW}Installing required packages...${NC}"
+apt-get update
+apt-get install -y \
+    genisoimage \
+    syslinux \
+    isolinux \
+    squashfs-tools \
+    python3 \
+    python3-pip \
+    python3-pyqt6 \
+    obd \
+    git
 
-cat << 'EOF'
-# Inside Cubic chroot:
+# Create ISO directory structure
+echo -e "${YELLOW}Creating ISO directory structure...${NC}"
+rm -rf "${ISO_DIR}"
+mkdir -p "${ISO_DIR}"
+mkdir -p "${APP_DIR}"
+mkdir -p "${DESKTOP_DIR}"
+mkdir -p "${ICON_DIR}"
+mkdir -p "${ISO_DIR}/boot"
+mkdir -p "${ISO_DIR}/live"
 
-# Update
-apt update && apt upgrade -y
+# Copy current DiagAutoClinicOS files
+echo -e "${YELLOW}Copying application files...${NC}"
+cp -r ~/DiagAutoClinicOS/* "${APP_DIR}/"
 
-# Core tools
-apt install -y git build-essential rustc cargo python3-pip libusb-1.0-0-dev xfce4
+# Create desktop shortcuts
+echo -e "${YELLOW}Creating desktop shortcuts...${NC}"
 
-# Clone/build OpenJ2534
-git clone https://github.com/jakka351/OpenJ2534.git
-cd OpenJ2534 && make && make install && cd ..
-
-# Clone/build OpenVehicleDiag
-git clone https://github.com/jwharrin/openvehiclediag.git
-cd openvehiclediag && cargo build --release && cp target/release/ovd /usr/local/bin/ && cd ..
-
-# Install Python libs for AutoKey/AutoDiag
-pip3 install python-uds python-obd
-
-# udev rules for J2534 (e.g., Tactrix)
-echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="cc4c", MODE="0666"' | tee /etc/udev/rules.d/99-j2534.rules
-
-# Desktop shortcuts (e.g., AutoDiag)
-mkdir -p /usr/share/applications
-cat > /usr/share/applications/autodiag.desktop << DESK
+# AutoDiag shortcut
+cat > "${DESKTOP_DIR}/autodiag.desktop" << EOF
 [Desktop Entry]
+Version=1.0
 Name=AutoDiag
-Exec=ovd --device j2534
-Icon=system-search
+Comment=Vehicle Diagnostic Tool
+Exec=python3 /opt/DiagAutoClinicOS/AutoDiag/main.py
+Icon=/usr/share/icons/hicolor/256x256/apps/autodiag.png
+Terminal=false
 Type=Application
-Categories=Utility;
-DESK
-
-# Clean up
-apt autoremove -y && apt clean
+Categories=Utility;Automotive;
 EOF
 
-echo "After chroot in Cubic, generate ISO: DiagAutoClinicOS-v0.1-alpha.iso"
-echo "Test: qemu-system-x86_64 -cdrom DiagAutoClinicOS-v0.1-alpha.iso -m 2G"
+# AutoECU shortcut
+cat > "${DESKTOP_DIR}/autoecu.desktop" << EOF
+[Desktop Entry]
+Version=1.0
+Name=AutoECU
+Comment=ECU Programming Tool
+Exec=python3 /opt/DiagAutoClinicOS/AutoECU/main.py
+Icon=/usr/share/icons/hicolor/256x256/apps/autoecu.png
+Terminal=false
+Type=Application
+Categories=Utility;Automotive;
+EOF
+
+# AutoKey shortcut
+cat > "${DESKTOP_DIR}/autokey.desktop" << EOF
+[Desktop Entry]
+Version=1.0
+Name=AutoKey
+Comment=Key Programming Tool
+Exec=python3 /opt/DiagAutoClinicOS/AutoKey/main.py
+Icon=/usr/share/icons/hicolor/256x256/apps/autokey.png
+Terminal=false
+Type=Application
+Categories=Utility;Automotive;
+EOF
+
+# Create icons (placeholder icons - you can replace these later)
+echo -e "${YELLOW}Creating placeholder icons...${NC}"
+# Create simple placeholder icons
+convert -size 256x256 xc:blue -pointsize 20 -fill white -gravity center -annotate +0+0 "AD" "${ICON_DIR}/autodiag.png"
+convert -size 256x256 xc:green -pointsize 20 -fill white -gravity center -annotate +0+0 "AE" "${ICON_DIR}/autoecu.png"
+convert -size 256x256 xc:red -pointsize 20 -fill white -gravity center -annotate +0+0 "AK" "${ICON_DIR}/autokey.png"
+
+# Install ImageMagick if not present for icon creation
+if ! command -v convert &> /dev/null; then
+    apt-get install -y imagemagick
+fi
+
+# Create launcher script
+echo -e "${YELLOW}Creating launcher script...${NC}"
+cat > "${APP_DIR}/launch_all.sh" << EOF
+#!/bin/bash
+# Launcher script for DiagAutoClinicOS applications
+echo "Starting DiagAutoClinicOS Applications..."
+python3 /opt/DiagAutoClinicOS/AutoDiag/main.py &
+python3 /opt/DiagAutoClinicOS/AutoECU/main.py &
+python3 /opt/DiagAutoClinicOS/AutoKey/main.py &
+echo "Applications started!"
+EOF
+
+chmod +x "${APP_DIR}/launch_all.sh"
+
+# Create boot files (simplified)
+echo -e "${YELLOW}Creating boot files...${NC}"
+cat > "${ISO_DIR}/boot/grub.cfg" << EOF
+set default=0
+set timeout=10
+
+menuentry "DiagAutoClinicOS Live" {
+    linux /live/vmlinuz boot=live quiet
+    initrd /live/initrd.img
+}
+EOF
+
+# Create ISO filesystem
+echo -e "${YELLOW}Creating ISO filesystem...${NC}"
+cd "${ISO_DIR}"
+
+# Create the ISO
+genisoimage -o "/tmp/${ISO_NAME}-${ISO_VERSION}.iso" \
+    -r -J -no-emul-boot \
+    -boot-load-size 4 -boot-info-table \
+    -b boot/grub.cfg \
+    -V "${ISO_NAME}" \
+    .
+
+echo -e "${GREEN}=== ISO Build Complete! ===${NC}"
+echo -e "ISO created at: ${YELLOW}/tmp/${ISO_NAME}-${ISO_VERSION}.iso${NC}"
+echo -e "Size: $(du -h "/tmp/${ISO_NAME}-${ISO_VERSION}.iso" | cut -f1)"
+
+# Make script executable
+chmod +x ~/DiagAutoClinicOS/build_ISO.sh
