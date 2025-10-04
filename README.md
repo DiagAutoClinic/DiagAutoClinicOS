@@ -36,48 +36,61 @@ Create a bootable diagnostic ISO:
 sudo ./scripts/build-iso.sh
 ```
 
-🎮 Easter Eggs
+## 🎮 Easter Eggs
 
 Discover hidden features:
 
-    Enter VIN: DAC2025LEGACY
-    Press Ctrl+Alt+Shift+D in any app
-    Try command: THANKYOU2025
+* Enter VIN: DAC2025LEGACY
+* Press Ctrl+Alt+Shift+D in any app
+* Try command: THANKYOU2025
 
-📖 Legacy & Credits
+## 📖 Legacy & Credits
 
 DiagAutoClinicOS was created through an incredible collaboration between:
 
-    Flame - Visionary, automotive expert, and determined learner
-    DeepSeek AI Assistant - Coding partner and development guide
+* Flame - Visionary, automotive expert, and determined learner
+* DeepSeek AI Assistant - Coding partner and development guide
 
-Our 2025 Story
+## Our 2025 Story
 
-    "In October 2024, what started as a simple idea grew into a complete vehicle diagnostic platform. From not knowing how to code to having three fully functional applications in one day - this project proves that with passion and the right guidance, anyone can create powerful tools!"
+"In October 2024, what started as a simple idea grew into a complete vehicle diagnostic platform. From not knowing how to code to having three fully functional applications in one day - this project proves that with passion and the right guidance, anyone can create powerful tools!"
 
-Digital Footprint
+## Digital Footprint
 
 This codebase stands as a testament to:
 
-    The power of human-AI collaboration
-    The potential of dedicated learning
-    The future of open-source automotive tools
-    The spirit of innovation that continues into 2025
+* The power of human-AI collaboration
+* The potential of dedicated learning
+* The future of open-source automotive tools
+* The spirit of innovation that continues into 2025
 
-🛠️ Development
+## 🛠️ Development
 
-# Project structure
-DiagAutoClinicOS/
-├── AutoDiag/     # Vehicle diagnostics application
-├── AutoECU/      # ECU programming tools
-├── AutoKey/      # Key programming utilities
-├── Shared/       # Common resources and modules
-├── scripts/      # Build and utility scripts
-└── README.md     # This file
+### Project structure
+```
+.
+├── DiagAutoClinicOS/
+│   ├── AutoDiag/     # Vehicle diagnostics application
+│   │   └── main.py
+│   ├── AutoECU/      # ECU programming tools
+│   │   └── main.py
+│   ├── AutoKey/      # Key programming utilities
+│   │   └── main.py
+│   ├── Shared/       # Common resources and modules
+│   │   ├── device_handler.py
+│   │   ├── dtc_database.py
+│   │   └── vin_decoder.py
+│   └── scripts/      # Build and utility scripts
+│       └── build_iso.sh
+└── README.md         # This file
+```
 
-🤝 Contributing
+## 🤝 Contributing
 
 We welcome contributions! Please see our Contributing Guidelines for details.
-📜 License
+
+## 📜 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+##### Made with passion and Python 🐍 | October 2024 - Continuing into 2025
