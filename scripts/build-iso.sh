@@ -47,7 +47,20 @@ apt-get install -y \
     imagemagick
 
 # Install Python dependencies
+echo "Creating Python virtual environment..."
+python3 -m venv /tmp/build-venv
+source /tmp/build-venv/bin/activate
+
+echo "Installing Python dependencies in virtual environment..."
 echo -e "${YELLOW}Installing Python dependencies...${NC}"
+echo "Installing Python dependencies in virtual environment..."
+if [ -f "requirements.txt" ]; then
+    pip install -r requirements.txt
+else
+    echo "WARNING: requirements.txt not found, installing default dependencies..."
+    pip install PyQt6==6.6.0 pygame==2.5.2 requests==2.31.0 pyserial==3.5 obd==0.7.1 python-dotenv==1.0.0 Pillow==10.0.0
+fi
+pip install -r requirements.txt
 pip3 install PyQt6 obd
 
 # Create ISO directory structure
