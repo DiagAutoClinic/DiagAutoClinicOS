@@ -17,18 +17,14 @@
 
 ## 🚀 Quick Start
 
+### Download the Bootable ISO
 ```bash
 # Clone the repository
 git clone https://github.com/DiagAutoClinic/DiagAutoClinicOS.git
 cd DiagAutoClinicOS
 
-# Install Python dependencies
-pip3 install -r requirements.txt
-
-# Run any application
-cd AutoDiag && python3 main.py
-```
-
+# Download the latest ISO
+./scripts/download-iso.sh
 ## 📀 ISO Build
 
 Create a bootable diagnostic ISO:
