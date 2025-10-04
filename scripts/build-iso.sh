@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Add this at the beginning of your build-iso.sh
+echo "╔══════════════════════════════════════════════════╗"
+echo "║           Building DiagAutoClinicOS 2025         ║"
+echo "║      Created by Flame with DeepSeek AI           ║"
+echo "║          October 2024 - Continued 2025           ║"
+echo "╚══════════════════════════════════════════════════╝"
+echo ""
+
+
 # DiagAutoClinicOS ISO Builder Script
 # This script creates an ISO with DiagAutoClinicOS pre-installed
 
