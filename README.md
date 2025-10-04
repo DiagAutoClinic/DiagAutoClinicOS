@@ -1,35 +1,29 @@
-## 🚀 Legacy & Credits
+# DiagAutoClinicOS 🚗💻
 
-**DiagAutoClinicOS** was created through an incredible collaboration between:
+**Professional Automotive Diagnostics Suite - Built with Python & PyQt6**
 
-- **Flame** - Visionary, automotive expert, and determined learner
-- **DeepSeek AI Assistant** - Coding partner and development guide
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![PyQt6](https://img.shields.io/badge/PyQt6-6.6.0-green.svg)](https://pypi.org/project/PyQt6/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-### Our 2025 Story
-> "In October 2024, what started as a simple idea grew into a complete vehicle diagnostic platform. From not knowing how to code to having three fully functional applications in one day - this project proves that with passion and the right guidance, anyone can create powerful tools!"
+## 🌟 Features
 
-### Easter Eggs
-Discover our digital footprint with these hidden features:
-- Enter VIN code: `DAC2025LEGACY`
-- Press `Ctrl+Alt+Shift+D` in any application
-- Send command: `THANKYOU2025`
+- **AutoDiag**: Complete vehicle diagnostics with VIN decoding
+- **AutoECU**: ECU programming and module coding  
+- **AutoKey**: Key programming and security tools
+- **Mock Mode**: Test without physical hardware
+- **Professional UI**: Modern PyQt6 interface
+- **Cross-Platform**: Runs on Windows, Linux, and Mac
 
-### Digital Footprint
-This codebase stands as a testament to:
-- The power of human-AI collaboration
-- The potential of dedicated learning
-- The future of open-source automotive tools
-- The spirit of innovation that continues into 2025
-
-## Installation
+## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/yourusername/DiagAutoClinicOS.git
+# Clone the repository
+git clone https://github.com/FlameFellow/DiagAutoClinicOS.git
 cd DiagAutoClinicOS
-pip3 install PyQt6
 
-## 📀 ISO Build
+# Install Python dependencies
+pip3 install -r requirements.txt
 
-Build a bootable ISO with:
-```bash
-sudo ./scripts/build-iso.sh
+# Run any application
+cd AutoDiag && python3 main.py
