@@ -27,3 +27,9 @@ This codebase stands as a testament to:
 git clone https://github.com/yourusername/DiagAutoClinicOS.git
 cd DiagAutoClinicOS
 pip3 install PyQt6
+
+## 📀 ISO Build
+
+Build a bootable ISO with:
+```bash
+sudo ./scripts/build-iso.sh
