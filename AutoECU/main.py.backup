@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout
                             QGroupBox, QTableWidget, QTableWidgetItem, QProgressBar,
                             QTextEdit, QLineEdit, QHeaderView)
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QPalette
 
 # Import the style manager
 from style_manager import StyleManager
@@ -89,6 +89,66 @@ class AutoECUApp(QMainWindow):
         
         layout.addWidget(header_widget)
 
+    self.create_brand_selector()
+        self.header_layout.addLayout(brand_layout)
+
+    def create_brand_selector(self):
+        """Brand selector for ECU-specific protocols"""
+        brand_layout = QHBoxLayout()
+        brand_label = QLabel("ECU Brand:")
+        self.brand_combo = QComboBox()
+        
+        brands = get_brand_list()
+        self.brand_combo.addItems(brands)
+        self.brand_combo.setCurrentText(self.selected_brand)
+        self.brand_combo.currentTextChanged.connect(self.on_ecu_brand_changed)
+        
+        brand_layout.addWidget(brand_label)
+        brand_layout.addWidget(self.brand_combo)
+
+    def on_ecu_brand_changed(self, brand_name):
+        """Handle ECU brand change"""
+        self.selected_brand = brand_name
+        brand_info = get_brand_info(brand_name)
+        
+        # Update ECU programming options
+        self.update_ecu_programming_options(brand_info)
+        self.update_ecu_parameters(brand_info)
+    
+    def update_ecu_programming_options(self, brand_info):
+        """Update programming options based on brand"""
+        protocols = brand_info.get('diagnostic_protocols', [])
+        common_ecus = brand_info.get('common_ecus', [])
+        
+        # Update ECU selection
+        if hasattr(self, 'ecu_type_combo'):
+            self.ecu_type_combo.clear()
+            self.ecu_type_combo.addItems(common_ecus)
+
+    def create_ecu_identification_tab(self):
+        """Create ECU identification and brand-specific tab"""
+        ident_tab = QWidget()
+        layout = QVBoxLayout(ident_tab)
+        
+        # ECU Info frame
+        ecu_info_frame = QFrame()
+        ecu_info_frame.setProperty("class", "ecu_frame")
+        ecu_layout = QVBoxLayout(ecu_info_frame)
+        
+        # Brand-specific ECU database
+        ecu_db_label = QLabel("Brand ECU Database")
+        ecu_db_label.setProperty("class", "subtitle")
+        
+        self.ecu_db_table = QTableWidget()
+        self.ecu_db_table.setProperty("class", "ecu_data_table")
+        self.ecu_db_table.setColumnCount(4)
+        self.ecu_db_table.setHorizontalHeaderLabels(["ECU Type", "Part Number", "Software", "Protocol"])
+        
+        ecu_layout.addWidget(ecu_db_label)
+        ecu_layout.addWidget(self.ecu_db_table)
+
+
+        
     def create_ecu_scan_tab(self):
         """Create ECU scan and detection tab"""
         scan_tab = QWidget()
@@ -162,6 +222,25 @@ class AutoECUApp(QMainWindow):
         btn_layout.addWidget(write_btn)
         btn_layout.addStretch()
 
+        # Programming procedures
+        proc_frame = QFrame()
+        proc_frame.setProperty("class", "ecu_frame")
+        proc_layout = QVBoxLayout(proc_frame)
+        
+        proc_label = QLabel("Brand Programming Procedures")
+        proc_label.setProperty("class", "subtitle")
+        
+        self.procedure_text = QTextEdit()
+        self.procedure_text.setProperty("class", "hex_viewer")
+        
+        proc_layout.addWidget(proc_label)
+        proc_layout.addWidget(self.procedure_text)
+        
+        layout.addWidget(ecu_info_frame)
+        layout.addWidget(proc_frame)
+        
+        self.tab_widget.addTab(ident_tab, "ECU Database")
+        
         # Hex viewer
         hex_label = QLabel("ECU Memory View:")
         self.hex_viewer = QTextEdit()
@@ -176,6 +255,18 @@ class AutoECUApp(QMainWindow):
         layout.addStretch()
         
         self.tab_widget.addTab(prog_tab, "Programming")
+
+    def update_ecu_database(self):
+        """Update ECU database with brand-specific information"""
+        brand_info = get_brand_info(self.selected_brand)
+        
+        # Sample ECU data for each brand
+        ecu_data = self.get_brand_ecu_data(self.selected_brand)
+        
+        self.ecu_db_table.setRowCount(len(ecu_data))
+        for row, ecu in enumerate(ecu_data):
+            for col, value in enumerate(ecu):
+                self.ecu_db_table.setItem(row, col, QTableWidgetItem(str(value)))
         
     def create_parameters_tab(self):
         """Create parameter editing tab"""
@@ -286,6 +377,27 @@ class AutoECUApp(QMainWindow):
     def write_ecu(self):
         """Simulate ECU writing"""
         self.status_label.setText("Writing to ECU...")
+
+    def get_brand_ecu_data(self, brand):
+        """Get sample ECU data for each brand"""
+        ecu_data = {
+            "Toyota": [
+                ["Engine ECU", "89661-0P010", "V1.2", "ISO15765"],
+                ["Transmission", "89560-0P020", "V1.1", "ISO15765"],
+                ["ABS", "89540-0P030", "V1.0", "ISO15765"]
+            ],
+            "Volkswagen": [
+                ["Engine ECU", "06J906026", "V10.2", "UDS"],
+                ["DSG", "0AM300051", "V8.5", "UDS"],
+                ["ABS", "1K0907379", "V7.3", "UDS"]
+            ],
+            "BMW": [
+                ["DME", "7567890-01", "V12.5", "UDS"],
+                ["EGS", "7583421-02", "V11.8", "UDS"],
+                ["DSC", "7591234-01", "V10.2", "UDS"]
+            ]
+        }
+        return ecu_data.get(brand, [["Unknown", "N/A", "N/A", "N/A"]])
 
 def main():
     app = QApplication(sys.argv)

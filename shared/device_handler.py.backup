@@ -1,0 +1,530 @@
+import time
+import random
+import serial
+import platform
+import subprocess
+import logging
+import os
+from enum import Enum
+from typing import Optional, List, Tuple
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class Protocol(Enum):
+    CAN_11BIT_500K = "CAN_11BIT_500K"
+    CAN_29BIT_500K = "CAN_29BIT_500K"
+    J1850_PWM = "J1850_PWM"
+    J1850_VPW = "J1850_VPW"
+    ISO9141 = "ISO9141"
+    ISO14230 = "ISO14230"
+    ISO15765 = "ISO15765"
+    AUTO = "AUTO"
+
+
+class DeviceHandler:
+    def __init__(self, mock_mode: bool = False):
+        self.mock_mode = mock_mode
+        self.is_connected = False
+        self.current_protocol: Optional[Protocol] = None
+        self.serial_conn: Optional[serial.Serial] = None
+        self.os_type = platform.system()
+        self.device_type: Optional[str] = None
+        self.port: Optional[str] = None
+        self.j2534_available = self._check_j2534_linux()
+        self.socketcan_available = self._check_socketcan_linux()
+
+    def _check_j2534_linux(self) -> bool:
+        """Check if J2534 is available on Linux via libj2534 or wine"""
+        try:
+            result = subprocess.run(['pkg-config', '--exists', 'libj2534'],
+                                    capture_output=True, text=True)
+            if result.returncode == 0:
+                logger.info("libj2534 development files found")
+                return True
+
+            result = subprocess.run(
+                ['which', 'wine'], capture_output=True, text=True)
+            if result.returncode == 0:
+                logger.info("Wine available for J2534 emulation")
+                return True
+
+        except Exception as e:
+            logger.error(f"Error checking J2534: {e}")
+        return False
+
+    def _check_socketcan_linux(self) -> bool:
+        """Check if SocketCAN is available on Linux"""
+        try:
+            result = subprocess.run(['lsmod'], capture_output=True, text=True)
+            if 'can' in result.stdout.lower():
+                logger.info("SocketCAN support detected")
+                return True
+
+            result = subprocess.run(
+                ['which', 'cansend'], capture_output=True, text=True)
+            if result.returncode == 0:
+                logger.info("CAN utilities available")
+                return True
+
+        except Exception as e:
+            logger.error(f"Error checking SocketCAN: {e}")
+        return False
+
+    def _detect_elm327_devices(self) -> Optional[str]:
+        """Scan for ELM327 devices on common serial ports including Bluetooth"""
+        ports_to_check = [
+            '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3',
+            '/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2',
+            '/dev/rfcomm0', '/dev/rfcomm1', '/dev/rfcomm2'
+        ]
+
+        try:
+            result = subprocess.run(
+                ['ls', '/dev/'], capture_output=True, text=True)
+            if 'rfcomm' in result.stdout:
+                rfcomm_devices = [
+                    line for line in result.stdout.split('\n') if 'rfcomm' in line]
+                ports_to_check.extend(
+                    [f'/dev/{device}' for device in rfcomm_devices])
+        except Exception as e:
+            logger.error(f"Error scanning rfcomm devices: {e}")
+
+        for port in ports_to_check:
+            if not os.path.exists(port):
+                continue
+
+            try:
+                logger.info(f"Testing ELM327 on {port}")
+                ser = serial.Serial(port, 38400, timeout=2)
+                ser.write(b'ATZ\r\n')
+                time.sleep(1)
+                response = ser.read_all().decode().strip()
+                ser.close()
+
+                if 'ELM327' in response.upper():
+                    logger.info(f"ELM327 found on {port}: {response}")
+                    return port
+
+            except serial.SerialException as e:
+                logger.debug(f"Port {port} not available: {e}")
+                continue
+            except Exception as e:
+                logger.error(f"Error testing port {port}: {e}")
+
+        return None
+
+    def connect(self, protocol: str = "CAN_11BIT_500K") -> bool:
+        """Connect to the device - real or mock"""
+        if self.mock_mode:
+            logger.info("[MOCK] Connected to vehicle interface")
+            self.is_connected = True
+            self.current_protocol = Protocol(protocol)
+            return True
+
+        if self.os_type == "Linux":
+            elm_port = self._detect_elm327_devices()
+            if elm_port:
+                try:
+                    self.serial_conn = serial.Serial(
+                        elm_port, 38400, timeout=2)
+                    # Store the port for later cleanup
+                    self.port = elm_port
+
+                    # Initialize ELM327 with proper settings
+                    self.serial_conn.write(b'ATZ\r\n')
+                    time.sleep(2)
+                    self.serial_conn.write(b'ATE0\r\n')
+                    time.sleep(0.5)
+                    self.serial_conn.write(b'ATL0\r\n')
+                    time.sleep(0.5)
+                    self.serial_conn.write(b'ATH1\r\n')
+                    time.sleep(0.5)
+
+                    self.serial_conn.reset_input_buffer()
+
+                    self.is_connected = True
+                    self.current_protocol = Protocol(protocol)
+                    self.device_type = 'elm327'
+                    logger.info(f"[REAL] Connected via ELM327 on {elm_port}")
+                    return True
+
+                except Exception as e:
+                    logger.error(f"ELM327 connection failed: {e}")
+                    if self.serial_conn:
+                        self.serial_conn.close()
+                    self.serial_conn = None
+
+            if self.socketcan_available:
+                try:
+                    logger.info("[REAL] SocketCAN support detected")
+                    self.is_connected = True
+                    self.current_protocol = Protocol(protocol)
+                    self.device_type = 'socketcan'
+                    logger.info("[REAL] SocketCAN initialized (simulated)")
+                    return True
+
+                except Exception as e:
+                    logger.error(f"SocketCAN initialization failed: {e}")
+
+            if self.j2534_available:
+                try:
+                    logger.info("[REAL] Attempting J2534 connection")
+                    self.is_connected = True
+                    self.current_protocol = Protocol(protocol)
+                    self.device_type = 'j2534'
+                    logger.info("[REAL] J2534 connected (simulated)")
+                    return True
+
+                except Exception as e:
+                    logger.error(f"J2534 connection failed: {e}")
+
+            logger.error("[ERROR] No compatible real devices found")
+            return False
+
+        else:
+            logger.error(f"Unsupported OS: {self.os_type}")
+            return False
+
+    def disconnect(self):
+        """Disconnect from the device with proper cleanup"""
+        if self.mock_mode:
+            self.is_connected = False
+            self.current_protocol = None
+            logger.info("Disconnected from vehicle interface (mock)")
+            return
+
+        # Close serial connection if it exists
+        if self.serial_conn:
+            try:
+                self.serial_conn.close()
+                logger.info("Serial connection closed")
+            except Exception as e:
+                logger.error(f"Error closing serial connection: {e}")
+            finally:
+                self.serial_conn = None
+
+        # Release Bluetooth resources if it's a Bluetooth device
+        if hasattr(self, 'port') and self.port and 'rfcomm' in self.port:
+            try:
+                # Release the rfcomm binding
+                result = subprocess.run(['sudo', 'rfcomm', 'release', self.port],
+                                        timeout=5, capture_output=True, text=True)
+                if result.returncode == 0:
+                    logger.info(f"Released {self.port} binding")
+                else:
+                    logger.warning(
+                        f"Could not release {
+                            self.port}: {
+                            result.stderr}")
+            except Exception as e:
+                logger.error(f"Error releasing {self.port}: {e}")
+
+        self.is_connected = False
+        self.current_protocol = None
+        self.device_type = None
+        logger.info("Disconnected from real device")
+
+    def scan_dtcs(self) -> List[Tuple[str, str, str]]:
+        """Scan for Diagnostic Trouble Codes"""
+        if not self.is_connected:
+            return []
+
+        if self.mock_mode:
+            time.sleep(1)
+            return [
+                ('P0300', 'High', 'Random/Multiple Cylinder Misfire Detected'),
+                ('P0420', 'Medium', 'Catalyst Efficiency Below Threshold'),
+                ('P0171', 'Medium', 'System Too Lean (Bank 1)')
+            ]
+
+        if self.device_type == 'elm327':
+            try:
+                # Mode 03 - Get DTCs
+                self.serial_conn.write(b'03\r\n')
+                time.sleep(2)
+                response = self.serial_conn.read_all().decode().strip()
+                dtcs = self._parse_elm_dtcs(response)
+                return dtcs
+
+            except Exception as e:
+                logger.error(f"DTC scan failed: {e}")
+                return []
+
+        elif self.device_type in ['j2534', 'socketcan']:
+            # Placeholder for advanced protocols
+            logger.info(
+                f"[REAL] DTC scan via {
+                    self.device_type.upper()} - simulated")
+            return [('U0100', 'Critical', 'Lost Communication with ECM')]
+
+        return []
+
+    def _parse_elm_dtcs(self, response: str) -> List[Tuple[str, str, str]]:
+        """Parse ELM327 DTC response"""
+        dtcs = []
+        try:
+            # Example response: "43 01 33 00 00 00"
+            lines = response.split('\r')
+            for line in lines:
+                line = line.strip()
+                if line.startswith('43'):
+                    # Extract DTC bytes
+                    bytes_list = line.split()[1:]  # Skip the '43'
+                    for i in range(0, len(bytes_list), 2):
+                        if i + 1 < len(bytes_list):
+                            dtc_byte1 = bytes_list[i]
+                            dtc_byte2 = bytes_list[i + 1]
+                            if dtc_byte1 != '00' or dtc_byte2 != '00':
+                                dtc_code = self._bytes_to_dtc(
+                                    dtc_byte1, dtc_byte2)
+                                dtcs.append(
+                                    (dtc_code, 'Medium', 'Detected via ELM327'))
+        except Exception as e:
+            logger.error(f"DTC parsing error: {e}")
+
+        return dtcs or [('P0000', 'Info', 'No DTCs found')]
+
+    def _bytes_to_dtc(self, byte1: str, byte2: str) -> str:
+        """Convert two hex bytes to DTC code"""
+        # First character: P, C, B, U based on first two bits
+        first_nibble = int(byte1[0], 16)
+        if first_nibble & 0b1000:
+            prefix = 'P'  # Powertrain
+        elif first_nibble & 0b0100:
+            prefix = 'C'  # Chassis
+        elif first_nibble & 0b0010:
+            prefix = 'B'  # Body
+        else:
+            prefix = 'U'  # Network
+
+        # Remaining bits form the code
+        code = f"{prefix}{first_nibble & 0b0011}{byte1[1]}{byte2}"
+        return code
+
+    def get_live_data(self, pid: str) -> float:
+        """Get live data from ECU"""
+        if not self.is_connected:
+            return 0.0
+
+        if self.mock_mode:
+            mock_data = {
+                'rpm': random.randint(650, 3500),
+                'speed': random.randint(0, 120),
+                'coolant_temp': random.randint(80, 105),
+                'fuel_level': random.randint(10, 95),
+                'voltage': round(random.uniform(12.5, 14.5), 1),
+            }
+            return mock_data.get(pid.lower(), 0.0)
+
+        if self.device_type == 'elm327':
+            try:
+                pid_commands = {
+                    'rpm': '010C',
+                    'speed': '010D',
+                    'coolant_temp': '0105',
+                    'fuel_level': '012F',
+                    'voltage': '0142'
+                }
+
+                if pid.lower() in pid_commands:
+                    cmd = pid_commands[pid.lower()] + '\r\n'
+                    self.serial_conn.write(cmd.encode())
+                    time.sleep(0.5)
+                    response = self.serial_conn.read_all().decode().strip()
+                    return self._parse_elm_response(response, pid)
+
+            except Exception as e:
+                logger.error(f"Live data read failed: {e}")
+                return 0.0
+
+        elif self.device_type in ['j2534', 'socketcan']:
+            # Simulated data for advanced protocols
+            return random.uniform(0, 100)
+
+        return 0.0
+
+    def _parse_elm_response(self, response: str, pid: str) -> float:
+        """Parse ELM327 response for live data"""
+        try:
+            lines = response.split('\r')
+            for line in lines:
+                line = line.strip()
+                if len(line) >= 6 and line[0] == '4':  # Response code
+                    data_bytes = line.split()[1:]
+                    if pid == 'rpm' and len(data_bytes) >= 2:
+                        # RPM = (A * 256 + B) / 4
+                        a = int(data_bytes[0], 16)
+                        b = int(data_bytes[1], 16)
+                        return (a * 256 + b) / 4
+                    elif pid == 'speed' and data_bytes:
+                        return int(data_bytes[0], 16)
+                    elif pid == 'coolant_temp' and data_bytes:
+                        return int(data_bytes[0], 16) - 40
+                    elif pid == 'fuel_level' and data_bytes:
+                        return (int(data_bytes[0], 16) * 100) / 255
+                    elif pid == 'voltage' and data_bytes:
+                        return int(data_bytes[0], 16) / 10
+        except Exception as e:
+            logger.error(f"Response parsing error: {e}")
+
+        return 0.0
+
+    def clear_dtcs(self) -> bool:
+        """Clear all DTCs"""
+        if not self.is_connected:
+            return False
+
+        if self.mock_mode:
+            logger.info("[MOCK] DTCs cleared successfully")
+            return True
+
+        if self.device_type == 'elm327':
+            try:
+                self.serial_conn.write(b'04\r\n')  # Mode 04 - clear DTCs
+                time.sleep(2)
+                response = self.serial_conn.read_all().decode().strip()
+                return 'OK' in response or '44' in response
+            except Exception as e:
+                logger.error(f"Clear DTCs failed: {e}")
+                return False
+
+        elif self.device_type in ['j2534', 'socketcan']:
+            logger.info(
+                f"[REAL] DTCs cleared via {
+                    self.device_type.upper()} (simulated)")
+            return True
+
+        return False
+
+    def read_ecu_data(self, address: int, length: int) -> str:
+        """Read data from ECU at specified address"""
+        if not self.is_connected:
+            return "Error: Not connected to device"
+
+        if self.mock_mode:
+            # Generate mock ECU data
+            mock_data = f"Mock ECU Data Read:\nAddress: 0x{
+                address:04X}\nLength: {length} bytes\n"
+            mock_data += "Data: " + \
+                " ".join([f"{i:02X}" for i in range(length)]) + "\n"
+            mock_data += "Interpreted as calibration data for vehicle tuning."
+            return mock_data
+
+        # Real implementation would go here for different device types
+        if self.device_type == 'elm327':
+            # ELM327 specific ECU reading implementation
+            try:
+                # Mode 22 - Read data by identifier
+                cmd = f"22{address:04X}\r\n".encode()
+                self.serial_conn.write(cmd)
+                time.sleep(0.5)
+                response = self.serial_conn.read_all().decode().strip()
+                return f"ECU Data from 0x{address:04X}: {response}"
+            except Exception as e:
+                return f"Error reading ECU data: {e}"
+
+        return "ECU reading not implemented for current device type"
+
+    def write_ecu_data(self, address: int, data: bytes) -> str:
+        """Write data to ECU at specified address"""
+        if not self.is_connected:
+            return "Error: Not connected to device"
+
+        if self.mock_mode:
+            # Generate mock write confirmation
+            data_hex = " ".join([f"{b:02X}" for b in data])
+            mock_result = f"Mock ECU Data Write:\nAddress: 0x{address:04X}\n"
+            mock_result += f"Data: {data_hex}\n"
+            mock_result += "Status: Write successful (MOCK)\n"
+            mock_result += "Warning: This operation would modify vehicle calibration in real mode."
+            return mock_result
+
+        # Real implementation would go here for different device types
+        if self.device_type == 'elm327':
+            try:
+                # Mode 2E - Write data by identifier
+                data_hex = "".join([f"{b:02X}" for b in data])
+                cmd = f"2E{address:04X}{data_hex}\r\n".encode()
+                self.serial_conn.write(cmd)
+                time.sleep(1)
+                response = self.serial_conn.read_all().decode().strip()
+                return f"Write result: {response}"
+            except Exception as e:
+                return f"Error writing ECU data: {e}"
+
+        return "ECU writing not implemented for current device type"
+    def read_ecu_identification(self):
+    """Read ECU identification data"""
+	if self.mock_mode:
+	return {
+	    'part_number': 'Mock-ECU-12345',
+	    'software_version': 'V1.2.3',
+	    'hardware_version': 'HW-Rev-A',
+	    'serial_number': 'MOCK123456789'
+	}
+	# Real implementation for ELM327/J2534
+	return {}
+
+    def perform_actuator_test(self, actuator_id):
+	"""Test specific actuators"""
+	if self.mock_mode:
+	return f"Mock actuator {actuator_id} test: SUCCESS"
+	return "Actuator test completed"
+
+    def read_ecu_memory(self, address, length):
+	"""Read ECU memory for advanced diagnostics"""
+	if self.mock_mode:
+	return f"Mock memory read at 0x{address:04X}, length {length}"
+	return b''
+
+# Test the implementation
+if __name__ == "__main__":
+    print("Testing DiagAutoClinicOS Device Handler")
+    print("=" * 50)
+
+    # Test mock mode
+    device = DeviceHandler(mock_mode=True)
+    if device.connect():
+        print("✓ Mock mode connected successfully")
+        print(f"DTCs: {device.scan_dtcs()}")
+        print(f"RPM: {device.get_live_data('rpm')}")
+        print(f"Clear DTCs: {device.clear_dtcs()}")
+        device.disconnect()
+        print("✓ Mock mode test completed")
+
+    print("\nTesting real device detection...")
+    real_device = DeviceHandler(mock_mode=False)
+    if real_device.connect():
+        print("✓ Real device codef read_ecu_identification(self):
+    """Read ECU identification data"""
+    if self.mock_mode:
+        return {
+            'part_number': 'Mock-ECU-12345',
+            'software_version': 'V1.2.3',
+            'hardware_version': 'HW-Rev-A',
+            'serial_number': 'MOCK123456789'
+        }
+    # Real implementation for ELM327/J2534
+    return {}
+
+def perform_actuator_test(self, actuator_id):
+    """Test specific actuators"""
+    if self.mock_mode:
+        return f"Mock actuator {actuator_id} test: SUCCESS"
+    return "Actuator test completed"
+
+def read_ecu_memory(self, address, length):
+    """Read ECU memory for advanced diagnostics"""
+    if self.mock_mode:
+        return f"Mock memory read at 0x{address:04X}, length {length}"
+    return b''nnected")
+        print(f"Device type: {real_device.device_type}")
+        print(f"Protocol: {real_device.current_protocol}")
+        real_device.disconnect()
+    else:
+        print("⚠ No real devices found (expected in test environment)")

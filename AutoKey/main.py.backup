@@ -87,12 +87,51 @@ class AutoKeyApp(QMainWindow):
         header_layout.addLayout(theme_layout)
         
         layout.addWidget(header_widget)
+
+    self.create_brand_selector()
+
+    def create_brand_selector(self):
+        """Brand selector for key systems"""
+        brand_layout = QHBoxLayout()
+        brand_label = QLabel("Vehicle Brand:")
+        self.brand_combo = QComboBox()
+        
+        brands = get_brand_list()
+        self.brand_combo.addItems(brands)
+        self.brand_combo.setCurrentText(self.selected_brand)
+        self.brand_combo.currentTextChanged.connect(self.on_key_brand_changed)
+        
+        brand_layout.addWidget(brand_label)
+        brand_layout.addWidget(self.brand_combo)
+        
+        self.header_layout.addLayout(brand_layout)
+
+    def on_key_brand_changed(self, brand_name):
+        """Handle key brand change"""
+        self.selected_brand = brand_name
+        brand_info = get_brand_info(brand_name)
+
+    def update_key_systems(self, brand_info):
+        """Update key systems based on brand"""
+        key_systems = brand_info.get('key_systems', [])
+        pin_codes = brand_info.get('pin_codes', [])
+        
+        # Update UI with brand-specific key information
+        if hasattr(self, 'key_system_label'):
+            self.key_system_label.setText(f"Key System: {', '.join(key_systems)}")
+        
+        if hasattr(self, 'pin_method_label'):
+            self.pin_method_label.setText(f"PIN Methods: {', '.join(pin_codes)}")
         
     def create_key_programming_tab(self):
         """Create key programming tab"""
         key_tab = QWidget()
         layout = QVBoxLayout(key_tab)
 
+        # Update key programming options
+        self.update_key_systems(brand_info)
+        self.update_security_procedures(brand_info)
+        
         # Vehicle information
         vehicle_frame = QWidget()
         vehicle_frame.setProperty("class", "vehicle_info")
@@ -232,6 +271,93 @@ class AutoKeyApp(QMainWindow):
         layout.addStretch()
         
         self.tab_widget.addTab(vehicle_tab, "Vehicle Info")
+
+    def create_key_systems_tab(self):
+        """Create brand-specific key systems tab"""
+        systems_tab = QWidget()
+        layout = QVBoxLayout(systems_tab)
+        
+        # Key system info
+        system_frame = QFrame()
+        system_frame.setProperty("class", "key_frame")
+        system_layout = QVBoxLayout(system_frame)
+        
+        system_label = QLabel("Brand Key Systems")
+        system_label.setProperty("class", "subtitle")
+        
+        self.system_info_text = QTextEdit()
+        self.system_info_text.setProperty("class", "hex_viewer")
+        
+        system_layout.addWidget(system_label)
+        system_layout.addWidget(self.system_info_text)
+
+        # Security procedures
+        security_frame = QFrame()
+        security_frame.setProperty("class", "key_frame")
+        security_layout = QVBoxLayout(security_frame)
+        
+        security_label = QLabel("Security Procedures")
+        security_label.setProperty("class", "subtitle")
+        
+        self.security_procedures = QTextEdit()
+        self.security_procedures.setProperty("class", "hex_viewer")
+
+        procedures = self.get_brand_security_procedures(self.selected_brand)
+        self.security_procedures.setText(procedures)
+    
+    def get_brand_security_procedures(self, brand):
+        """Get security procedures for each brand"""
+        procedures = {
+            "Toyota": """Toyota Smart Key Programming:
+1. Enter security code via OBD
+2. Insert master key and turn ignition ON
+3. Press brake pedal within 15 seconds
+4. Press LOCK/UNLOCK buttons sequentially
+5. Wait for immobilizer light to blink""",
+            
+            "Volkswagen": """VW Immobilizer Programming:
+1. Connect with VCDS/ODIS
+2. Access Immobilizer (25)
+3. Login with SKC code
+4. Adapt keys via channel 21
+5. Test all programmed keys""",
+
+            "BMW": """BMW CAS/FRM Programming:
+1. Connect with ISTA/P
+2. Read ISN from CAS module
+3. Program key via diagnosis
+4. Synchronize with FEM/BDC
+5. Test comfort access functions"""
+        }
+        
+        return procedures.get(brand, "Standard OBD key programming procedure")
+        
+        security_layout.addWidget(security_label)
+        security_layout.addWidget(self.security_procedures)
+        
+        layout.addWidget(system_frame)
+        layout.addWidget(security_frame)
+        
+        self.tab_widget.addTab(systems_tab, "Key Systems")
+
+    def update_key_system_info(self):
+        """Update key system information for selected brand"""
+        brand_info = get_brand_info(self.selected_brand)
+        
+        info_text = f"""
+Brand: {self.selected_brand}
+Region: {brand_info.get('region', 'N/A')}
+Key Systems: {', '.join(brand_info.get('key_systems', []))}
+PIN Methods: {', '.join(brand_info.get('pin_codes', []))}
+Common ECUs: {', '.join(brand_info.get('common_ecus', []))}
+
+Supported Protocols:
+{chr(10).join(['• ' + proto for proto in brand_info.get('diagnostic_protocols', [])])}
+        """
+        
+        self.system_info_text.setText(info_text.strip())
+
+
         
     def create_status_bar(self):
         """Create status bar"""
@@ -298,7 +424,26 @@ def main():
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("DiagAutoClinicOS")
     
-    window = AutoKeyApp()
+    window = AutoKeyApp()        # Update security procedures
+        procedures = self.get_brand_security_procedures(self.selected_brand)
+        self.security_procedures.setText(procedures)
+    
+    def get_brand_security_procedures(self, brand):
+        """Get security procedures for each brand"""
+        procedures = {
+            "Toyota": """Toyota Smart Key Programming:
+1. Enter security code via OBD
+2. Insert master key and turn ignition ON
+3. Press brake pedal within 15 seconds
+4. Press LOCK/UNLOCK buttons sequentially
+5. Wait for immobilizer light to blink""",
+            
+            "Volkswagen": """VW Immobilizer Programming:
+1. Connect with VCDS/ODIS
+2. Access Immobilizer (25)
+3. Login with SKC code
+4. Adapt keys via channel 21
+5. Test all programmed keys""",
     sys.exit(app.exec())
 
 if __name__ == "__main__":

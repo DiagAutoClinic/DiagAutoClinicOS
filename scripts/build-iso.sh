@@ -84,7 +84,7 @@ echo -e "${YELLOW}Creating desktop shortcuts...${NC}"
 # AutoDiag shortcut
 cat > "${DESKTOP_DIR}/autodiag.desktop" << EOF
 [Desktop Entry]
-Version=1.0
+Version=1.1
 Name=AutoDiag
 Comment=Vehicle Diagnostic Tool
 Exec=python3 /opt/DiagAutoClinicOS/AutoDiag/main.py
@@ -97,7 +97,7 @@ EOF
 # AutoECU shortcut
 cat > "${DESKTOP_DIR}/autoecu.desktop" << EOF
 [Desktop Entry]
-Version=1.0
+Version=1.1
 Name=AutoECU
 Comment=ECU Programming Tool
 Exec=python3 /opt/DiagAutoClinicOS/AutoECU/main.py
@@ -110,7 +110,7 @@ EOF
 # AutoKey shortcut
 cat > "${DESKTOP_DIR}/autokey.desktop" << EOF
 [Desktop Entry]
-Version=1.0
+Version=1.1
 Name=AutoKey
 Comment=Key Programming Tool
 Exec=python3 /opt/DiagAutoClinicOS/AutoKey/main.py
