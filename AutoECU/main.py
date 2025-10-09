@@ -6,6 +6,7 @@ Modern interface with theme support
 
 import sys
 import os
+import re
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
                             QWidget, QPushButton, QLabel, QComboBox, QTabWidget,
                             QGroupBox, QTableWidget, QTableWidgetItem, QProgressBar,
@@ -14,6 +15,8 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
 # Import the style manager
+shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
+sys.path.append(shared_path)
 from style_manager import StyleManager
 from brand_database import get_brand_info, get_brand_list
 
@@ -230,37 +233,46 @@ class AutoECUApp(QMainWindow):
         
     def on_theme_changed(self, theme_name):
         """Handle theme change"""
-        theme_info = self.style_manager.get_theme_info()
-        for theme_id, info in theme_info.items():
-            if info['name'] == theme_name:
-                self.style_manager.set_theme(theme_id)
-                break
+        try:
+            theme_info = self.style_manager.get_theme_info()
+            for theme_id, info in theme_info.items():
+                if info['name'] == theme_name:
+                    self.style_manager.set_theme(theme_id)
+                    break
+        except Exception as e:
+            self.status_label.setText("Error changing theme")
                 
     def scan_ecus(self):
         """Simulate ECU scanning"""
-        self.connection_status.setText("Scanning...")
-        self.connection_status.setProperty("class", "ecu_status_reading")
-        self.scan_progress.setVisible(True)
-        self.scan_progress.setValue(0)
-        
-        # Simulate scan progress
-        self.scan_timer = QTimer()
-        self.scan_timer.timeout.connect(self.update_scan_progress)
-        self.scan_timer.start(100)
+        try:
+            self.connection_status.setText("Scanning...")
+            self.connection_status.setProperty("class", "ecu_status_reading")
+            self.scan_progress.setVisible(True)
+            self.scan_progress.setValue(0)
+            
+            # Simulate scan progress
+            self.scan_timer = QTimer()
+            self.scan_timer.timeout.connect(self.update_scan_progress)
+            self.scan_timer.start(100)
+        except Exception as e:
+            self.status_label.setText("Error during ECU scan")
         
     def update_scan_progress(self):
         """Update scan progress"""
-        current = self.scan_progress.value()
-        if current < 100:
-            self.scan_progress.setValue(current + 10)
-        else:
-            self.scan_timer.stop()
-            self.scan_progress.setVisible(False)
-            self.connection_status.setText("Connected")
-            self.connection_status.setProperty("class", "ecu_status_connected")
-            
-            # Add sample ECU data
-            self.add_sample_ecu_data()
+        try:
+            current = self.scan_progress.value()
+            if current < 100:
+                self.scan_progress.setValue(current + 10)
+            else:
+                self.scan_timer.stop()
+                self.scan_progress.setVisible(False)
+                self.connection_status.setText("Connected")
+                self.connection_status.setProperty("class", "ecu_status_connected")
+                
+                # Add sample ECU data
+                self.add_sample_ecu_data()
+        except Exception as e:
+            self.status_label.setText("Error during scan progress")
             
     def add_sample_ecu_data(self):
         """Add sample ECU data to table"""
@@ -274,18 +286,25 @@ class AutoECUApp(QMainWindow):
         self.ecu_table.setRowCount(len(sample_data))
         for row, data in enumerate(sample_data):
             for col, value in enumerate(data):
-                self.ecu_table.setItem(row, col, QTableWidgetItem(value))
+                clean_value = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', value)
+                self.ecu_table.setItem(row, col, QTableWidgetItem(clean_value))
                 
     def read_ecu(self):
         """Simulate ECU reading"""
-        self.status_label.setText("Reading ECU memory...")
-        self.hex_viewer.setText("0000: 12 34 56 78 9A BC DE F0  11 22 33 44 55 66 77 88\n"
-                               "0010: FF EE DD CC BB AA 99 88  77 66 55 44 33 22 11 00\n"
-                               "0020: 01 23 45 67 89 AB CD EF  FE DC BA 98 76 54 32 10")
+        try:
+            self.status_label.setText("Reading ECU memory...")
+            self.hex_viewer.setText("0000: 12 34 56 78 9A BC DE F0  11 22 33 44 55 66 77 88\n"
+                                   "0010: FF EE DD CC BB AA 99 88  77 66 55 44 33 22 11 00\n"
+                                   "0020: 01 23 45 67 89 AB CD EF  FE DC BA 98 76 54 32 10")
+        except Exception as e:
+            self.status_label.setText("Error reading ECU")
         
     def write_ecu(self):
         """Simulate ECU writing"""
-        self.status_label.setText("Writing to ECU...")
+        try:
+            self.status_label.setText("Writing to ECU...")
+        except Exception as e:
+            self.status_label.setText("Error writing ECU")
 
 def main():
     app = QApplication(sys.argv)
@@ -295,8 +314,11 @@ def main():
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("DiagAutoClinicOS")
     
-    window = AutoECUApp()
-    sys.exit(app.exec())
+    try:
+        window = AutoECUApp()
+        sys.exit(app.exec())
+    except Exception as e:
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
