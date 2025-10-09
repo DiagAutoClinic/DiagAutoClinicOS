@@ -7,6 +7,7 @@ Modern interface with brand-specific diagnostics and theme support
 import sys
 import os
 import logging
+import re
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, 
     QPushButton, QLabel, QComboBox, QTabWidget, QFrame, QGroupBox,
@@ -17,7 +18,8 @@ from PyQt6.QtCore import Qt, QTimer, QSettings
 from PyQt6.QtGui import QFont, QPalette, QColor
 
 # Import shared modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'shared'))
+shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
+sys.path.append(shared_path)
 from style_manager import StyleManager
 from brand_database import get_brand_list, get_brand_info
 
@@ -419,62 +421,87 @@ class AutoDiagApp(QMainWindow):
     
     def on_theme_changed(self, theme_name):
         """Handle theme change"""
-        theme_info = self.style_manager.get_theme_info()
-        for theme_id, info in theme_info.items():
-            if info['name'] == theme_name:
-                self.style_manager.set_theme(theme_id)
-                break
+        try:
+            theme_info = self.style_manager.get_theme_info()
+            for theme_id, info in theme_info.items():
+                if info['name'] == theme_name:
+                    self.style_manager.set_theme(theme_id)
+                    break
+        except Exception as e:
+            logger.error(f"Theme change failed: {str(e)}")
+            self.status_label.setText("Error changing theme")
     
     def on_brand_changed(self, brand_name):
         """Handle brand selection change"""
-        self.selected_brand = brand_name
-        self.update_brand_specific_data()
-        
-        # Show brand-specific tips
-        self.show_brand_tips(brand_name)
+        try:
+            self.selected_brand = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', brand_name)  # Sanitize
+            self.update_brand_specific_data()
+            
+            # Show brand-specific tips
+            self.show_brand_tips(self.selected_brand)
+        except Exception as e:
+            logger.error(f"Brand change failed: {str(e)}")
+            self.status_label.setText("Error changing brand")
     
     def update_brand_specific_data(self):
         """Update UI with brand-specific information"""
-        brand_info = get_brand_info(self.selected_brand)
-        
-        # Update brand info label
-        if hasattr(self, 'brand_info_label'):
-            self.brand_info_label.setText(
-                f"Brand: {self.selected_brand}\n"
-                f"Region: {brand_info.get('region', 'N/A')}\n"
-                f"Market Share: {brand_info.get('market_share', 'N/A')}"
-            )
-        
-        # Update protocol info
-        if hasattr(self, 'protocol_info_label'):
-            protocols = brand_info.get('diagnostic_protocols', [])
-            self.protocol_info_label.setText(
-                f"Protocols: {', '.join(protocols)}\n"
-                f"OBD Protocol: {brand_info.get('obd_protocol', 'N/A')}"
-            )
-        
-        # Update brand-specific modules
-        self.update_brand_modules()
-        
-        # Update brand procedures
-        self.update_brand_procedures()
+        try:
+            brand_info = get_brand_info(self.selected_brand)
+            
+            # Sanitize values
+            region = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', str(brand_info.get('region', 'N/A')))
+            market_share = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', str(brand_info.get('market_share', 'N/A')))
+            protocols = [re.sub(r'[\x00-\x1F\x7F-\x9F]', '', p) for p in brand_info.get('diagnostic_protocols', [])]
+            obd_protocol = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', str(brand_info.get('obd_protocol', 'N/A')))
+            
+            # Update brand info label
+            if hasattr(self, 'brand_info_label'):
+                self.brand_info_label.setText(
+                    f"Brand: {self.selected_brand}\n"
+                    f"Region: {region}\n"
+                    f"Market Share: {market_share}"
+                )
+            
+            # Update protocol info
+            if hasattr(self, 'protocol_info_label'):
+                self.protocol_info_label.setText(
+                    f"Protocols: {', '.join(protocols)}\n"
+                    f"OBD Protocol: {obd_protocol}"
+                )
+            
+            # Update brand-specific modules
+            self.update_brand_modules()
+            
+            # Update brand procedures
+            self.update_brand_procedures()
+        except Exception as e:
+            logger.error(f"Brand data update failed: {str(e)}")
+            self.status_label.setText("Error updating brand data")
     
     def update_brand_modules(self):
         """Update modules table with brand-specific ECUs"""
-        brand_info = get_brand_info(self.selected_brand)
-        common_ecus = brand_info.get('common_ecus', [])
-        
-        self.modules_table.setRowCount(len(common_ecus))
-        for row, ecu in enumerate(common_ecus):
-            self.modules_table.setItem(row, 0, QTableWidgetItem(ecu))
-            self.modules_table.setItem(row, 1, QTableWidgetItem(self.get_ecu_address(ecu)))
-            self.modules_table.setItem(row, 2, QTableWidgetItem(self.get_ecu_protocol(ecu)))
-            self.modules_table.setItem(row, 3, QTableWidgetItem("Not Scanned"))
+        try:
+            brand_info = get_brand_info(self.selected_brand)
+            common_ecus = brand_info.get('common_ecus', [])
+            
+            self.modules_table.setRowCount(len(common_ecus))
+            for row, ecu in enumerate(common_ecus):
+                clean_ecu = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', ecu)
+                self.modules_table.setItem(row, 0, QTableWidgetItem(clean_ecu))
+                self.modules_table.setItem(row, 1, QTableWidgetItem(self.get_ecu_address(clean_ecu)))
+                self.modules_table.setItem(row, 2, QTableWidgetItem(self.get_ecu_protocol(clean_ecu)))
+                self.modules_table.setItem(row, 3, QTableWidgetItem("Not Scanned"))
+        except Exception as e:
+            logger.error(f"Modules update failed: {str(e)}")
     
     def update_brand_procedures(self):
         """Update brand-specific procedures"""
-        procedures = self.get_brand_procedures(self.selected_brand)
-        self.procedures_text.setText(procedures)
+        try:
+            procedures = self.get_brand_procedures(self.selected_brand)
+            clean_procedures = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', procedures)
+            self.procedures_text.setText(clean_procedures)
+        except Exception as e:
+            logger.error(f"Procedures update failed: {str(e)}")
     
     def get_ecu_address(self, ecu_name):
         """Get typical ECU addresses for brands"""
@@ -564,44 +591,53 @@ class AutoDiagApp(QMainWindow):
         }
         
         if brand_name in tips:
-            self.status_label.setText(f"Brand Tip: {tips[brand_name]}")
+            clean_tip = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', tips[brand_name])
+            self.status_label.setText(f"Brand Tip: {clean_tip}")
     
     def quick_scan(self):
         """Perform quick vehicle scan"""
-        self.status_label.setText("Performing quick scan...")
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
-        
-        # Simulate scan progress
-        self.scan_timer = QTimer()
-        self.scan_timer.timeout.connect(self.update_scan_progress)
-        self.scan_timer.start(100)
-        
-        # Update connection status
-        self.connection_status.setText("🟡 Scanning...")
-        self.connection_status.setProperty("class", "status-warning")
-        self.obd_status.setText("OBD: Scanning")
+        try:
+            self.status_label.setText("Performing quick scan...")
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            
+            # Simulate scan progress
+            self.scan_timer = QTimer()
+            self.scan_timer.timeout.connect(self.update_scan_progress)
+            self.scan_timer.start(100)
+            
+            # Update connection status
+            self.connection_status.setText("🟡 Scanning...")
+            self.connection_status.setProperty("class", "status-warning")
+            self.obd_status.setText("OBD: Scanning")
+        except Exception as e:
+            logger.error(f"Quick scan failed: {str(e)}")
+            self.status_label.setText("Error during quick scan")
     
     def update_scan_progress(self):
         """Update scan progress"""
-        current = self.progress_bar.value()
-        if current < 100:
-            self.progress_bar.setValue(current + 10)
-        else:
-            self.scan_timer.stop()
-            self.progress_bar.setVisible(False)
-            
-            # Update connection status
-            self.connection_status.setText("🟢 Connected")
-            self.connection_status.setProperty("class", "status-connected")
-            self.obd_status.setText("OBD: Connected")
-            self.connected = True
-            
-            # Add sample data
-            self.add_sample_dtc_data()
-            self.add_sample_live_data()
-            
-            self.status_label.setText("Quick scan completed successfully")
+        try:
+            current = self.progress_bar.value()
+            if current < 100:
+                self.progress_bar.setValue(current + 10)
+            else:
+                self.scan_timer.stop()
+                self.progress_bar.setVisible(False)
+                
+                # Update connection status
+                self.connection_status.setText("🟢 Connected")
+                self.connection_status.setProperty("class", "status-connected")
+                self.obd_status.setText("OBD: Connected")
+                self.connected = True
+                
+                # Add sample data
+                self.add_sample_dtc_data()
+                self.add_sample_live_data()
+                
+                self.status_label.setText("Quick scan completed successfully")
+        except Exception as e:
+            logger.error(f"Scan progress update failed: {str(e)}")
+            self.status_label.setText("Error during scan progress")
     
     def read_dtcs(self):
         """Read diagnostic trouble codes"""
@@ -616,8 +652,11 @@ class AutoDiagApp(QMainWindow):
     
     def dtc_reading_complete(self):
         """Called when DTC reading completes"""
-        self.add_sample_dtc_data()
-        self.status_label.setText("DTC reading completed")
+        try:
+            self.add_sample_dtc_data()
+            self.status_label.setText("DTC reading completed")
+        except Exception as e:
+            logger.error(f"DTC complete failed: {str(e)}")
     
     def clear_dtcs(self):
         """Clear diagnostic trouble codes"""
@@ -666,7 +705,8 @@ class AutoDiagApp(QMainWindow):
         self.dtc_table.setRowCount(len(sample_dtcs))
         for row, dtc in enumerate(sample_dtcs):
             for col, value in enumerate(dtc):
-                self.dtc_table.setItem(row, col, QTableWidgetItem(value))
+                clean_value = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', value)
+                self.dtc_table.setItem(row, col, QTableWidgetItem(clean_value))
     
     def add_sample_live_data(self):
         """Add sample live data to table"""
@@ -684,13 +724,15 @@ class AutoDiagApp(QMainWindow):
         self.live_data_table.setRowCount(len(sample_data))
         for row, data in enumerate(sample_data):
             for col, value in enumerate(data):
-                self.live_data_table.setItem(row, col, QTableWidgetItem(value))
+                clean_value = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', value)
+                self.live_data_table.setItem(row, col, QTableWidgetItem(clean_value))
     
     def show_live_data(self):
         """Switch to live data tab"""
         self.tab_widget.setCurrentIndex(2)  # Live Data tab index
 
 def main():
+    """Main application entry point"""
     app = QApplication(sys.argv)
     
     # Set application properties
@@ -698,11 +740,15 @@ def main():
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("DiagAutoClinicOS")
     
-    # Create and show main window
-    window = AutoDiagApp()
-    
-    # Start the application
-    sys.exit(app.exec())
+    try:
+        # Create and show main window
+        window = AutoDiagApp()
+        
+        # Start the application
+        sys.exit(app.exec())
+    except Exception as e:
+        logger.critical(f"Application crashed: {str(e)}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
