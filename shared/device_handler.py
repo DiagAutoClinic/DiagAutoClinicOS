@@ -6,6 +6,7 @@ import subprocess
 import logging
 import os
 import socket
+import re
 from enum import Enum
 from typing import Optional, List, Tuple, Dict
 
@@ -116,13 +117,13 @@ class DeviceHandler:
         try:
             # Check for libj2534
             result = subprocess.run(['pkg-config', '--exists', 'libj2534'], 
-                                  capture_output=True, text=True)
+                                    capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 logger.info("libj2534 development files found")
                 return True
 
             # Check for J2534 tools via Wine
-            result = subprocess.run(['which', 'wine'], capture_output=True, text=True)
+            result = subprocess.run(['which', 'wine'], capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 logger.info("Wine available for J2534 emulation")
                 return True
@@ -139,12 +140,13 @@ class DeviceHandler:
     def _check_socketcan_linux(self) -> bool:
         """Check if SocketCAN is available"""
         try:
-            result = subprocess.run(['lsmod'], capture_output=True, text=True)
-            if 'can' in result.stdout.lower():
+            result = subprocess.run(['lsmod'], capture_output=True, text=True, timeout=5)
+            stdout = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', result.stdout)
+            if 'can' in stdout.lower():
                 logger.info("SocketCAN support detected")
                 return True
 
-            result = subprocess.run(['which', 'cansend'], capture_output=True, text=True)
+            result = subprocess.run(['which', 'cansend'], capture_output=True, text=True, timeout=5)
             if result.returncode == 0:
                 logger.info("CAN utilities available")
                 return True
@@ -217,9 +219,11 @@ class DeviceHandler:
             result = subprocess.run(['bluetoothctl', 'devices'], 
                                   capture_output=True, text=True, timeout=10)
             if result.returncode == 0:
-                for line in result.stdout.split('\n'):
-                    if 'ELM327' in line.upper() or 'OBD' in line.upper():
-                        bt_devices.append(line.strip())
+                stdout = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', result.stdout)
+                for line in stdout.split('\n'):
+                    clean_line = line.strip()
+                    if 'ELM327' in clean_line.upper() or 'OBD' in clean_line.upper():
+                        bt_devices.append(clean_line)
         except Exception as e:
             logger.debug(f"Bluetooth scan failed: {e}")
         return bt_devices
@@ -241,7 +245,7 @@ class DeviceHandler:
                 ser = serial.Serial(port, 38400, timeout=2)
                 ser.write(b'ATI\r\n')
                 time.sleep(1)
-                response = ser.read_all().decode().strip()
+                response = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', ser.read_all().decode(errors='ignore')).strip()
                 ser.close()
 
                 # Identify device type from response
@@ -266,16 +270,18 @@ class DeviceHandler:
             ]
             
             # Check USB devices that might be J2534
-            usb_check = subprocess.run(['lsusb'], capture_output=True, text=True)
+            usb_check = subprocess.run(['lsusb'], capture_output=True, text=True, timeout=5)
             if usb_check.returncode == 0:
+                stdout = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', usb_check.stdout)
                 j2534_vendors = ['0403', '067b', '0bdc']  # FTDI, Prolific, Mercedes
-                for line in usb_check.stdout.split('\n'):
+                for line in stdout.split('\n'):
+                    clean_line = line.strip()
                     for vendor in j2534_vendors:
-                        if vendor in line:
+                        if vendor in clean_line:
                             # Try to identify specific devices
-                            if 'GT101' in line or 'Godiag' in line:
+                            if 'GT101' in clean_line or 'Godiag' in clean_line:
                                 j2534_devices.append(self.pro_devices["Godiag GT101"])
-                            elif 'Mongoose' in line:
+                            elif 'Mongoose' in clean_line:
                                 j2534_devices.append(self.pro_devices["Mongoose Pro"])
                                 
         except Exception as e:
@@ -370,13 +376,32 @@ class DeviceHandler:
     def _connect_serial_elm327(self, device: ProfessionalDevice, protocol: str) -> bool:
         """Connect to serial ELM327 device"""
         try:
-            ports = self._scan_serial_ports()
-            if not ports:
+            # Securely find a matching port instead of hardcoding
+            ports_to_check = [
+                '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3',
+                '/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2',
+                '/dev/rfcomm0', '/dev/rfcomm1', '/dev/rfcomm2'
+            ]
+            port = None
+            for p in ports_to_check:
+                if not os.path.exists(p):
+                    continue
+                try:
+                    ser = serial.Serial(p, 38400, timeout=2)
+                    ser.write(b'ATI\r\n')
+                    time.sleep(1)
+                    response = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', ser.read_all().decode(errors='ignore')).strip()
+                    ser.close()
+                    if 'ELM327' in response.upper():
+                        port = p
+                        break
+                except Exception:
+                    continue
+            
+            if not port:
                 logger.error("No serial ELM327 devices found")
                 return False
-
-            # Use the first available port
-            port = '/dev/ttyUSB0'  # Simplified - would need proper port detection
+            
             self.serial_conn = serial.Serial(port, 38400, timeout=2)
             
             # Initialize ELM327
@@ -396,13 +421,19 @@ class DeviceHandler:
             logger.error(f"Serial connection failed: {e}")
             return False
 
+    def _mask_sensitive(self, value: str) -> str:
+        """Mask sensitive information like serial numbers"""
+        if len(value) > 8:
+            return value[:4] + '*' * (len(value) - 8) + value[-4:]
+        return value
+
     def read_ecu_identification_advanced(self) -> Dict:
         """Read advanced ECU identification data"""
         if not self.is_connected:
             return {}
             
         if self.mock_mode:
-            return {
+            info = {
                 'part_number': 'Mock-ECU-12345',
                 'software_version': 'V1.2.3',
                 'hardware_version': 'HW-Rev-A',
@@ -411,6 +442,8 @@ class DeviceHandler:
                 'diagnostic_address': '0x7E0',
                 'supplier': 'Mock Automotive Systems'
             }
+            info['serial_number'] = self._mask_sensitive(info['serial_number'])
+            return info
 
         # Real implementation would vary by device type
         if self.current_device and self.current_device.device_type == "J2534":
@@ -420,7 +453,7 @@ class DeviceHandler:
 
     def _j2534_read_ecu_identification(self) -> Dict:
         """J2534-specific ECU identification"""
-        return {
+        info = {
             'part_number': 'J2534-ECU-READ',
             'software_version': 'V2.0.0',
             'hardware_version': 'HW-J2534',
@@ -429,10 +462,12 @@ class DeviceHandler:
             'diagnostic_address': '0x7E0',
             'supplier': 'J2534 Compatible'
         }
+        info['serial_number'] = self._mask_sensitive(info['serial_number'])
+        return info
 
     def _elm327_read_ecu_identification(self) -> Dict:
         """ELM327-specific ECU identification"""
-        return {
+        info = {
             'part_number': 'ELM327-ECU-READ',
             'software_version': 'V1.5.0',
             'hardware_version': 'HW-ELM327',
@@ -441,6 +476,8 @@ class DeviceHandler:
             'diagnostic_address': '0x7E0',
             'supplier': 'ELM327 Compatible'
         }
+        info['serial_number'] = self._mask_sensitive(info['serial_number'])
+        return info
 
     def perform_advanced_diagnostic(self, diagnostic_type: str) -> Dict:
         """Perform advanced diagnostics based on device capabilities"""
