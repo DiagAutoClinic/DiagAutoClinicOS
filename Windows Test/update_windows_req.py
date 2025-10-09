@@ -8,3 +8,13 @@ def install_windows_specific():
             "python-can[windows]",
             "pywin32"  # Windows API support
         ])
+
+# Add conditional imports
+try:
+    import python.can as can
+except ImportError as e:
+    if platform.system() == "Windows":
+        print("On Windows, you may need to install: pip install python-can[windows]")
+    raise e
+
+
