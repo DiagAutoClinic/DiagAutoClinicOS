@@ -6,21 +6,35 @@ Modern interface with theme support
 
 import sys
 import os
+import re
+import logging
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
                             QWidget, QPushButton, QLabel, QComboBox, QTabWidget,
                             QGroupBox, QTableWidget, QTableWidgetItem, QProgressBar,
-                            QTextEdit, QLineEdit, QHeaderView, QRadioButton)
+                            QTextEdit, QLineEdit, QHeaderView, QRadioButton, QInputDialog)
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
-# Import the style manager
-from style_manager import StyleManager
-from brand_database import get_brand_info, get_brand_list
+# Setup logging (no file output to avoid persistence risks)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Import custom modules safely
+try:
+    from style_manager import StyleManager
+    from brand_database import get_brand_info, get_brand_list
+except ImportError as e:
+    logger.error(f"Failed to import custom modules: {e}")
+    sys.exit(1)
 
 class AutoKeyApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.style_manager = StyleManager()
+        try:
+            self.style_manager = StyleManager()
+        except Exception as e:
+            logger.error(f"Failed to initialize StyleManager: {e}")
+            sys.exit(1)
         self.selected_brand = "Toyota"
         self.init_ui()
         
@@ -50,7 +64,10 @@ class AutoKeyApp(QMainWindow):
         self.create_status_bar()
         
         # Apply theme AFTER UI is created
-        self.style_manager.set_theme("dark")
+        try:
+            self.style_manager.set_theme("dark")
+        except Exception as e:
+            logger.warning(f"Failed to apply theme: {e}, using default")
         
         # Show the window
         self.show()
@@ -73,9 +90,15 @@ class AutoKeyApp(QMainWindow):
         theme_label = QLabel("Theme:")
         self.theme_combo = QComboBox()
         
-        theme_info = self.style_manager.get_theme_info()
-        for theme_id, info in theme_info.items():
-            self.theme_combo.addItem(info['name'], theme_id)
+        try:
+            theme_info = self.style_manager.get_theme_info()
+            for theme_id, info in theme_info.items():
+                if isinstance(info, dict) and 'name' in info:
+                    self.theme_combo.addItem(info['name'], theme_id)
+                else:
+                    logger.warning(f"Invalid theme info for {theme_id}")
+        except Exception as e:
+            logger.error(f"Failed to load themes: {e}")
         
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         
@@ -210,9 +233,9 @@ class AutoKeyApp(QMainWindow):
         details_table.setHorizontalHeaderLabels(["Property", "Value"])
         details_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         
-        # Add vehicle data
+        # Load vehicle data securely (mock for now)
         vehicle_data = [
-            ["VIN", "JTNKU56E9A1234567"],
+            ["VIN", "REDACTED_VIN_123"],  # Avoid hardcoded VIN
             ["Make", "Toyota"],
             ["Model", "Camry"],
             ["Year", "2020"],
@@ -224,7 +247,9 @@ class AutoKeyApp(QMainWindow):
         details_table.setRowCount(len(vehicle_data))
         for row, data in enumerate(vehicle_data):
             for col, value in enumerate(data):
-                details_table.setItem(row, col, QTableWidgetItem(value))
+                item = QTableWidgetItem(value)
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)  # Prevent user edits
+                details_table.setItem(row, col, item)
         
         vehicle_layout.addWidget(details_table)
         
@@ -239,18 +264,23 @@ class AutoKeyApp(QMainWindow):
         self.statusBar().addWidget(self.status_label)
         
     def on_theme_changed(self, theme_name):
-        """Handle theme change"""
-        theme_info = self.style_manager.get_theme_info()
-        for theme_id, info in theme_info.items():
-            if info['name'] == theme_name:
-                self.style_manager.set_theme(theme_id)
-                break
+        """Handle theme change with validation"""
+        try:
+            theme_info = self.style_manager.get_theme_info()
+            for theme_id, info in theme_info.items():
+                if info.get('name') == theme_name:
+                    self.style_manager.set_theme(theme_id)
+                    logger.info(f"Applied theme: {theme_name}")
+                    return
+            logger.warning(f"Theme {theme_name} not found")
+        except Exception as e:
+            logger.error(f"Failed to change theme: {e}")
                 
     def add_sample_transponder_data(self):
-        """Add sample transponder data"""
+        """Add sample transponder data securely"""
         sample_data = [
-            ["KEY001", "Smart Key", "Programmed", "Toyota Camry"],
-            ["KEY002", "Smart Key", "Programmed", "Toyota Camry"],
+            ["KEY001", "Smart Key", "Programmed", "Generic Vehicle"],  # Avoid specific vehicle data
+            ["KEY002", "Smart Key", "Programmed", "Generic Vehicle"],
             ["KEY003", "Mechanical", "Unprogrammed", "N/A"],
             ["TSP001", "ID4C", "Blank", "N/A"]
         ]
@@ -258,14 +288,41 @@ class AutoKeyApp(QMainWindow):
         self.transponder_table.setRowCount(len(sample_data))
         for row, data in enumerate(sample_data):
             for col, value in enumerate(data):
-                self.transponder_table.setItem(row, col, QTableWidgetItem(value))
+                item = QTableWidgetItem(value)
+                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)  # Prevent user edits
+                self.transponder_table.setItem(row, col, item)
                 
+    def validate_security_code(self, code: str) -> bool:
+        """Validate security code (alphanumeric, 4-8 chars)"""
+        if not code:
+            return False
+        if not (4 <= len(code) <= 8 and re.match(r'^[a-zA-Z0-9]+$', code)):
+            logger.warning(f"Invalid security code format: {code}")
+            return False
+        return True
+    
+    def check_auth(self) -> bool:
+        """Mock authentication check (replace with real auth in production)"""
+        # For demo, use a simple PIN dialog; replace with secure auth (e.g., keyring)
+        pin, ok = QInputDialog.getText(self, "Authentication", "Enter PIN:", QLineEdit.EchoMode.Password)
+        if ok and pin == "1234":  # Mock PIN; use secure storage in production
+            logger.info("Authentication successful")
+            return True
+        logger.warning("Authentication failed")
+        return False
+
     def program_key(self):
-        """Simulate key programming"""
-        if not self.security_input.text():
-            self.status_label.setText("Please enter security code first")
+        """Simulate key programming with validation and auth"""
+        if not self.check_auth():
+            self.status_label.setText("Authentication failed")
             return
             
+        code = self.security_input.text().strip()
+        if not self.validate_security_code(code):
+            self.status_label.setText("Invalid security code (alphanumeric, 4-8 chars)")
+            return
+            
+        logger.info("Initiating key programming")
         self.status_label.setText("Programming new key...")
         self.key_status.setText("Programming...")
         self.key_status.setProperty("class", "key_status_learning")
@@ -275,20 +332,34 @@ class AutoKeyApp(QMainWindow):
         
     def programming_complete(self):
         """Called when programming completes"""
+        logger.info("Key programming completed")
         self.status_label.setText("Key programmed successfully!")
         self.key_status.setText("Programmed")
         self.key_status.setProperty("class", "key_status_programmed")
         
     def clone_key(self):
-        """Simulate key cloning"""
+        """Simulate key cloning with auth"""
+        if not self.check_auth():
+            self.status_label.setText("Authentication failed")
+            return
+        logger.info("Initiating key cloning")
         self.status_label.setText("Cloning key...")
         
     def reset_system(self):
-        """Simulate system reset"""
+        """Simulate system reset with auth"""
+        if not self.check_auth():
+            self.status_label.setText("Authentication failed")
+            return
+        logger.info("Initiating system reset")
         self.status_label.setText("Resetting key system...")
         self.security_input.clear()
         self.key_status.setText("No Key Detected")
         self.key_status.setProperty("class", "key_status_unprogrammed")
+    
+    def closeEvent(self, event):
+        """Ensure cleanup on close"""
+        logger.info("Closing AutoKeyApp")
+        event.accept()
 
 def main():
     app = QApplication(sys.argv)
@@ -298,8 +369,12 @@ def main():
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("DiagAutoClinicOS")
     
-    window = AutoKeyApp()
-    sys.exit(app.exec())
+    try:
+        window = AutoKeyApp()
+        sys.exit(app.exec())
+    except Exception as e:
+        logger.error(f"Application failed: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
