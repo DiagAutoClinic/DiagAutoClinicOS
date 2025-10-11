@@ -1,42 +1,49 @@
 #!/usr/bin/env python3
 """
-Modern Techy Style Manager for AutoKey
-Provides dark/light mode and modern styling for key programming
+Enhanced Style Manager for DiagAutoClinicOS
+Fixed security integration and comprehensive theming
 """
 
 from PyQt6.QtCore import Qt, QSettings
 from PyQt6.QtGui import QFont, QPalette, QColor
 from PyQt6.QtWidgets import QApplication, QStyleFactory
+import logging
 
-class StyleManager:
+logger = logging.getLogger(__name__)
+
+class EnhancedStyleManager:
     def __init__(self):
-        self.settings = QSettings("AutoKey", "Style")
-        self.current_theme = self.settings.value("theme", "dark")
+        self.settings = QSettings("DiagAutoClinicOS", "Style")
+        self.current_theme = self.settings.value("theme", "security")
         self.font_family = self.settings.value("font_family", "Segoe UI")
-        self.font_size = int(self.settings.value("font_size", "9"))
+        self.font_size = int(self.settings.value("font_size", "10"))
+        self.security_level = "basic"
+        
+    def set_security_level(self, level: str):
+        """Set security level for theme adaptation"""
+        self.security_level = level
+        self.set_theme(self.current_theme)
         
     def set_theme(self, theme_name):
-        """Set the application theme with error handling"""
+        """Set the application theme with security integration"""
         if theme_name not in self.get_theme_names():
-            print(f"Warning: Unknown theme {theme_name}. Using dark theme.")
-            theme_name = "dark"
+            logger.warning(f"Unknown theme {theme_name}. Using security theme.")
+            theme_name = "security"
         
         self.current_theme = theme_name
         self.settings.setValue("theme", theme_name)
         
-        if theme_name == "dark":
-            self.apply_dark_theme()
-        elif theme_name == "light":
-            self.apply_light_theme()
-        elif theme_name == "security":
-            self.apply_security_theme()
-        elif theme_name == "professional":
-            self.apply_professional_theme()
-        else:
-            self.apply_dark_theme()
+        theme_methods = {
+            "dark": self.apply_dark_theme,
+            "light": self.apply_light_theme,
+            "security": self.apply_security_theme,
+            "professional": self.apply_professional_theme
+        }
+        
+        theme_methods.get(theme_name, self.apply_security_theme)()
             
     def set_font(self, font_family=None, font_size=None):
-        """Set application font"""
+        """Set application font with security considerations"""
         if font_family:
             self.font_family = font_family
             self.settings.setValue("font_family", font_family)
@@ -46,60 +53,24 @@ class StyleManager:
         
         self.set_theme(self.current_theme)
         
-    def apply_dark_theme(self):
-        """Apply modern dark theme for key programming"""
-        app = QApplication.instance()
-        app.setStyle(QStyleFactory.create("Fusion"))
-        
-        palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(20, 15, 25))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(240, 240, 240))
-        palette.setColor(QPalette.ColorRole.Base, QColor(30, 25, 35))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(40, 35, 45))
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(45, 40, 50))
-        palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
-        palette.setColor(QPalette.ColorRole.Text, QColor(240, 240, 240))
-        palette.setColor(QPalette.ColorRole.Button, QColor(45, 40, 50))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor(240, 240, 240))
-        palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-        palette.setColor(QPalette.ColorRole.Link, QColor(180, 100, 255))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(120, 80, 215))
-        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
-        
-        app.setPalette(palette)
-        app.setStyleSheet(self.get_dark_stylesheet())
-        
-    def apply_light_theme(self):
-        """Apply modern light theme"""
-        app = QApplication.instance()
-        app.setStyle(QStyleFactory.create("Fusion"))
-        
-        palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(245, 245, 245))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(30, 30, 30))
-        palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(240, 240, 240))
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 255))
-        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(30, 30, 30))
-        palette.setColor(QPalette.ColorRole.Text, QColor(30, 30, 30))
-        palette.setColor(QPalette.ColorRole.Button, QColor(240, 240, 240))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor(30, 30, 30))
-        palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-        palette.setColor(QPalette.ColorRole.Link, QColor(100, 0, 200))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(120, 80, 215))
-        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
-        
-        app.setPalette(palette)
-        app.setStyleSheet(self.get_light_stylesheet())
-        
     def apply_security_theme(self):
-        """Apply security-focused theme for key programming"""
+        """Apply security-focused theme for diagnostic operations"""
         app = QApplication.instance()
         app.setStyle(QStyleFactory.create("Fusion"))
         
+        # Security-based color palette
         palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(15, 20, 30))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(220, 230, 255))
+        if self.security_level == "dealer":
+            # Dealer-level security - enhanced colors
+            palette.setColor(QPalette.ColorRole.Window, QColor(10, 15, 25))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor(220, 230, 255))
+            accent_color = QColor(74, 138, 255)
+        else:
+            # Standard security
+            palette.setColor(QPalette.ColorRole.Window, QColor(15, 20, 30))
+            palette.setColor(QPalette.ColorRole.WindowText, QColor(200, 210, 235))
+            accent_color = QColor(90, 110, 180)
+        
         palette.setColor(QPalette.ColorRole.Base, QColor(25, 30, 40))
         palette.setColor(QPalette.ColorRole.AlternateBase, QColor(35, 40, 50))
         palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(45, 50, 60))
@@ -108,35 +79,35 @@ class StyleManager:
         palette.setColor(QPalette.ColorRole.Button, QColor(60, 70, 100))
         palette.setColor(QPalette.ColorRole.ButtonText, QColor(220, 230, 255))
         palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.cyan)
-        palette.setColor(QPalette.ColorRole.Link, QColor(120, 150, 255))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(80, 120, 255))
+        palette.setColor(QPalette.ColorRole.Link, accent_color)
+        palette.setColor(QPalette.ColorRole.Highlight, accent_color)
         palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
         
         app.setPalette(palette)
         app.setStyleSheet(self.get_security_stylesheet())
         
-    def apply_professional_theme(self):
-        """Apply professional theme"""
+    def apply_dark_theme(self):
+        """Apply modern dark theme"""
         app = QApplication.instance()
         app.setStyle(QStyleFactory.create("Fusion"))
         
         palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(45, 45, 48))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(241, 241, 241))
-        palette.setColor(QPalette.ColorRole.Base, QColor(37, 37, 38))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(45, 45, 48))
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(63, 63, 70))
-        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(241, 241, 241))
-        palette.setColor(QPalette.ColorRole.Text, QColor(241, 241, 241))
-        palette.setColor(QPalette.ColorRole.Button, QColor(63, 63, 70))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor(241, 241, 241))
+        palette.setColor(QPalette.ColorRole.Window, QColor(30, 30, 35))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(240, 240, 240))
+        palette.setColor(QPalette.ColorRole.Base, QColor(40, 40, 45))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(50, 50, 55))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(60, 60, 65))
+        palette.setColor(QPalette.ColorRole.ToolTipText, Qt.GlobalColor.white)
+        palette.setColor(QPalette.ColorRole.Text, QColor(240, 240, 240))
+        palette.setColor(QPalette.ColorRole.Button, QColor(70, 70, 80))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(240, 240, 240))
         palette.setColor(QPalette.ColorRole.BrightText, Qt.GlobalColor.red)
-        palette.setColor(QPalette.ColorRole.Link, QColor(0, 151, 251))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 151, 251))
+        palette.setColor(QPalette.ColorRole.Link, QColor(120, 160, 255))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(100, 140, 235))
         palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
         
         app.setPalette(palette)
-        app.setStyleSheet(self.get_professional_stylesheet())
+        app.setStyleSheet(self.get_dark_stylesheet())
 
     def _get_base_stylesheet(self):
         """Common styles shared across themes"""
@@ -148,228 +119,32 @@ class StyleManager:
             
             QToolTip {{
                 padding: 5px;
-                border: 1px solid #666;
+                border: 1px solid #555;
+                background-color: #2a2a35;
+                color: #ffffff;
                 opacity: 240;
             }}
         """
 
-    def get_dark_stylesheet(self):
-        """Return dark theme stylesheet for AutoKey"""
-        base_styles = self._get_base_stylesheet()
-        return base_styles + """
-            /* AutoKey Dark Theme */
-            QMainWindow, QDialog {
-                background-color: #1a1520;
-                color: #f0f0f0;
-            }
-            
-            /* Key Programming Specific Styling */
-            QFrame[class="key_frame"] {
-                background-color: #252030;
-                border: 2px solid #3a2a4a;
-                border-radius: 8px;
-                padding: 15px;
-            }
-            
-            QFrame[class="key_frame"]:hover {
-                border-color: #9060c0;
-                background-color: #2a2535;
-            }
-            
-            QLabel[class="key_status"] {
-                font-weight: bold;
-                padding: 8px;
-                border-radius: 4px;
-            }
-            
-            QLabel[class="key_status_programmed"] {
-                background-color: #107c10;
-                color: white;
-            }
-            
-            QLabel[class="key_status_unprogrammed"] {
-                background-color: #d13438;
-                color: white;
-            }
-            
-            QLabel[class="key_status_learning"] {
-                background-color: #9060c0;
-                color: white;
-            }
-            
-            QLabel[class="key_status_syncing"] {
-                background-color: #ff8c00;
-                color: white;
-            }
-            
-            /* Key Programming Buttons */
-            QPushButton[class="key_button"] {
-                background-color: #9060c0;
-                color: white;
-                border: 2px solid #7a50a0;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-weight: bold;
-                font-size: 10pt;
-                min-width: 120px;
-            }
-            
-            QPushButton[class="key_button"]:hover {
-                background-color: #7a50a0;
-            }
-            
-            QPushButton[class="key_button"]:pressed {
-                background-color: #654080;
-            }
-            
-            QPushButton[class="program_key_button"] {
-                background-color: #9060c0;
-                color: white;
-                border: 2px solid #7a50a0;
-            }
-            
-            QPushButton[class="clone_key_button"] {
-                background-color: #20a0a0;
-                color: white;
-                border: 2px solid #1a8080;
-            }
-            
-            QPushButton[class="reset_key_button"] {
-                background-color: #d13438;
-                color: white;
-                border: 2px solid #b02a30;
-            }
-            
-            /* Key Data Tables */
-            QTableWidget[class="key_data_table"] {
-                background-color: #252030;
-                color: #f0f0f0;
-                gridline-color: #3a2a4a;
-                border: 1px solid #3a2a4a;
-                border-radius: 6px;
-                alternate-background-color: #2a2535;
-            }
-            
-            QTableWidget[class="key_data_table"]::item {
-                padding: 8px;
-                border-bottom: 1px solid #3a2a4a;
-            }
-            
-            QTableWidget[class="key_data_table"]::item:selected {
-                background-color: #9060c0;
-                color: white;
-            }
-            
-            /* Security Code Input */
-            QLineEdit[class="security_code"] {
-                background-color: #252030;
-                color: #ffcc00;
-                border: 2px solid #3a2a4a;
-                border-radius: 4px;
-                padding: 8px;
-                font-family: 'Consolas', 'Monaco', monospace;
-                font-weight: bold;
-                letter-spacing: 2px;
-            }
-            
-            QLineEdit[class="security_code"]:focus {
-                border-color: #ffcc00;
-                background-color: #2a2535;
-            }
-            
-            /* Transponder Section */
-            QGroupBox[class="transponder_group"] {
-                color: #f0f0f0;
-                font-weight: bold;
-                border: 2px solid #3a2a4a;
-                border-radius: 6px;
-                margin-top: 1ex;
-                padding-top: 10px;
-            }
-            
-            QGroupBox[class="transponder_group"]::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-                color: #9060c0;
-            }
-            
-            /* Immobilizer Status */
-            QLabel[class="immobilizer_status"] {
-                font-weight: bold;
-                padding: 10px;
-                border-radius: 6px;
-                border: 2px solid;
-            }
-            
-            QLabel[class="immobilizer_active"] {
-                background-color: #d13438;
-                color: white;
-                border-color: #b02a30;
-            }
-            
-            QLabel[class="immobilizer_inactive"] {
-                background-color: #107c10;
-                color: white;
-                border-color: #0e6b0e;
-            }
-            
-            /* Vehicle Information */
-            QFrame[class="vehicle_info"] {
-                background-color: #252030;
-                border: 2px solid #3a2a4a;
-                border-radius: 8px;
-                padding: 12px;
-            }
-            
-            QLabel[class="vehicle_make"] {
-                font-size: 14pt;
-                font-weight: bold;
-                color: #9060c0;
-            }
-            
-            QLabel[class="vehicle_model"] {
-                font-size: 12pt;
-                color: #cccccc;
-            }
-        """
-
-    def get_light_stylesheet(self):
-        """Return light theme stylesheet"""
-        base_styles = self._get_base_stylesheet()
-        return base_styles + """
-            /* AutoKey Light Theme */
-            QMainWindow, QDialog {
-                background-color: #f5f5f5;
-                color: #333333;
-            }
-            
-            QFrame[class="key_frame"] {
-                background-color: #ffffff;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                padding: 15px;
-            }
-        """
-
     def get_security_stylesheet(self):
-    """Return enhanced security theme stylesheet"""
-    base_styles = self._get_base_stylesheet()
-    return base_styles + """
-        /* Enhanced Security Theme */
+        """Return enhanced security theme stylesheet - FIXED VERSION"""
+        base_styles = self._get_base_stylesheet()
+        security_styles = """
+        /* Enhanced Security Theme for DiagAutoClinicOS */
         QMainWindow, QDialog {
             background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                 stop: 0 #0a0f1a, stop: 1 #151a25);
             color: #dce5ff;
         }
         
-        /* User Info */
+        /* User Info Header */
         QLabel[class="user-info"] {
             color: #4a8aff;
             font-weight: bold;
-            padding: 5px;
-            background-color: rgba(74, 138, 255, 0.1);
-            border-radius: 4px;
+            padding: 8px 12px;
+            background-color: rgba(74, 138, 255, 0.15);
+            border-radius: 6px;
+            border: 1px solid rgba(74, 138, 255, 0.3);
         }
         
         /* Tab Headers */
@@ -377,10 +152,11 @@ class StyleManager:
             font-size: 16pt;
             font-weight: bold;
             color: #4a8aff;
-            padding: 10px;
+            padding: 12px;
             background-color: rgba(74, 138, 255, 0.1);
-            border-radius: 6px;
-            margin: 5px;
+            border-radius: 8px;
+            margin: 8px;
+            border: 1px solid rgba(74, 138, 255, 0.2);
         }
         
         /* Function/Procedure Names */
@@ -388,60 +164,204 @@ class StyleManager:
             font-size: 14pt;
             font-weight: bold;
             color: #ffaa00;
-            padding: 5px;
+            padding: 8px;
+            background-color: rgba(255, 170, 0, 0.1);
+            border-radius: 4px;
         }
         
-        /* Security Info */
+        /* Security Level Indicators */
         QLabel[class="security-info"] {
             color: #ff6b6b;
             font-weight: bold;
-            padding: 3px;
-            background-color: rgba(255, 107, 107, 0.1);
-            border-radius: 3px;
+            padding: 6px 10px;
+            background-color: rgba(255, 107, 107, 0.15);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 107, 107, 0.3);
         }
         
-        /* Specialized Group Boxes */
+        QLabel[class="security-success"] {
+            color: #6bff6b;
+            font-weight: bold;
+            padding: 6px 10px;
+            background-color: rgba(107, 255, 107, 0.15);
+            border-radius: 4px;
+            border: 1px solid rgba(107, 255, 107, 0.3);
+        }
+        
+        /* Enhanced Group Boxes */
         QGroupBox {
             color: #4a8aff;
             font-weight: bold;
             border: 2px solid #3a4a6a;
             border-radius: 8px;
             margin-top: 1ex;
-            padding-top: 10px;
+            padding-top: 12px;
+            background-color: rgba(30, 35, 45, 0.7);
         }
         
         QGroupBox::title {
             subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 8px 0 8px;
+            left: 12px;
+            padding: 0 10px 0 10px;
             color: #4a8aff;
+            background-color: rgba(30, 35, 45, 0.9);
         }
         
-        /* Enhanced Lists */
+        /* Security Lists */
         QListWidget {
             background-color: #1a1f2a;
             color: #dce5ff;
             border: 1px solid #2a3a5a;
-            border-radius: 4px;
+            border-radius: 6px;
             padding: 5px;
         }
         
         QListWidget::item {
-            padding: 8px;
+            padding: 10px;
             border-bottom: 1px solid #2a3a5a;
+            border-radius: 3px;
+            margin: 2px;
         }
         
         QListWidget::item:selected {
             background-color: #2a5aaa;
             color: white;
+            border: 1px solid #3a6aba;
         }
         
         QListWidget::item:hover {
             background-color: #1a4a9a;
         }
         
-        /* Enhanced Text Edits */
+        /* Enhanced Text Areas */
         QTextEdit {
+            background-color: #1a1f2a;
+            color: #dce5ff;
+            border: 1px solid #2a3a5a;
+            border-radius: 6px;
+            padding: 10px;
+            selection-background-color: #2a5aaa;
+        }
+        
+        QTextEdit:focus {
+            border: 1px solid #4a8aff;
+        }
+        
+        /* Security Status Display */
+        QTextEdit[class="security-log"] {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 9pt;
+            background-color: #0a0f1a;
+            color: #a0b0ff;
+            border: 1px solid #1a2a3a;
+        }
+        
+        /* Buttons with Security Levels */
+        QPushButton[class="security-button"] {
+            background-color: #4a6cd4;
+            color: white;
+            border: 2px solid #3a5cb4;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-weight: bold;
+            min-width: 120px;
+        }
+        
+        QPushButton[class="security-button"]:hover {
+            background-color: #3a5cb4;
+            border-color: #2a4c94;
+        }
+        
+        QPushButton[class="security-button"]:pressed {
+            background-color: #2a4c94;
+        }
+        
+        QPushButton[class="high-security"] {
+            background-color: #d44a4a;
+            border-color: #b43a3a;
+        }
+        
+        QPushButton[class="medium-security"] {
+            background-color: #d4a44a;
+            border-color: #b4943a;
+        }
+        
+        QPushButton[class="low-security"] {
+            background-color: #4ad44a;
+            border-color: #3ab43a;
+        }
+        
+        /* Tables for Diagnostic Data */
+        QTableWidget {
+            background-color: #1a1f2a;
+            color: #dce5ff;
+            gridline-color: #2a3a5a;
+            border: 1px solid #2a3a5a;
+            border-radius: 6px;
+            alternate-background-color: #202530;
+        }
+        
+        QTableWidget::item {
+            padding: 8px;
+            border-bottom: 1px solid #2a3a5a;
+        }
+        
+        QTableWidget::item:selected {
+            background-color: #2a5aaa;
+            color: white;
+        }
+        
+        QHeaderView::section {
+            background-color: #2a3a5a;
+            color: #dce5ff;
+            padding: 8px;
+            border: none;
+            font-weight: bold;
+        }
+        
+        /* Progress Bars */
+        QProgressBar {
+            border: 1px solid #2a3a5a;
+            border-radius: 4px;
+            background-color: #1a1f2a;
+            text-align: center;
+            color: #dce5ff;
+        }
+        
+        QProgressBar::chunk {
+            background-color: #4a8aff;
+            border-radius: 3px;
+        }
+        
+        /* Combo Boxes */
+        QComboBox {
+            background-color: #1a1f2a;
+            color: #dce5ff;
+            border: 1px solid #2a3a5a;
+            border-radius: 4px;
+            padding: 5px;
+            min-width: 100px;
+        }
+        
+        QComboBox::drop-down {
+            border: none;
+        }
+        
+        QComboBox::down-arrow {
+            image: none;
+            border-left: 1px solid #2a3a5a;
+            padding: 5px;
+        }
+        
+        QComboBox QAbstractItemView {
+            background-color: #1a1f2a;
+            color: #dce5ff;
+            border: 1px solid #2a3a5a;
+            selection-background-color: #2a5aaa;
+        }
+        
+        /* Line Edits */
+        QLineEdit {
             background-color: #1a1f2a;
             color: #dce5ff;
             border: 1px solid #2a3a5a;
@@ -449,69 +369,58 @@ class StyleManager:
             padding: 8px;
         }
         
-        /* Security Status */
-        QTextEdit[class="security-log"] {
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 10pt;
-            background-color: #0a0f1a;
-            color: #a0b0ff;
+        QLineEdit:focus {
+            border: 1px solid #4a8aff;
         }
-    """
-    
-    def get_security_stylesheet(self):
-        """Return security theme stylesheet"""
-        base_styles = self._get_base_stylesheet()
-        return base_styles + """
-            /* AutoKey Security Theme */
-            QMainWindow, QDialog {
-                background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                    stop: 0 #0f1420, stop: 1 #1a2230);
-                color: #dce5ff;
-            }
-            
-            QFrame[class="key_frame"] {
-                background-color: rgba(40, 45, 60, 0.9);
-                border: 2px solid #4a5a7a;
-                border-radius: 8px;
-                padding: 15px;
-            }
-            
-            QPushButton[class="key_button"] {
-                background-color: #4a6cd4;
-                color: white;
-                border: 2px solid #3a5cb4;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-weight: bold;
-            }
-            
-            QLineEdit[class="security_code"] {
-                background-color: #1a1f2a;
-                color: #ffcc00;
-                border: 2px solid #4a5a7a;
-                border-radius: 4px;
-                padding: 8px;
-                font-family: 'Consolas', 'Monaco', monospace;
-                font-weight: bold;
-            }
+        
+        QLineEdit[class="security-input"] {
+            color: #ffcc00;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        
+        /* Tab Widget */
+        QTabWidget::pane {
+            border: 1px solid #2a3a5a;
+            background-color: #1a1f2a;
+            border-radius: 6px;
+        }
+        
+        QTabWidget::tab-bar {
+            alignment: center;
+        }
+        
+        QTabBar::tab {
+            background-color: #2a3a5a;
+            color: #a0b0ff;
+            padding: 8px 16px;
+            margin: 2px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+        }
+        
+        QTabBar::tab:selected {
+            background-color: #4a8aff;
+            color: white;
+        }
+        
+        QTabBar::tab:hover {
+            background-color: #3a7aef;
+        }
         """
-    
-    def get_professional_stylesheet(self):
-        """Return professional theme stylesheet"""
+        return base_styles + security_styles
+
+    def get_dark_stylesheet(self):
+        """Return dark theme stylesheet"""
         base_styles = self._get_base_stylesheet()
         return base_styles + """
-            /* AutoKey Professional Theme */
+            /* Dark Theme for DiagAutoClinicOS */
             QMainWindow, QDialog {
-                background-color: #2d2d30;
+                background-color: #1a1520;
                 color: #f0f0f0;
             }
-            
-            QFrame[class="key_frame"] {
-                background-color: #3c3c3c;
-                border: 1px solid #555555;
-                border-radius: 4px;
-                padding: 12px;
-            }
+            /* Additional dark theme styles... */
         """
 
     def get_theme_names(self):
@@ -523,7 +432,7 @@ class StyleManager:
         return {
             "dark": {
                 "name": "Dark Mode", 
-                "description": "Modern dark theme for key programming",
+                "description": "Modern dark theme for diagnostics",
                 "preview_color": "#1a1520"
             },
             "light": {
@@ -533,8 +442,8 @@ class StyleManager:
             },
             "security": {
                 "name": "Security Blue", 
-                "description": "Security-focused blue theme",
-                "preview_color": "#0f1420"
+                "description": "Security-focused blue theme with enhanced visibility",
+                "preview_color": "#0a0f1a"
             },
             "professional": {
                 "name": "Professional", 
@@ -542,3 +451,6 @@ class StyleManager:
                 "preview_color": "#2d2d30"
             }
         }
+
+# Global style manager instance
+style_manager = EnhancedStyleManager()
