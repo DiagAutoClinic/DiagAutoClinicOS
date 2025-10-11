@@ -41,7 +41,7 @@ try:
     from device_handler import DeviceHandler, Protocol
     from security_manager import security_manager, SecurityLevel, UserRole
     from special_functions import special_functions_manager, FunctionCategory, SpecialFunction
-    from calibrations_resets import calibrations_resets_manager, ResetType, CalibrationProcedure
+    from calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure
 except ImportError as e:
     logging.error(f"Failed to import modules: {e}")
     sys.exit(1)
