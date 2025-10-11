@@ -33,26 +33,26 @@ shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sha
 if os.path.exists(shared_path):
     sys.path.append(shared_path)
 
-# CORRECTED IMPORTS - Replace in main_v2_beta.py
 try:
-    from style_manager import StyleManager
-    from brand_database import get_brand_list, get_brand_info
+    from style_manager import style_manager, EnhancedStyleManager
+    from brand_database import get_brand_list, get_brand_info, brand_database
     from dtc_database import DTCDatabase
     from vin_decoder import VINDecoder
     from device_handler import DeviceHandler, Protocol
     from security_manager import security_manager, SecurityLevel, UserRole
     from special_functions import special_functions_manager, FunctionCategory, SpecialFunction
-    from calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure  # FIXED: singular
+    from calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure
 except ImportError as e:
     logging.error(f"Failed to import modules: {e}")
-    # Create fallback implementations
-    class FallbackDTCDatabase:
-        def get_dtc_info(self, code): return {'description': 'Fallback', 'severity': 'Unknown', 'category': 'Unknown'}
-    class FallbackVINDecoder:
-        def decode(self, vin): return {'brand': 'Unknown', 'error': 'Fallback mode'}
+    # Create comprehensive fallbacks
+    class FallbackStyleManager:
+        def set_theme(self, theme): pass
+        def set_security_level(self, level): pass
+    style_manager = FallbackStyleManager()
     
-    DTCDatabase = FallbackDTCDatabase
-    VINDecoder = FallbackVINDecoder
+    def get_brand_list(): return ["Toyota", "Honda", "Ford"]
+    def get_brand_info(brand): return {}
+
 
 logger = logging.getLogger(__name__)
 
@@ -126,28 +126,29 @@ class AutoDiagPro(QMainWindow):
     """Enhanced AutoDiag Professional with complete feature set"""
     
     def __init__(self):
-        super().__init__()
-        
-        # Security first - require login
-        if not self.secure_login():
-            sys.exit(1)  # Exit if login failed
-        
-        # Initialize managers
-        self.dtc_database = DTCDatabase()
-        self.vin_decoder = VINDecoder()
-        self.special_functions_manager = special_functions_manager
-        self.calibrations_resets_manager = calibrations_resets_manager
-        
-        # Connect security managers
-        self.special_functions_manager.security_manager = security_manager
-        self.calibrations_resets_manager.security_manager = security_manager
-        
-        # UI State
-        self.selected_brand = "Toyota"
-        self.connected = False
-        
-        # Initialize UI
-        self.init_ui()
+    super().__init__()
+    
+    # Security first - require login
+    if not self.secure_login():
+        sys.exit(1)
+    
+    # Initialize managers with security integration
+    self.dtc_database = DTCDatabase()
+    self.vin_decoder = VINDecoder()
+    self.special_functions_manager = special_functions_manager
+    self.calibrations_resets_manager = calibrations_resets_manager
+    
+    # CRITICAL: Inject security manager into all components
+    self.special_functions_manager.security_manager = security_manager
+    self.calibrations_resets_manager.security_manager = security_manager
+    brand_database.security_manager = security_manager
+    
+    # Set security level for styling
+    current_level = security_manager.get_security_level()
+    style_manager.set_security_level(current_level.name.lower())
+    
+    # Initialize UI
+    self.init_ui()
         
         # Apply security theme
         try:
