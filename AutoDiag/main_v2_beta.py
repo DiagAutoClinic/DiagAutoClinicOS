@@ -33,7 +33,7 @@ shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sha
 if os.path.exists(shared_path):
     sys.path.append(shared_path)
 
-# FIXED IMPORTS - Replace in main_v2_beta.py
+# CORRECTED IMPORTS - Replace in main_v2_beta.py
 try:
     from style_manager import StyleManager
     from brand_database import get_brand_list, get_brand_info
@@ -42,11 +42,17 @@ try:
     from device_handler import DeviceHandler, Protocol
     from security_manager import security_manager, SecurityLevel, UserRole
     from special_functions import special_functions_manager, FunctionCategory, SpecialFunction
-    from calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure  # FIXED: was calibrations_resets
+    from calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure  # FIXED: singular
 except ImportError as e:
     logging.error(f"Failed to import modules: {e}")
-    # Provide fallbacks for missing modules
-    from shared.fallback_modules import *
+    # Create fallback implementations
+    class FallbackDTCDatabase:
+        def get_dtc_info(self, code): return {'description': 'Fallback', 'severity': 'Unknown', 'category': 'Unknown'}
+    class FallbackVINDecoder:
+        def decode(self, vin): return {'brand': 'Unknown', 'error': 'Fallback mode'}
+    
+    DTCDatabase = FallbackDTCDatabase
+    VINDecoder = FallbackVINDecoder
 
 logger = logging.getLogger(__name__)
 
