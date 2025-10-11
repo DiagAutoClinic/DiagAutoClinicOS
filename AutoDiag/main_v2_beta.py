@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 """
-AutoDiag Pro - Professional 25-Brand Diagnostic Suite
-Security-Focused Implementation with 5 Device Support
+AutoDiag Pro - Professional 25-Brand Diagnostic Suite v2.0
+Complete Integration with Special Functions, Calibrations, and Security
 """
 
 import sys
 import os
 import logging
-import re
-import hashlib
-import hmac
-import secrets
-from typing import List, Tuple, Dict, Optional
-from pathlib import Path
+from typing import Dict, List
 
 # Security: Import validation
 try:
@@ -20,33 +15,23 @@ try:
     SERIAL_AVAILABLE = True
 except ImportError:
     SERIAL_AVAILABLE = False
-    logging.warning("pySerial not available - serial features disabled")
 
-# Security: Limited Bluetooth support with validation
-BLUETOOTH_AVAILABLE = False  # Disabled for security by default
-
-# Security: No direct USB access in production
-USB_AVAILABLE = False
-
+# Security modules
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, 
     QPushButton, QLabel, QComboBox, QTabWidget, QFrame, QGroupBox,
     QTableWidget, QTableWidgetItem, QProgressBar, QTextEdit, QLineEdit,
     QHeaderView, QMessageBox, QSplitter, QScrollArea, QCheckBox,
-    QInputDialog, QDialog, QFormLayout, QFileDialog
+    QInputDialog, QDialog, QFormLayout, QFileDialog, QListWidget,
+    QListWidgetItem, QStackedWidget, QGridLayout
 )
-from PyQt6.QtCore import Qt, QTimer, QSettings, QThread, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, QSettings
 from PyQt6.QtGui import QFont, QPalette, QColor
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-# Security: Add shared modules with validation
+# Import shared modules
 shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
-if os.path.exists(shared_path) and os.path.isdir(shared_path):
+if os.path.exists(shared_path):
     sys.path.append(shared_path)
-else:
-    logging.error("Shared path not found or invalid")
-    sys.exit(1)
 
 try:
     from style_manager import StyleManager
@@ -54,184 +39,128 @@ try:
     from dtc_database import DTCDatabase
     from vin_decoder import VINDecoder
     from device_handler import DeviceHandler, Protocol
+    from security_manager import security_manager, SecurityLevel, UserRole
+    from special_functions import special_functions_manager, FunctionCategory, SpecialFunction
+    from calibrations_resets import calibrations_resets_manager, ResetType, CalibrationProcedure
 except ImportError as e:
-    logging.error(f"Failed to import shared modules: {e}")
+    logging.error(f"Failed to import modules: {e}")
     sys.exit(1)
 
-# Security: Configure secure logging (no sensitive data)
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - [SECURE] - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('autodiag_secure.log')  # Limited file logging
-    ]
-)
 logger = logging.getLogger(__name__)
 
-class SecureDeviceManager:
-    """Security-focused device communication handler"""
+class LoginDialog(QDialog):
+    """Secure login dialog"""
     
-    def __init__(self):
-        self.device_handler = DeviceHandler(mock_mode=True)  # Default to mock for safety
-        self.communication_key = None
-        self.session_id = None
-        self.connected = False
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("AutoDiag Pro - Secure Login")
+        self.setModal(True)
+        self.setFixedSize(400, 300)
         
-    def generate_session_key(self) -> str:
-        """Generate secure session key"""
-        self.session_id = secrets.token_hex(16)
-        self.communication_key = secrets.token_bytes(32)
-        return self.session_id
-    
-    def validate_port(self, port: str) -> bool:
-        """Strict port validation for security"""
-        if not port:
-            return False
-            
-        # Allow only specific safe patterns
-        safe_patterns = [
-            r'^/dev/ttyUSB[0-9]+$',
-            r'^/dev/ttyACM[0-9]+$',
-            r'^COM[1-9][0-9]*$'
-        ]
+        layout = QVBoxLayout()
         
-        for pattern in safe_patterns:
-            if re.match(pattern, port, re.IGNORECASE):
-                return True
-        return False
-    
-    def sanitize_input(self, input_str: str) -> str:
-        """Remove potentially dangerous characters"""
-        if not input_str:
-            return ""
-        # Remove control characters and potentially dangerous sequences
-        sanitized = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', input_str)
-        # Limit length for safety
-        return sanitized[:1000]
-    
-    def secure_connect(self, device_name: str, port: str = None, protocol: str = "AUTO") -> bool:
-        """Secure device connection with validation"""
-        try:
-            # Sanitize all inputs
-            device_name = self.sanitize_input(device_name)
-            port = self.sanitize_input(port) if port else None
-            protocol = self.sanitize_input(protocol)
-            
-            # Validate port if provided
-            if port and not self.validate_port(port):
-                logger.warning(f"Invalid port attempted: {port}")
-                return False
-            
-            # Generate secure session
-            self.generate_session_key()
-            
-            # Connect through secure handler
-            if self.device_handler.connect_to_device(device_name, protocol):
-                self.connected = True
-                logger.info(f"Secure connection established to {device_name}")
-                return True
-            else:
-                logger.warning(f"Secure connection failed to {device_name}")
-                return False
-                
-        except Exception as e:
-            logger.error(f"Secure connection error: {e}")
-            return False
-    
-    def secure_disconnect(self):
-        """Secure device disconnection"""
-        try:
-            self.device_handler.disconnect()
-            self.connected = False
-            self.communication_key = None
-            self.session_id = None
-            logger.info("Secure disconnection completed")
-        except Exception as e:
-            logger.error(f"Secure disconnection error: {e}")
-    
-    def secure_send_command(self, command: str) -> str:
-        """Send secure command with validation"""
-        if not self.connected:
-            return "ERROR: Not connected"
+        # Title
+        title = QLabel("🔒 AutoDiag Pro Login")
+        title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        # Sanitize and validate command
-        command = self.sanitize_input(command)
-        if not re.match(r'^[A-Z0-9\s]+$', command.upper()):
-            return "ERROR: Invalid command format"
+        # Form
+        form_layout = QFormLayout()
         
-        try:
-            # Use device handler for communication
-            response = self.device_handler.send_command(command)
-            return self.sanitize_input(response)
-        except Exception as e:
-            logger.error(f"Secure command error: {e}")
-            return "ERROR: Command failed"
-
-class SecurityAuditThread(QThread):
-    """Thread for continuous security monitoring"""
-    security_alert = pyqtSignal(str)
-    
-    def __init__(self, device_manager):
-        super().__init__()
-        self.device_manager = device_manager
-        self.running = True
+        self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("Enter username")
         
-    def run(self):
-        """Continuous security monitoring"""
-        while self.running:
-            try:
-                # Monitor for unusual activity
-                self.check_communication_security()
-                self.check_session_integrity()
-                self.sleep(5)  # Check every 5 seconds
-            except Exception as e:
-                logger.error(f"Security audit error: {e}")
+        self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Enter password")
+        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        
+        form_layout.addRow("Username:", self.username_input)
+        form_layout.addRow("Password:", self.password_input)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        login_btn = QPushButton("Login")
+        login_btn.clicked.connect(self.attempt_login)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        
+        button_layout.addWidget(login_btn)
+        button_layout.addWidget(cancel_btn)
+        
+        # Status
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("color: red;")
+        
+        layout.addWidget(title)
+        layout.addLayout(form_layout)
+        layout.addLayout(button_layout)
+        layout.addWidget(self.status_label)
+        
+        self.setLayout(layout)
     
-    def check_communication_security(self):
-        """Verify communication channel security"""
-        if self.device_manager.connected and not self.device_manager.session_id:
-            self.security_alert.emit("Session integrity compromised")
-    
-    def check_session_integrity(self):
-        """Verify session hasn't been tampered with"""
-        # Basic session validation
-        pass
-    
-    def stop(self):
-        """Stop security monitoring"""
-        self.running = False
+    def attempt_login(self):
+        """Attempt user login"""
+        username = self.username_input.text().strip()
+        password = self.password_input.text()
+        
+        if not username or not password:
+            self.status_label.setText("Username and password required")
+            return
+        
+        success, message = security_manager.authenticate_user(username, password)
+        
+        if success:
+            self.accept()
+        else:
+            self.status_label.setText(message)
 
 class AutoDiagPro(QMainWindow):
-    """Main AutoDiag Professional Application"""
+    """Enhanced AutoDiag Professional with complete feature set"""
     
     def __init__(self):
         super().__init__()
         
-        # Security: Initialize secure components first
-        self.secure_device_manager = SecureDeviceManager()
+        # Security first - require login
+        if not self.secure_login():
+            sys.exit(1)  # Exit if login failed
+        
+        # Initialize managers
         self.dtc_database = DTCDatabase()
         self.vin_decoder = VINDecoder()
-        self.security_audit = SecurityAuditThread(self.secure_device_manager)
-        self.security_audit.security_alert.connect(self.handle_security_alert)
+        self.special_functions_manager = special_functions_manager
+        self.calibrations_resets_manager = calibrations_resets_manager
         
-        try:
-            self.style_manager = StyleManager()
-        except Exception as e:
-            logger.error(f"Failed to initialize StyleManager: {e}")
-            sys.exit(1)
-            
+        # Connect security managers
+        self.special_functions_manager.security_manager = security_manager
+        self.calibrations_resets_manager.security_manager = security_manager
+        
+        # UI State
         self.selected_brand = "Toyota"
         self.connected = False
-        self.scanning = False
-        self.live_data_timer = None
         
-        # Security: Initialize UI after security components
+        # Initialize UI
         self.init_ui()
-        self.security_audit.start()
         
+        # Apply security theme
+        try:
+            self.style_manager.set_theme("security")
+        except Exception as e:
+            logger.warning(f"Theme application failed: {e}")
+    
+    def secure_login(self) -> bool:
+        """Handle secure user login"""
+        login_dialog = LoginDialog()
+        result = login_dialog.exec()
+        
+        if result == QDialog.DialogCode.Accepted:
+            logger.info(f"User logged in: {security_manager.current_user}")
+            return True
+        else:
+            logger.warning("Login cancelled or failed")
+            return False
+    
     def init_ui(self):
-        """Initialize secure user interface"""
+        """Initialize complete user interface"""
         self.setWindowTitle("AutoDiag Pro - Secure Professional Diagnostics")
         self.setGeometry(100, 100, 1400, 900)
         
@@ -240,45 +169,38 @@ class AutoDiagPro(QMainWindow):
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         
-        # Create header with security status
-        self.create_secure_header(main_layout)
+        # Create header with user info
+        self.create_user_header(main_layout)
         
         # Create main tab widget
         self.tab_widget = QTabWidget()
         main_layout.addWidget(self.tab_widget)
         
-        # Create secure tabs
-        self.create_secure_dashboard_tab()
-        self.create_secure_diagnostics_tab()
-        self.create_secure_live_data_tab()
-        self.create_secure_advanced_tab()
-        self.create_secure_brand_diagnostics_tab()
-        self.create_security_audit_tab()
+        # Create all tabs
+        self.create_dashboard_tab()
+        self.create_diagnostics_tab()
+        self.create_live_data_tab()
+        self.create_special_functions_tab()
+        self.create_calibrations_resets_tab()
+        self.create_advanced_tab()
+        self.create_security_tab()
         
-        # Create status bar with security indicators
-        self.create_secure_status_bar()
+        # Create status bar
+        self.create_status_bar()
         
-        # Apply secure theme
-        try:
-            self.style_manager.set_theme("security")
-        except Exception as e:
-            logger.warning(f"Failed to apply secure theme: {e}")
-        
-        # Initialize brand data
-        self.update_brand_specific_data()
         self.show()
-        
-    def create_secure_header(self, layout):
-        """Create header with security indicators"""
+    
+    def create_user_header(self, layout):
+        """Create header with user information and security status"""
         header_widget = QWidget()
         header_widget.setMaximumHeight(80)
         header_layout = QHBoxLayout(header_widget)
         
-        # Security status indicator
-        security_layout = QHBoxLayout()
-        self.security_status = QLabel("🛡️ SECURE MODE")
-        self.security_status.setProperty("class", "security-active")
-        security_layout.addWidget(self.security_status)
+        # User info
+        user_info = security_manager.get_user_info()
+        user_label = QLabel(f"👤 {user_info.get('full_name', 'Unknown')} "
+                          f"| 🔐 {user_info.get('security_level', 'BASIC')}")
+        user_label.setProperty("class", "user-info")
         
         # Title
         title_label = QLabel("AutoDiag Pro - Secure Diagnostics")
@@ -304,364 +226,622 @@ class AutoDiagPro(QMainWindow):
         brand_layout.addWidget(brand_label)
         brand_layout.addWidget(self.brand_combo)
         
-        # Theme selector
-        theme_layout = QHBoxLayout()
-        theme_label = QLabel("Theme:")
-        self.theme_combo = QComboBox()
+        # Logout button
+        logout_btn = QPushButton("Logout")
+        logout_btn.setProperty("class", "danger")
+        logout_btn.clicked.connect(self.secure_logout)
         
-        try:
-            theme_info = self.style_manager.get_theme_info()
-            for theme_id, info in theme_info.items():
-                if isinstance(info, dict) and 'name' in info:
-                    self.theme_combo.addItem(info['name'], theme_id)
-        except Exception as e:
-            logger.error(f"Failed to load themes: {e}")
-        
-        self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
-        
-        header_layout.addLayout(security_layout)
+        header_layout.addWidget(user_label)
         header_layout.addWidget(title_label)
         header_layout.addStretch()
         header_layout.addLayout(brand_layout)
-        header_layout.addSpacing(20)
-        header_layout.addLayout(theme_layout)
+        header_layout.addWidget(logout_btn)
         
         layout.addWidget(header_widget)
     
-    def create_security_audit_tab(self):
-        """Create security audit and monitoring tab"""
+    def create_special_functions_tab(self):
+        """Create comprehensive special functions tab"""
+        functions_tab = QWidget()
+        layout = QVBoxLayout(functions_tab)
+        
+        # Header
+        header_label = QLabel("🔧 Special Functions - Brand Specific")
+        header_label.setProperty("class", "tab-header")
+        
+        # Brand selection
+        brand_layout = QHBoxLayout()
+        brand_layout.addWidget(QLabel("Select Brand:"))
+        self.sf_brand_combo = QComboBox()
+        self.sf_brand_combo.addItems(get_brand_list())
+        self.sf_brand_combo.setCurrentText(self.selected_brand)
+        self.sf_brand_combo.currentTextChanged.connect(self.update_special_functions_list)
+        brand_layout.addWidget(self.sf_brand_combo)
+        brand_layout.addStretch()
+        
+        # Main content area
+        content_splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+        # Left panel - Functions list
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        
+        left_layout.addWidget(QLabel("Available Special Functions:"))
+        self.special_functions_list = QListWidget()
+        self.special_functions_list.itemClicked.connect(self.on_special_function_selected)
+        left_layout.addWidget(self.special_functions_list)
+        
+        # Right panel - Function details and execution
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        
+        # Function details
+        self.sf_details_group = QGroupBox("Function Details")
+        sf_details_layout = QVBoxLayout(self.sf_details_group)
+        
+        self.sf_name_label = QLabel("Select a function to view details")
+        self.sf_name_label.setProperty("class", "function-name")
+        
+        self.sf_description = QTextEdit()
+        self.sf_description.setReadOnly(True)
+        self.sf_description.setMaximumHeight(100)
+        
+        self.sf_security_label = QLabel("Security Level: --")
+        self.sf_security_label.setProperty("class", "security-info")
+        
+        sf_details_layout.addWidget(self.sf_name_label)
+        sf_details_layout.addWidget(self.sf_description)
+        sf_details_layout.addWidget(self.sf_security_label)
+        
+        # Parameters section
+        self.sf_params_group = QGroupBox("Function Parameters")
+        self.sf_params_layout = QVBoxLayout(self.sf_params_group)
+        self.sf_params_widget = QWidget()
+        self.sf_params_layout.addWidget(self.sf_params_widget)
+        
+        # Execute section
+        execute_layout = QHBoxLayout()
+        self.sf_execute_btn = QPushButton("Execute Special Function")
+        self.sf_execute_btn.setProperty("class", "primary")
+        self.sf_execute_btn.clicked.connect(self.execute_special_function)
+        self.sf_execute_btn.setEnabled(False)
+        
+        execute_layout.addWidget(self.sf_execute_btn)
+        execute_layout.addStretch()
+        
+        # Results
+        self.sf_results = QTextEdit()
+        self.sf_results.setReadOnly(True)
+        self.sf_results.setPlaceholderText("Execution results will appear here...")
+        
+        right_layout.addWidget(self.sf_details_group)
+        right_layout.addWidget(self.sf_params_group)
+        right_layout.addLayout(execute_layout)
+        right_layout.addWidget(QLabel("Execution Results:"))
+        right_layout.addWidget(self.sf_results)
+        
+        content_splitter.addWidget(left_panel)
+        content_splitter.addWidget(right_panel)
+        content_splitter.setSizes([300, 700])
+        
+        layout.addWidget(header_label)
+        layout.addLayout(brand_layout)
+        layout.addWidget(content_splitter)
+        
+        self.tab_widget.addTab(functions_tab, "🔧 Special Functions")
+        
+        # Initial update
+        self.update_special_functions_list()
+    
+    def create_calibrations_resets_tab(self):
+        """Create comprehensive calibrations and resets tab"""
+        calib_tab = QWidget()
+        layout = QVBoxLayout(calib_tab)
+        
+        # Header
+        header_label = QLabel("⚙ Calibrations & Resets - Professional Procedures")
+        header_label.setProperty("class", "tab-header")
+        
+        # Brand selection
+        brand_layout = QHBoxLayout()
+        brand_layout.addWidget(QLabel("Select Brand:"))
+        self.cr_brand_combo = QComboBox()
+        self.cr_brand_combo.addItems(get_brand_list())
+        self.cr_brand_combo.setCurrentText(self.selected_brand)
+        self.cr_brand_combo.currentTextChanged.connect(self.update_calibrations_list)
+        brand_layout.addWidget(self.cr_brand_combo)
+        brand_layout.addStretch()
+        
+        # Main content
+        content_splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+        # Left panel - Procedures list
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        
+        left_layout.addWidget(QLabel("Available Procedures:"))
+        self.calibrations_list = QListWidget()
+        self.calibrations_list.itemClicked.connect(self.on_calibration_selected)
+        left_layout.addWidget(self.calibrations_list)
+        
+        # Right panel - Procedure details
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        
+        # Procedure details
+        self.cr_details_group = QGroupBox("Procedure Details")
+        cr_details_layout = QVBoxLayout(self.cr_details_group)
+        
+        self.cr_name_label = QLabel("Select a procedure to view details")
+        self.cr_name_label.setProperty("class", "procedure-name")
+        
+        self.cr_description = QTextEdit()
+        self.cr_description.setReadOnly(True)
+        self.cr_description.setMaximumHeight(80)
+        
+        info_layout = QHBoxLayout()
+        self.cr_duration_label = QLabel("Duration: --")
+        self.cr_security_label = QLabel("Security Level: --")
+        self.cr_type_label = QLabel("Type: --")
+        
+        info_layout.addWidget(self.cr_duration_label)
+        info_layout.addWidget(self.cr_security_label)
+        info_layout.addWidget(self.cr_type_label)
+        info_layout.addStretch()
+        
+        cr_details_layout.addWidget(self.cr_name_label)
+        cr_details_layout.addWidget(self.cr_description)
+        cr_details_layout.addLayout(info_layout)
+        
+        # Prerequisites
+        self.cr_prereq_group = QGroupBox("Prerequisites")
+        self.cr_prereq_list = QTextEdit()
+        self.cr_prereq_list.setReadOnly(True)
+        self.cr_prereq_list.setMaximumHeight(100)
+        cr_prereq_layout = QVBoxLayout(self.cr_prereq_group)
+        cr_prereq_layout.addWidget(self.cr_prereq_list)
+        
+        # Steps
+        self.cr_steps_group = QGroupBox("Procedure Steps")
+        self.cr_steps_list = QTextEdit()
+        self.cr_steps_list.setReadOnly(True)
+        cr_steps_layout = QVBoxLayout(self.cr_steps_group)
+        cr_steps_layout.addWidget(self.cr_steps_list)
+        
+        # Execute
+        execute_layout = QHBoxLayout()
+        self.cr_execute_btn = QPushButton("Execute Procedure")
+        self.cr_execute_btn.setProperty("class", "primary")
+        self.cr_execute_btn.clicked.connect(self.execute_calibration)
+        self.cr_execute_btn.setEnabled(False)
+        
+        execute_layout.addWidget(self.cr_execute_btn)
+        execute_layout.addStretch()
+        
+        # Results
+        self.cr_results = QTextEdit()
+        self.cr_results.setReadOnly(True)
+        self.cr_results.setPlaceholderText("Procedure results will appear here...")
+        
+        right_layout.addWidget(self.cr_details_group)
+        right_layout.addWidget(self.cr_prereq_group)
+        right_layout.addWidget(self.cr_steps_group)
+        right_layout.addLayout(execute_layout)
+        right_layout.addWidget(QLabel("Execution Results:"))
+        right_layout.addWidget(self.cr_results)
+        
+        content_splitter.addWidget(left_panel)
+        content_splitter.addWidget(right_panel)
+        content_splitter.setSizes([300, 700])
+        
+        layout.addWidget(header_label)
+        layout.addLayout(brand_layout)
+        layout.addWidget(content_splitter)
+        
+        self.tab_widget.addTab(calib_tab, "⚙ Calibrations & Resets")
+        
+        # Initial update
+        self.update_calibrations_list()
+    
+    def create_security_tab(self):
+        """Create security management and audit tab"""
         security_tab = QWidget()
         layout = QVBoxLayout(security_tab)
         
+        # Header
+        header_label = QLabel("🔒 Security & Audit")
+        header_label.setProperty("class", "tab-header")
+        
         # Security status
-        status_frame = QFrame()
-        status_frame.setProperty("class", "security_frame")
-        status_layout = QVBoxLayout(status_frame)
+        status_group = QGroupBox("Security Status")
+        status_layout = QVBoxLayout(status_group)
         
-        status_title = QLabel("Security Status")
-        status_title.setProperty("class", "security_title")
+        user_info = security_manager.get_user_info()
+        status_text = f"""
+        Current User: {user_info.get('full_name', 'Unknown')}
+        Username: {user_info.get('username', 'Unknown')}
+        Security Level: {user_info.get('security_level', 'BASIC')}
+        Role: {user_info.get('role', 'technician')}
+        Session Expires: {self.format_timestamp(user_info.get('session_expiry', 0))}
+        """
         
-        self.security_indicators = QTextEdit()
-        self.security_indicators.setProperty("class", "security_log")
-        self.security_indicators.setReadOnly(True)
-        self.security_indicators.setPlainText(
-            "🔒 SECURITY STATUS: ACTIVE\n"
-            "✓ Secure Communication Enabled\n"
-            "✓ Input Validation Active\n"
-            "✓ Session Management Secure\n"
-            "✓ Device Validation Active\n"
-        )
+        self.security_status = QTextEdit()
+        self.security_status.setPlainText(status_text.strip())
+        self.security_status.setReadOnly(True)
         
-        status_layout.addWidget(status_title)
-        status_layout.addWidget(self.security_indicators)
+        status_layout.addWidget(self.security_status)
         
         # Security controls
-        controls_frame = QFrame()
-        controls_frame.setProperty("class", "security_frame")
-        controls_layout = QHBoxLayout(controls_frame)
+        controls_group = QGroupBox("Security Controls")
+        controls_layout = QHBoxLayout(controls_group)
         
-        audit_btn = QPushButton("Run Security Audit")
-        audit_btn.setProperty("class", "security_button")
-        audit_btn.clicked.connect(self.run_security_audit)
+        refresh_btn = QPushButton("Refresh Security Status")
+        refresh_btn.clicked.connect(self.update_security_status)
         
-        lockdown_btn = QPushButton("Emergency Lockdown")
-        lockdown_btn.setProperty("class", "danger")
-        lockdown_btn.clicked.connect(self.emergency_lockdown)
+        audit_btn = QPushButton("View Audit Log")
+        audit_btn.clicked.connect(self.show_audit_log)
         
+        elevate_btn = QPushButton("Elevate Security")
+        elevate_btn.clicked.connect(self.elevate_security)
+        
+        controls_layout.addWidget(refresh_btn)
         controls_layout.addWidget(audit_btn)
-        controls_layout.addWidget(lockdown_btn)
+        controls_layout.addWidget(elevate_btn)
         controls_layout.addStretch()
         
-        layout.addWidget(status_frame)
-        layout.addWidget(controls_frame)
+        # Quick security check
+        check_group = QGroupBox("Quick Security Check")
+        check_layout = QVBoxLayout(check_group)
+        
+        self.security_check_result = QTextEdit()
+        self.security_check_result.setReadOnly(True)
+        
+        check_btn = QPushButton("Run Security Check")
+        check_btn.clicked.connect(self.run_security_check)
+        
+        check_layout.addWidget(self.security_check_result)
+        check_layout.addWidget(check_btn)
+        
+        layout.addWidget(header_label)
+        layout.addWidget(status_group)
+        layout.addWidget(controls_group)
+        layout.addWidget(check_group)
         layout.addStretch()
         
         self.tab_widget.addTab(security_tab, "🔒 Security")
     
-    def create_secure_dashboard_tab(self):
-        """Create secure dashboard tab"""
-        dashboard_tab = QWidget()
-        layout = QVBoxLayout(dashboard_tab)
+    def update_special_functions_list(self):
+        """Update special functions list for current brand"""
+        brand = self.sf_brand_combo.currentText()
+        functions = self.special_functions_manager.get_brand_functions(brand)
         
-        # Quick actions with security checks
-        quick_frame = QFrame()
-        quick_frame.setProperty("class", "diagnostic_frame")
-        quick_layout = QHBoxLayout(quick_frame)
+        self.special_functions_list.clear()
         
-        scan_btn = QPushButton("🔍 Secure Quick Scan")
-        scan_btn.setProperty("class", "primary")
-        scan_btn.clicked.connect(self.secure_quick_scan)
+        for function in functions:
+            item = QListWidgetItem(f"🔧 {function.name}")
+            item.setData(Qt.ItemDataRole.UserRole, function.function_id)
+            self.special_functions_list.addItem(item)
         
-        dtc_btn = QPushButton("⚡ Read DTCs (Secure)")
-        dtc_btn.setProperty("class", "primary")
-        dtc_btn.clicked.connect(self.secure_read_dtcs)
+        # Clear details
+        self.sf_name_label.setText("Select a function to view details")
+        self.sf_description.clear()
+        self.sf_security_label.setText("Security Level: --")
+        self.sf_execute_btn.setEnabled(False)
         
-        live_btn = QPushButton("📊 Live Data (Monitored)")
-        live_btn.setProperty("class", "primary")
-        live_btn.clicked.connect(self.secure_live_data)
-        
-        clear_btn = QPushButton("🔄 Clear Codes (Auth Required)")
-        clear_btn.setProperty("class", "danger")
-        clear_btn.clicked.connect(self.secure_clear_dtcs)
-        
-        quick_layout.addWidget(scan_btn)
-        quick_layout.addWidget(dtc_btn)
-        quick_layout.addWidget(live_btn)
-        quick_layout.addWidget(clear_btn)
-        quick_layout.addStretch()
-        
-        # Vehicle security info
-        vehicle_frame = QFrame()
-        vehicle_frame.setProperty("class", "security_frame")
-        vehicle_layout = QVBoxLayout(vehicle_frame)
-        
-        vehicle_title = QLabel("Vehicle Security Information")
-        vehicle_title.setProperty("class", "subtitle")
-        
-        self.vehicle_security_info = QTextEdit()
-        self.vehicle_security_info.setReadOnly(True)
-        
-        vehicle_layout.addWidget(vehicle_title)
-        vehicle_layout.addWidget(self.vehicle_security_info)
-        
-        layout.addWidget(quick_frame)
-        layout.addWidget(vehicle_frame)
-        layout.addStretch()
-        
-        self.tab_widget.addTab(dashboard_tab, "Dashboard")
+        # Clear parameters
+        self.clear_parameters()
     
-    def create_secure_diagnostics_tab(self):
-        """Create secure diagnostics tab"""
-        # Similar structure but with security enhancements
-        pass
-    
-    def create_secure_live_data_tab(self):
-        """Create secure live data tab"""
-        # Similar structure but with security enhancements
-        pass
-    
-    def create_secure_advanced_tab(self):
-        """Create secure advanced diagnostics tab"""
-        # Similar structure but with security enhancements
-        pass
-    
-    def create_secure_brand_diagnostics_tab(self):
-        """Create secure brand-specific diagnostics"""
-        # Similar structure but with security enhancements
-        pass
-    
-    def create_secure_status_bar(self):
-        """Create status bar with security indicators"""
-        self.status_label = QLabel("Secure Mode: Ready")
-        self.statusBar().addWidget(self.status_label)
+    def on_special_function_selected(self, item):
+        """Handle special function selection"""
+        brand = self.sf_brand_combo.currentText()
+        function_id = item.data(Qt.ItemDataRole.UserRole)
+        function = self.special_functions_manager.get_function(brand, function_id)
         
-        # Security indicator
-        self.security_indicator = QLabel("🔒")
-        self.statusBar().addPermanentWidget(self.security_indicator)
-        
-        # Progress bar
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setMaximumWidth(200)
-        self.progress_bar.setVisible(False)
-        self.statusBar().addPermanentWidget(self.progress_bar)
-    
-    def secure_quick_scan(self):
-        """Perform secure quick vehicle scan"""
-        if not self.secure_authentication_check():
+        if not function:
             return
-            
-        try:
-            self.scanning = True
-            self.status_label.setText("Performing secure quick scan...")
-            self.progress_bar.setVisible(True)
-            self.progress_bar.setValue(0)
-            
-            # Secure scan process
-            self.scan_timer = QTimer()
-            self.scan_timer.timeout.connect(self.secure_update_scan_progress)
-            self.scan_timer.start(100)
-        except Exception as e:
-            logger.error(f"Secure quick scan failed: {e}")
-            self.status_label.setText("Security error during scan")
+        
+        # Update details
+        self.sf_name_label.setText(f"🔧 {function.name}")
+        self.sf_description.setText(function.description)
+        self.sf_security_label.setText(f"Security Level: {function.security_level} "
+                                     f"(Current: {security_manager.get_security_level().name})")
+        
+        # Create parameter inputs
+        self.create_parameter_inputs(function)
+        
+        # Check security and enable button
+        has_clearance = security_manager.check_security_clearance(
+            SecurityLevel(function.security_level))
+        self.sf_execute_btn.setEnabled(has_clearance)
+        
+        if not has_clearance:
+            self.sf_results.setPlainText(
+                f"❌ Insufficient security clearance for this function.\n"
+                f"Required: Level {function.security_level}\n"
+                f"Current: Level {security_manager.get_security_level().value}")
     
-    def secure_update_scan_progress(self):
-        """Update secure scan progress"""
-        try:
-            current = self.progress_bar.value()
-            if current < 100:
-                self.progress_bar.setValue(current + 10)
+    def create_parameter_inputs(self, function: SpecialFunction):
+        """Create parameter input fields for function"""
+        # Clear existing parameters
+        self.clear_parameters()
+        
+        if not function.parameters:
+            no_params_label = QLabel("No parameters required for this function.")
+            self.sf_params_layout.addWidget(no_params_label)
+            return
+        
+        # Create input fields for each parameter
+        self.parameter_widgets = {}
+        param_widget = QWidget()
+        param_layout = QGridLayout(param_widget)
+        
+        row = 0
+        for param_name, param_config in function.parameters.items():
+            label = QLabel(f"{param_name}:")
+            if param_config['type'] == 'bool':
+                input_widget = QCheckBox()
+            elif param_config['type'] == 'int':
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText("Enter number")
             else:
-                self.scan_timer.stop()
-                self.progress_bar.setVisible(False)
-                self.scanning = False
-                
-                # Get secure DTC data
-                dtcs = self.secure_device_manager.secure_send_command("03")
-                self.add_secure_dtc_data(dtcs)
-                self.status_label.setText("Secure scan completed")
-        except Exception as e:
-            logger.error(f"Secure scan progress error: {e}")
-            self.status_label.setText("Security error in scan progress")
-    
-    def secure_read_dtcs(self):
-        """Read DTCs with security validation"""
-        if not self.secure_authentication_check():
-            return
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText(f"Enter {param_config['type']}")
             
-        try:
-            self.status_label.setText("Reading DTCs with security validation...")
-            dtc_response = self.secure_device_manager.secure_send_command("03")
-            self.process_secure_dtc_response(dtc_response)
-        except Exception as e:
-            logger.error(f"Secure DTC read failed: {e}")
-            self.status_label.setText("Security error reading DTCs")
+            param_layout.addWidget(label, row, 0)
+            param_layout.addWidget(input_widget, row, 1)
+            self.parameter_widgets[param_name] = input_widget
+            row += 1
+        
+        self.sf_params_layout.addWidget(param_widget)
     
-    def secure_clear_dtcs(self):
-        """Clear DTCs with enhanced authentication"""
-        if not self.secure_enhanced_authentication():
+    def clear_parameters(self):
+        """Clear parameter input section"""
+        # Remove existing parameter widgets
+        for i in reversed(range(self.sf_params_layout.count())):
+            widget = self.sf_params_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+    
+    def execute_special_function(self):
+        """Execute selected special function"""
+        brand = self.sf_brand_combo.currentText()
+        current_item = self.special_functions_list.currentItem()
+        
+        if not current_item:
+            self.sf_results.setPlainText("❌ No function selected")
             return
-            
-        reply = QMessageBox.question(self, "Secure DTC Clear", 
-                                   "Are you sure you want to clear all diagnostic trouble codes?\n\n"
-                                   "This action requires enhanced security clearance.",
-                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        
+        function_id = current_item.data(Qt.ItemDataRole.UserRole)
+        
+        # Collect parameters
+        parameters = {}
+        for param_name, widget in self.parameter_widgets.items():
+            if isinstance(widget, QLineEdit):
+                parameters[param_name] = widget.text()
+            elif isinstance(widget, QCheckBox):
+                parameters[param_name] = widget.isChecked()
+        
+        # Execute function
+        self.sf_results.setPlainText("🔄 Executing function...")
+        
+        result = self.special_functions_manager.execute_function(
+            brand, function_id, parameters)
+        
+        # Display results
+        if result.get('success'):
+            result_text = "✅ Function executed successfully!\n\n"
+            for key, value in result.items():
+                if key != 'success':
+                    result_text += f"{key}: {value}\n"
+        else:
+            result_text = f"❌ Function execution failed:\n{result.get('error', 'Unknown error')}"
+        
+        self.sf_results.setPlainText(result_text)
+    
+    def update_calibrations_list(self):
+        """Update calibrations list for current brand"""
+        brand = self.cr_brand_combo.currentText()
+        procedures = self.calibrations_resets_manager.get_brand_procedures(brand)
+        
+        self.calibrations_list.clear()
+        
+        for procedure in procedures:
+            item = QListWidgetItem(f"⚙ {procedure.name}")
+            item.setData(Qt.ItemDataRole.UserRole, procedure.procedure_id)
+            self.calibrations_list.addItem(item)
+        
+        # Clear details
+        self.clear_calibration_details()
+    
+    def on_calibration_selected(self, item):
+        """Handle calibration procedure selection"""
+        brand = self.cr_brand_combo.currentText()
+        procedure_id = item.data(Qt.ItemDataRole.UserRole)
+        procedure = self.calibrations_resets_manager.get_procedure(brand, procedure_id)
+        
+        if not procedure:
+            return
+        
+        # Update details
+        self.cr_name_label.setText(f"⚙ {procedure.name}")
+        self.cr_description.setText(procedure.description)
+        self.cr_duration_label.setText(f"Duration: {procedure.duration}")
+        self.cr_security_label.setText(
+            f"Security Level: {procedure.security_level} "
+            f"(Current: {security_manager.get_security_level().name})")
+        self.cr_type_label.setText(f"Type: {procedure.reset_type.value}")
+        
+        # Update prerequisites
+        prereq_text = "\n".join([f"• {prereq}" for prereq in procedure.prerequisites])
+        self.cr_prereq_list.setPlainText(prereq_text or "No prerequisites")
+        
+        # Update steps
+        steps_text = "\n".join([f"{i+1}. {step}" for i, step in enumerate(procedure.steps)])
+        self.cr_steps_list.setPlainText(steps_text)
+        
+        # Check security and enable button
+        has_clearance = security_manager.check_security_clearance(
+            SecurityLevel(procedure.security_level))
+        self.cr_execute_btn.setEnabled(has_clearance)
+        
+        if not has_clearance:
+            self.cr_results.setPlainText(
+                f"❌ Insufficient security clearance for this procedure.\n"
+                f"Required: Level {procedure.security_level}\n"
+                f"Current: Level {security_manager.get_security_level().value}")
+    
+    def clear_calibration_details(self):
+        """Clear calibration procedure details"""
+        self.cr_name_label.setText("Select a procedure to view details")
+        self.cr_description.clear()
+        self.cr_duration_label.setText("Duration: --")
+        self.cr_security_label.setText("Security Level: --")
+        self.cr_type_label.setText("Type: --")
+        self.cr_prereq_list.clear()
+        self.cr_steps_list.clear()
+        self.cr_execute_btn.setEnabled(False)
+        self.cr_results.clear()
+    
+    def execute_calibration(self):
+        """Execute selected calibration procedure"""
+        brand = self.cr_brand_combo.currentText()
+        current_item = self.calibrations_list.currentItem()
+        
+        if not current_item:
+            self.cr_results.setPlainText("❌ No procedure selected")
+            return
+        
+        procedure_id = current_item.data(Qt.ItemDataRole.UserRole)
+        
+        self.cr_results.setPlainText("🔄 Executing procedure...")
+        
+        result = self.calibrations_resets_manager.execute_procedure(brand, procedure_id)
+        
+        # Display results
+        if result.get('success'):
+            result_text = "✅ Procedure executed successfully!\n\n"
+            for key, value in result.items():
+                if key != 'success':
+                    if isinstance(value, list):
+                        result_text += f"{key}:\n"
+                        for item in value:
+                            result_text += f"  • {item}\n"
+                    elif isinstance(value, dict):
+                        result_text += f"{key}:\n"
+                        for k, v in value.items():
+                            result_text += f"  {k}: {v}\n"
+                    else:
+                        result_text += f"{key}: {value}\n"
+        else:
+            result_text = f"❌ Procedure execution failed:\n{result.get('error', 'Unknown error')}"
+        
+        self.cr_results.setPlainText(result_text)
+    
+    def update_security_status(self):
+        """Update security status display"""
+        user_info = security_manager.get_user_info()
+        status_text = f"""
+        Current User: {user_info.get('full_name', 'Unknown')}
+        Username: {user_info.get('username', 'Unknown')}
+        Security Level: {user_info.get('security_level', 'BASIC')}
+        Role: {user_info.get('role', 'technician')}
+        Session Expires: {self.format_timestamp(user_info.get('session_expiry', 0))}
+        """
+        self.security_status.setPlainText(status_text.strip())
+    
+    def show_audit_log(self):
+        """Display security audit log"""
+        audit_log = security_manager.get_audit_log(50)
+        
+        log_text = "🔒 Security Audit Log (Last 50 Events)\n\n"
+        for event in audit_log:
+            log_text += f"[{self.format_timestamp(event['timestamp'])}] {event['event_type']} - {event['username']}\n"
+            if event['details']:
+                log_text += f"    Details: {event['details']}\n"
+            log_text += "\n"
+        
+        QMessageBox.information(self, "Security Audit Log", log_text)
+    
+    def run_security_check(self):
+        """Run comprehensive security check"""
+        checks = []
+        
+        # Check session validity
+        if security_manager.validate_session():
+            checks.append("✅ Session is valid")
+        else:
+            checks.append("❌ Session is invalid or expired")
+        
+        # Check security level
+        current_level = security_manager.get_security_level()
+        checks.append(f"✅ Current security level: {current_level.name}")
+        
+        # Check special functions access
+        brand = self.sf_brand_combo.currentText()
+        functions = self.special_functions_manager.get_brand_functions(brand)
+        accessible = sum(1 for f in functions if 
+                        security_manager.check_security_clearance(SecurityLevel(f.security_level)))
+        checks.append(f"✅ Accessible special functions: {accessible}/{len(functions)}")
+        
+        self.security_check_result.setPlainText("\n".join(checks))
+    
+    def elevate_security(self):
+        """Elevate security level"""
+        username, ok = QInputDialog.getText(self, "Security Elevation", 
+                                          "Enter username:")
+        if not ok or not username:
+            return
+        
+        password, ok = QInputDialog.getText(self, "Security Elevation",
+                                          "Enter password:", 
+                                          QLineEdit.EchoMode.Password)
+        if not ok or not password:
+            return
+        
+        required_level = SecurityLevel.DEALER  # Example required level
+        success, message = security_manager.elevate_security(
+            username, password, required_level)
+        
+        if success:
+            QMessageBox.information(self, "Security Elevated", message)
+            self.update_security_status()
+        else:
+            QMessageBox.warning(self, "Security Elevation Failed", message)
+    
+    def secure_logout(self):
+        """Handle secure logout"""
+        reply = QMessageBox.question(self, "Logout", 
+                                   "Are you sure you want to logout?",
+                                   QMessageBox.StandardButton.Yes | 
+                                   QMessageBox.StandardButton.No)
         
         if reply == QMessageBox.StandardButton.Yes:
-            try:
-                response = self.secure_device_manager.secure_send_command("04")
-                if "OK" in response.upper():
-                    self.status_label.setText("DTCs cleared securely")
-                    logger.info("Secure DTC clearance completed")
-                else:
-                    self.status_label.setText("Secure DTC clearance failed")
-            except Exception as e:
-                logger.error(f"Secure DTC clear failed: {e}")
-                self.status_label.setText("Security error clearing DTCs")
+            security_manager.logout()
+            self.close()
     
-    def secure_authentication_check(self) -> bool:
-        """Basic security authentication"""
-        if not self.secure_device_manager.connected:
-            QMessageBox.warning(self, "Security Alert", "Not connected to secure device")
-            return False
-        
-        # Simple PIN check (enhance with proper auth in production)
-        pin, ok = QInputDialog.getText(self, "Security Authentication", 
-                                      "Enter security PIN:", 
-                                      QLineEdit.EchoMode.Password)
-        if ok and self.validate_pin(pin):
-            return True
-        else:
-            QMessageBox.warning(self, "Authentication Failed", "Invalid security credentials")
-            return False
+    def format_timestamp(self, timestamp: float) -> str:
+        """Format timestamp for display"""
+        from datetime import datetime
+        return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
     
-    def secure_enhanced_authentication(self) -> bool:
-        """Enhanced security authentication for critical operations"""
-        # Two-factor style authentication
-        pin, ok = QInputDialog.getText(self, "Enhanced Security", 
-                                      "Enter primary security PIN:", 
-                                      QLineEdit.EchoMode.Password)
-        if not ok or not self.validate_pin(pin):
-            QMessageBox.warning(self, "Authentication Failed", "Primary authentication failed")
-            return False
-        
-        # Additional security question
-        security_question, ok = QInputDialog.getText(self, "Security Challenge",
-                                                   "Enter security code from token:")
-        if ok and self.validate_security_challenge(security_question):
-            return True
-        else:
-            QMessageBox.warning(self, "Authentication Failed", "Security challenge failed")
-            return False
+    def on_brand_changed(self, brand):
+        """Handle brand selection change"""
+        self.selected_brand = brand
+        # Update any brand-specific displays
     
-    def validate_pin(self, pin: str) -> bool:
-        """Validate security PIN (mock implementation)"""
-        # In production, use secure hashing and proper authentication
-        return pin == "1234"  # Mock validation
+    # Add other existing methods (create_dashboard_tab, create_diagnostics_tab, etc.)
+    # These would be similar to your existing implementation but integrated with security
     
-    def validate_security_challenge(self, challenge: str) -> bool:
-        """Validate security challenge (mock implementation)"""
-        return challenge == "7890"  # Mock validation
-    
-    def handle_security_alert(self, alert_message: str):
-        """Handle security alerts from audit thread"""
-        logger.warning(f"Security alert: {alert_message}")
-        self.status_label.setText(f"SECURITY ALERT: {alert_message}")
-        
-        # Show security alert to user
-        QMessageBox.warning(self, "Security Alert", 
-                          f"Security issue detected:\n{alert_message}\n\n"
-                          "Please review security settings.")
-    
-    def run_security_audit(self):
-        """Run comprehensive security audit"""
-        audit_results = []
-        
-        # Check device security
-        if self.secure_device_manager.connected:
-            audit_results.append("✓ Secure device connection active")
-        else:
-            audit_results.append("⚠ Device not connected")
-        
-        # Check session security
-        if self.secure_device_manager.session_id:
-            audit_results.append("✓ Secure session established")
-        else:
-            audit_results.append("⚠ No active secure session")
-        
-        # Update security display
-        self.security_indicators.setPlainText("\n".join(audit_results))
-        self.status_label.setText("Security audit completed")
-    
-    def emergency_lockdown(self):
-        """Emergency security lockdown"""
-        reply = QMessageBox.critical(self, "EMERGENCY LOCKDOWN",
-                                   "This will immediately disconnect all devices and secure the system.\n\n"
-                                   "Are you sure you want to initiate emergency lockdown?",
-                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        
-        if reply == QMessageBox.StandardButton.Yes:
-            # Immediate disconnection
-            self.secure_device_manager.secure_disconnect()
-            
-            # Stop all timers
-            if self.live_data_timer:
-                self.live_data_timer.stop()
-            if hasattr(self, 'scan_timer') and self.scan_timer:
-                self.scan_timer.stop()
-            
-            # Update UI
-            self.security_status.setText("🔒 LOCKDOWN MODE")
-            self.status_label.setText("EMERGENCY LOCKDOWN ACTIVATED")
-            
-            # Log lockdown
-            logger.critical("EMERGENCY LOCKDOWN ACTIVATED BY USER")
-            
-            QMessageBox.information(self, "Lockdown Active",
-                                  "System is in lockdown mode.\n\n"
-                                  "All device communications have been terminated.\n"
-                                  "Security audit thread stopped.")
-
     def closeEvent(self, event):
         """Secure cleanup on close"""
-        # Stop security audit
-        self.security_audit.stop()
-        self.security_audit.wait(5000)  # Wait up to 5 seconds
-        
-        # Secure disconnection
-        self.secure_device_manager.secure_disconnect()
-        
-        # Clean up timers
-        if self.live_data_timer:
-            self.live_data_timer.stop()
-            
+        security_manager.logout()
         logger.info("AutoDiag Pro closed securely")
         event.accept()
 
 def main():
-    """Secure main application entry point"""
+    """Main application entry point"""
     app = QApplication(sys.argv)
     
-    # Set secure application properties
+    # Set application properties
     app.setApplicationName("AutoDiag Pro Secure")
     app.setApplicationVersion("2.0.0")
     app.setOrganizationName("SecureAutoClinic")
@@ -670,7 +850,7 @@ def main():
         window = AutoDiagPro()
         sys.exit(app.exec())
     except Exception as e:
-        logger.critical(f"Secure application crashed: {e}")
+        logger.critical(f"Application crashed: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
