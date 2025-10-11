@@ -240,6 +240,86 @@ class AutoDiagPro(QMainWindow):
         header_layout.addWidget(logout_btn)
         
         layout.addWidget(header_widget)
+
+    def create_dashboard_tab(self):
+    """Create dashboard tab with security overview"""
+    dashboard_tab = QWidget()
+    layout = QVBoxLayout(dashboard_tab)
+    
+    # Security status overview
+    security_group = QGroupBox("🔒 Security Overview")
+    security_layout = QGridLayout(security_group)
+    
+    user_info = security_manager.get_user_info()
+    
+    security_layout.addWidget(QLabel("Current User:"), 0, 0)
+    security_layout.addWidget(QLabel(user_info.get('full_name', 'Unknown')), 0, 1)
+    
+    security_layout.addWidget(QLabel("Security Level:"), 1, 0)
+    security_layout.addWidget(QLabel(user_info.get('security_level', 'BASIC')), 1, 1)
+    
+    security_layout.addWidget(QLabel("Session Expires:"), 2, 0)
+    security_layout.addWidget(QLabel(self.format_timestamp(user_info.get('session_expiry', 0))), 2, 1)
+    
+    # Quick actions
+    actions_group = QGroupBox("🚀 Quick Actions")
+    actions_layout = QVBoxLayout(actions_group)
+    
+    scan_btn = QPushButton("Quick System Scan")
+    dtc_btn = QPushButton("Read DTCs")
+    live_data_btn = QPushButton("View Live Data")
+    
+    actions_layout.addWidget(scan_btn)
+    actions_layout.addWidget(dtc_btn)
+    actions_layout.addWidget(live_data_btn)
+    
+    layout.addWidget(security_group)
+    layout.addWidget(actions_group)
+    layout.addStretch()
+    
+    self.tab_widget.addTab(dashboard_tab, "📊 Dashboard")
+
+def create_diagnostics_tab(self):
+    """Create diagnostics tab"""
+    diagnostics_tab = QWidget()
+    layout = QVBoxLayout(diagnostics_tab)
+    
+    header_label = QLabel("🔍 Advanced Diagnostics")
+    header_label.setProperty("class", "tab-header")
+    
+    layout.addWidget(header_label)
+    layout.addWidget(QLabel("Diagnostics functionality under development..."))
+    layout.addStretch()
+    
+    self.tab_widget.addTab(diagnostics_tab, "🔍 Diagnostics")
+
+def create_live_data_tab(self):
+    """Create live data tab"""
+    live_data_tab = QWidget()
+    layout = QVBoxLayout(live_data_tab)
+    
+    header_label = QLabel("📈 Live Data Monitoring")
+    header_label.setProperty("class", "tab-header")
+    
+    layout.addWidget(header_label)
+    layout.addWidget(QLabel("Live data monitoring under development..."))
+    layout.addStretch()
+    
+    self.tab_widget.addTab(live_data_tab, "📈 Live Data")
+
+def create_advanced_tab(self):
+    """Create advanced tab"""
+    advanced_tab = QWidget()
+    layout = QVBoxLayout(advanced_tab)
+    
+    header_label = QLabel("⚙ Advanced Functions")
+    header_label.setProperty("class", "tab-header")
+    
+    layout.addWidget(header_label)
+    layout.addWidget(QLabel("Advanced functions under development..."))
+    layout.addStretch()
+    
+    self.tab_widget.addTab(advanced_tab, "⚙ Advanced")
     
     def create_special_functions_tab(self):
         """Create comprehensive special functions tab"""
