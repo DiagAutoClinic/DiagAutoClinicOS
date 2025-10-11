@@ -60,45 +60,53 @@ https://diagautoclinic.co.za/downloads/build_v1.0.0_release.iso
 
 ## Structure
 ``` plaintext
-. 
-├── DiagAutoClinicOS/ 
-│ ├── AutoDiag/ # Vehicle diagnostics application 
-| | ├── _pycache_/ 
-| | ├── venv/ # Virtual enviroment 
-| | ├── brand_database.py 
-| | ├── style_manager.py 
-│ │ └── main.py 
-│ ├── AutoECU/ # ECU programming tools 
-| | ├──_pycache_/ 
-| | ├── style_manager.py 
-│ │ └── main.py 
-│ ├── AutoKey/ # Key programming utilities 
-| | ├── _pycache_/ 
-| | ├── style_manager.py 
-│ │ └── main.py 
-│ ├── shared/ # Common resources and modules 
-| | ├── _pycache_/ 
-│ │ ├── device_handler.py 
-│ │ ├── dtc_database.py 
-| | ├── install_linux_deps.sh 
-| | ├── style_manager.py 
-│ │ └── vin_decoder.py 
-│ └── scripts/ # Build and utility scripts 
-|     ├── check_connection.py 
-|     ├── install_linux_deps.sh 
-|     ├── final_instal.sh
-|     ├── pair_bluetooth_elm327.py 
-|     ├── quick_connect.sh 
-|     ├── release_bluetooth.py 
-|     ├── setup_bluetooth.py 
-|     ├── setup_obd2_bluetooth.py 
-|     ├── setup_obd2_bluetooth_enhanced.py 
-|     ├── test_bluetooth.py 
-|     └── test_elm327.py │ 
-└── build_iso.sh 
-└── README.md   # this document
-└── launcher.py 
-└── LICENSE.md
+.
+├── .github/
+│   └── FUNDING.yml
+├── AutoDiag/                # Vehicle diagnostics application
+│   ├── main.py
+│   └── main_v2_beta.py
+├── AutoECU/                 # ECU programming tools
+│   └── main.py
+├── AutoKey/                 # Key programming utilities
+│   └── main.py
+├── Windows Test/            # Windows-specific tests and configs
+│   ├── Config/
+│   ├── WINDOWS_TEST.md
+│   ├── shared/
+│   └── update_windows_req.py
+├── scripts/                 # Build and utility scripts
+│   ├── build-iso.sh
+│   ├── final_install.sh
+│   ├── install_linux_deps.sh
+│   ├── quick_connect.sh
+│   ├── release_bluetooth.py
+│   └── setup_bluetooth.py
+├── shared/                  # Common resources and modules
+│   ├── .editorconfig
+│   ├── brand_database.py
+│   ├── calibrations_reset.py
+│   ├── device_handler.py
+│   ├── dtc_database.py
+│   ├── enhanced_integration.py
+│   ├── enhanced_style_manager.py
+│   ├── install_linux_deps.sh
+│   ├── install_professional_deps.sh
+│   ├── integration_autodiag.py
+│   ├── security_manager.py
+│   ├── special_functions.py
+│   ├── style_manager.py
+│   └── vin_decoder.py
+├── .gitignore
+├── COMMUNITY_DISCUSSIONS.md
+├── LICENSE
+├── PULL_REQUEST_TEMPLATE.md
+├── README.md                # This document
+├── SECURITY.md
+├── add_responsive_behavior.py
+├── launcher.py
+├── requirements.md
+└── requirements.txt
 ```
 
 System Requirements
