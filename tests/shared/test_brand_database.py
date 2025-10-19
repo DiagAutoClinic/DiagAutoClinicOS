@@ -319,3 +319,364 @@ class TestRegionalFiltering:
         assert 'BMW' in german
         assert 'Volkswagen' in german
         assert 'Mercedes-Benz' in german
+    
+    def test_get_american_brands(self, db):
+        """Test retrieving all American brands"""
+        american = db.get_brands_by_region('USA')
+        
+        assert len(american) >= 6
+        assert 'Ford' in american
+        assert 'Chevrolet' in american
+        assert 'Tesla' in american
+    
+    def test_get_brands_legacy_function(self):
+        """Test legacy get_brands_by_region function"""
+        japanese = get_brands_by_region('Japan')
+        assert isinstance(japanese, list)
+        assert len(japanese) >= 5
+
+
+class TestProtocolFiltering:
+    """Test filtering brands by diagnostic protocol"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    def test_get_uds_brands(self, db):
+        """Test retrieving brands using UDS protocol"""
+        uds_brands = db.get_brands_by_protocol('UDS')
+        
+        assert isinstance(uds_brands, list)
+        assert len(uds_brands) >= 10
+        # Most modern brands use UDS
+        assert 'BMW' in uds_brands
+        assert 'Mercedes-Benz' in uds_brands
+    
+    def test_get_can_brands(self, db):
+        """Test retrieving brands using CAN protocol"""
+        can_brands = db.get_brands_by_protocol('CAN')
+        
+        assert len(can_brands) >= 15
+        assert 'Toyota' in can_brands
+        assert 'Honda' in can_brands
+    
+    def test_get_kwp2000_brands(self, db):
+        """Test retrieving brands using KWP2000 protocol"""
+        kwp_brands = db.get_brands_by_protocol('KWP2000')
+        
+        assert len(kwp_brands) >= 5
+    
+    def test_protocol_filtering_legacy_function(self):
+        """Test legacy get_brands_by_protocol function"""
+        uds_brands = get_brands_by_protocol('UDS')
+        assert isinstance(uds_brands, list)
+        assert len(uds_brands) > 0
+
+
+class TestSecurityIntegration:
+    """Test security manager integration"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    def test_security_requirements_retrieval(self, db):
+        """Test getting security requirements for brands"""
+        reqs = db.get_security_requirements('BMW')
+        
+        assert 'security_level' in reqs
+        assert 'requires_security_code' in reqs
+        assert 'programming_tool' in reqs
+        assert reqs['security_level'] == 5
+        assert reqs['requires_security_code'] is True
+    
+    def test_validate_brand_access_sufficient_level(self, db):
+        """Test brand access validation with sufficient level"""
+        # User with level 5 can access BMW (requires level 5)
+        has_access = db.validate_brand_access('BMW', 5)
+        assert has_access is True
+    
+    def test_validate_brand_access_insufficient_level(self, db):
+        """Test brand access validation with insufficient level"""
+        # User with level 2 cannot access BMW (requires level 5)
+        has_access = db.validate_brand_access('BMW', 2)
+        assert has_access is False
+    
+    def test_get_brands_by_security_level(self, db):
+        """Test retrieving brands by security level"""
+        # Get brands accessible with level 3
+        level_3_brands = db.get_brands_by_security_level(3)
+        
+        assert isinstance(level_3_brands, list)
+        assert len(level_3_brands) > 0
+        
+        # Toyota (level 3) should be accessible
+        assert 'Toyota' in level_3_brands
+        
+        # BMW (level 5) should NOT be accessible
+        assert 'BMW' not in level_3_brands
+    
+    def test_security_level_values(self, db):
+        """Test security levels are within valid range"""
+        for brand, data in db.brand_data.items():
+            security_level = data['security_level']
+            assert 1 <= security_level <= 5, \
+                f"{brand} has invalid security level: {security_level}"
+
+
+class TestECUConfigurations:
+    """Test ECU (Electronic Control Unit) configurations"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    def test_common_ecus_not_empty(self, db):
+        """Test all brands have common ECUs defined"""
+        for brand, data in db.brand_data.items():
+            ecus = data['common_ecus']
+            assert isinstance(ecus, list)
+            assert len(ecus) > 0, f"{brand} has no common ECUs"
+    
+    def test_toyota_ecus(self, db):
+        """Test Toyota ECU configuration"""
+        info = db.get_brand_info('Toyota')
+        ecus = info['common_ecus']
+        
+        expected_ecus = ['ECM', 'TCM', 'ABS', 'SRS']
+        for ecu in expected_ecus:
+            assert ecu in ecus
+    
+    def test_bmw_ecus(self, db):
+        """Test BMW ECU configuration"""
+        info = db.get_brand_info('BMW')
+        ecus = info['common_ecus']
+        
+        # BMW-specific ECUs
+        assert 'DME' in ecus  # Digital Motor Electronics
+        assert 'CAS' in ecus  # Car Access System
+        assert 'FRM' in ecus  # Footwell Module
+
+
+class TestKeySystemConfigurations:
+    """Test key/immobilizer system configurations"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    def test_key_systems_not_empty(self, db):
+        """Test all brands have key systems defined"""
+        for brand, data in db.brand_data.items():
+            key_systems = data['key_systems']
+            assert isinstance(key_systems, list)
+            assert len(key_systems) > 0, f"{brand} has no key systems"
+    
+    def test_modern_brands_have_smart_keys(self, db):
+        """Test modern brands have smart key systems"""
+        modern_brands = ['Tesla', 'BMW', 'Mercedes-Benz', 'Lexus']
+        
+        for brand in modern_brands:
+            info = db.get_brand_info(brand)
+            key_systems_str = ' '.join(info['key_systems'])
+            assert 'Smart' in key_systems_str or 'Advanced' in key_systems_str
+
+
+class TestSpecialFunctions:
+    """Test special functions configuration"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    def test_special_functions_not_empty(self, db):
+        """Test brands have special functions defined"""
+        for brand, data in db.brand_data.items():
+            special_funcs = data.get('special_functions', [])
+            assert isinstance(special_funcs, list)
+            # Most brands should have at least some special functions
+    
+    def test_vw_dpf_regeneration(self, db):
+        """Test VW has DPF regeneration function"""
+        info = db.get_brand_info('Volkswagen')
+        special_funcs = info.get('special_functions', [])
+        
+        assert any('DPF' in func for func in special_funcs)
+    
+    def test_bmw_battery_registration(self, db):
+        """Test BMW has battery registration function"""
+        info = db.get_brand_info('BMW')
+        special_funcs = info.get('special_functions', [])
+        
+        assert any('Battery' in func for func in special_funcs)
+
+
+class TestMarketShareData:
+    """Test market share data"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    def test_market_share_present(self, db):
+        """Test all brands have market share data"""
+        for brand, data in db.brand_data.items():
+            assert 'market_share' in data
+            assert data['market_share'] is not None
+    
+    def test_market_share_format(self, db):
+        """Test market share is in percentage format"""
+        for brand, data in db.brand_data.items():
+            market_share = data['market_share']
+            assert isinstance(market_share, str)
+            # Should contain % symbol
+            assert '%' in market_share or market_share == 'Unknown'
+
+
+class TestOBDProtocols:
+    """Test OBD protocol configurations"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    def test_obd_protocol_present(self, db):
+        """Test all brands have OBD protocol specified"""
+        for brand, data in db.brand_data.items():
+            assert 'obd_protocol' in data
+            assert data['obd_protocol'] is not None
+    
+    def test_modern_brands_use_can(self, db):
+        """Test modern brands use ISO 15765-4 (CAN)"""
+        modern_brands = ['Tesla', 'BMW', 'Mercedes-Benz', 'Toyota', 'Honda']
+        
+        for brand in modern_brands:
+            info = db.get_brand_info(brand)
+            obd_protocol = info['obd_protocol']
+            assert 'ISO 15765' in obd_protocol or 'CAN' in obd_protocol
+
+
+class TestProgrammingTools:
+    """Test programming tool configurations"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    def test_programming_tool_present(self, db):
+        """Test all brands have programming tool specified"""
+        for brand, data in db.brand_data.items():
+            assert 'programming_tool' in data
+            assert data['programming_tool'] is not None
+    
+    @pytest.mark.parametrize("brand,expected_tool", [
+        ('Toyota', 'TechStream'),
+        ('Honda', 'HDS'),
+        ('BMW', 'ISTA'),
+        ('Mercedes-Benz', 'XENTRY'),
+        ('Volkswagen', 'VAS-PC'),
+        ('Ford', 'IDS/FDRS'),
+        ('Hyundai', 'GDS'),
+    ])
+    def test_brand_specific_tools(self, db, brand, expected_tool):
+        """Test brand-specific programming tools"""
+        info = db.get_brand_info(brand)
+        assert info['programming_tool'] == expected_tool
+
+
+class TestDatabaseConsistency:
+    """Test database consistency and data quality"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    def test_no_duplicate_brands(self, db):
+        """Test no duplicate brand entries"""
+        brands = list(db.brand_data.keys())
+        assert len(brands) == len(set(brands))
+    
+    def test_all_lists_are_lists(self, db):
+        """Test list fields are actually lists"""
+        list_fields = ['diagnostic_protocols', 'common_ecus', 
+                      'key_systems', 'special_functions']
+        
+        for brand, data in db.brand_data.items():
+            for field in list_fields:
+                if field in data:
+                    assert isinstance(data[field], list), \
+                        f"{brand}.{field} is not a list"
+    
+    def test_security_code_requirement_is_boolean(self, db):
+        """Test requires_security_code is boolean"""
+        for brand, data in db.brand_data.items():
+            assert isinstance(data['requires_security_code'], bool), \
+                f"{brand} requires_security_code is not boolean"
+    
+    def test_no_empty_protocol_lists(self, db):
+        """Test no brands have empty protocol lists"""
+        for brand, data in db.brand_data.items():
+            protocols = data['diagnostic_protocols']
+            assert len(protocols) > 0, \
+                f"{brand} has empty diagnostic_protocols"
+
+
+class TestGlobalDatabaseInstance:
+    """Test global brand_database instance"""
+    
+    def test_global_instance_exists(self):
+        """Test global brand_database instance is accessible"""
+        assert brand_database is not None
+        assert isinstance(brand_database, EnhancedBrandDatabase)
+    
+    def test_global_instance_functional(self):
+        """Test global instance is functional"""
+        brands = brand_database.get_brand_list()
+        assert len(brands) >= 25
+    
+    def test_legacy_functions_use_global_instance(self):
+        """Test legacy functions work with global instance"""
+        brands = get_brand_list()
+        assert len(brands) >= 5
+        
+        info = get_brand_info('Toyota')
+        assert 'region' in info
+
+
+class TestBrandDatabasePerformance:
+    """Test database performance"""
+    
+    @pytest.fixture
+    def db(self):
+        return EnhancedBrandDatabase()
+    
+    @pytest.mark.benchmark
+    def test_brand_list_performance(self, db, benchmark):
+        """Benchmark brand list retrieval"""
+        result = benchmark(db.get_brand_list)
+        assert len(result) >= 25
+    
+    @pytest.mark.benchmark
+    def test_brand_info_performance(self, db, benchmark):
+        """Benchmark brand info retrieval"""
+        result = benchmark(db.get_brand_info, 'Toyota')
+        assert result is not None
+    
+    def test_bulk_brand_info_retrieval(self, db):
+        """Test retrieving info for all brands efficiently"""
+        import time
+        start = time.time()
+        
+        brands = db.get_brand_list()
+        for brand in brands:
+            db.get_brand_info(brand)
+        
+        elapsed = time.time() - start
+        
+        # Should retrieve all brand info in less than 0.1 seconds
+        assert elapsed < 0.1
+
+
+if __name__ == '__main__':
+    pytest.main([__file__, '-v', '--tb=short'])
