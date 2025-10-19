@@ -318,3 +318,112 @@ def generate_mock_ecu_info():
             'software_version': f'V{random.randint(1, 9)}.{random.randint(0, 9)}.{random.randint(0, 9)}',
             'hardware_version': f'HW-Rev-{chr(65 + random.randint(0, 4))}',
             'serial_number': f'SN{random.randint(100000, 999999)}',
+            'coding_data': f'Coding: {random.randint(1000000, 9999999)}',
+            'diagnostic_address': '0x7E0',
+            'supplier': 'Test Automotive Systems'
+        }
+    return _generate
+
+# ============================================================================
+# PYTEST HOOKS (Custom behavior)
+# ============================================================================
+
+def pytest_configure(config):
+    """Configure pytest with custom settings"""
+    config.addinivalue_line(
+        "markers", "unit: Unit tests for individual components"
+    )
+    config.addinivalue_line(
+        "markers", "integration: Integration tests for workflows"
+    )
+    config.addinivalue_line(
+        "markers", "security: Security-related tests"
+    )
+    config.addinivalue_line(
+        "markers", "hardware: Tests requiring hardware"
+    )
+    config.addinivalue_line(
+        "markers", "slow: Tests taking longer than 1 second"
+    )
+
+def pytest_collection_modifyitems(config, items):
+    """Modify test collection to add markers automatically"""
+    for item in items:
+        # Auto-mark slow tests
+        if 'slow' in item.nodeid.lower():
+            item.add_marker(pytest.mark.slow)
+        
+        # Auto-mark security tests
+        if 'security' in item.nodeid.lower():
+            item.add_marker(pytest.mark.security)
+        
+        # Auto-mark hardware tests
+        if 'hardware' in item.nodeid.lower() or 'device' in item.nodeid.lower():
+            item.add_marker(pytest.mark.hardware)
+
+# ============================================================================
+# TEMPORARY DIRECTORY FIXTURES
+# ============================================================================
+
+@pytest.fixture
+def temp_config_dir(tmp_path):
+    """Create temporary config directory for tests"""
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    return config_dir
+
+@pytest.fixture
+def temp_log_dir(tmp_path):
+    """Create temporary log directory for tests"""
+    log_dir = tmp_path / "logs"
+    log_dir.mkdir()
+    return log_dir
+
+@pytest.fixture
+def temp_data_dir(tmp_path):
+    """Create temporary data directory for tests"""
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    return data_dir
+
+# ============================================================================
+# PERFORMANCE MONITORING FIXTURES
+# ============================================================================
+
+@pytest.fixture
+def performance_monitor():
+    """Monitor test performance"""
+    import time
+    
+    class PerformanceMonitor:
+        def __init__(self):
+            self.start_time = None
+            self.end_time = None
+        
+        def start(self):
+            self.start_time = time.time()
+        
+        def stop(self):
+            self.end_time = time.time()
+        
+        def duration(self):
+            if self.start_time and self.end_time:
+                return self.end_time - self.start_time
+            return 0
+        
+        def assert_faster_than(self, max_seconds):
+            duration = self.duration()
+            assert duration < max_seconds, f"Test took {duration}s, expected < {max_seconds}s"
+    
+    return PerformanceMonitor()
+
+# ============================================================================
+# CAPLOG CONFIGURATION (For testing logging)
+# ============================================================================
+
+@pytest.fixture
+def captured_logs(caplog):
+    """Capture log messages during tests"""
+    import logging
+    caplog.set_level(logging.DEBUG)
+    return caplog
