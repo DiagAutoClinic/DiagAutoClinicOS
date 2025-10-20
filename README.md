@@ -60,53 +60,126 @@ https://diagautoclinic.co.za/downloads/build_v1.0.0_release.iso
 
 ## Structure
 ``` plaintext
-.
-├── .github/
-│   └── FUNDING.yml
-├── AutoDiag/                # Vehicle diagnostics application
-│   ├── main.py
-│   └── main_v2_beta.py
-├── AutoECU/                 # ECU programming tools
-│   └── main.py
-├── AutoKey/                 # Key programming utilities
-│   └── main.py
-├── Windows Test/            # Windows-specific tests and configs
-│   ├── Config/
-│   ├── WINDOWS_TEST.md
+DiagAutoClinicOS/
+├── DiagAutoClinicOS-main/
+│   ├── .gitignore
+│   ├── COMMUNITY_DISCUSSIONS.md
+│   ├── LICENSE
+│   ├── PULL_REQUEST_TEMPLATE.md
+│   ├── README.md
+│   ├── SECURITY.md
+│   ├── add_responsive_behavior.py
+│   ├── launcher.py
+│   ├── requirements-dev.txt
+│   ├── requirements.md
+│   ├── requirements.txt
+│   ├── .github/
+│   │   ├── FUNDING.yml
+│   │   ├── workflows/
+│   │   │   ├── autodiag-tests.yml
+│   │   │   ├── coverage-report.yml
+│   │   │   ├── full-suite-tests.yml
+│   ├── AutoDiag/
+│   │   ├── main.py
+│   │   ├── main_v2_beta.py
+│   ├── AutoECU/
+│   │   ├── main.py
+│   ├── AutoKey/
+│   │   ├── main.py
+│   ├── Windows Test/
+│   │   ├── WINDOWS_TEST.md
+│   │   ├── update_windows_req.py
+│   │   ├── Config/
+│   │   │   ├── add_wininstall_script.py
+│   │   │   ├── windows_config.py
+│   │   ├── shared/
+│   │   │   ├── install_windows.py
+│   │   │   ├── test_windows_compatibility.py
+│   │   │   ├── windows_compat.py
+│   ├── docs/
+│   │   ├── testing/
+│   │   │   ├── README.md
+│   │   │   ├── TESTING_CHEATSHEET.md
+│   │   │   ├── TESTING_GUIDE.md
+│   │   │   ├── ci_cd_setup.md
+│   │   │   ├── mock_mode_guide.md
+│   │   │   ├── running_tests.md
+│   │   │   ├── writing_tests.md
+│   ├── scripts/
+│   │   ├── build-iso.sh
+│   │   ├── final_install.sh
+│   │   ├── install_linux_deps.sh
+│   │   ├── quick_connect.sh
+│   │   ├── release_bluetooth.py
+│   │   ├── setup_bluetooth.py
 │   ├── shared/
-│   └── update_windows_req.py
-├── scripts/                 # Build and utility scripts
-│   ├── build-iso.sh
-│   ├── final_install.sh
-│   ├── install_linux_deps.sh
-│   ├── quick_connect.sh
-│   ├── release_bluetooth.py
-│   └── setup_bluetooth.py
-├── shared/                  # Common resources and modules
-│   ├── .editorconfig
-│   ├── brand_database.py
-│   ├── calibrations_reset.py
-│   ├── device_handler.py
-│   ├── dtc_database.py
-│   ├── enhanced_integration.py
-│   ├── enhanced_style_manager.py
-│   ├── install_linux_deps.sh
-│   ├── install_professional_deps.sh
-│   ├── integration_autodiag.py
-│   ├── security_manager.py
-│   ├── special_functions.py
-│   ├── style_manager.py
-│   └── vin_decoder.py
-├── .gitignore
-├── COMMUNITY_DISCUSSIONS.md
-├── LICENSE
-├── PULL_REQUEST_TEMPLATE.md
-├── README.md                # This document
-├── SECURITY.md
-├── add_responsive_behavior.py
-├── launcher.py
-├── requirements.md
-└── requirements.txt
+│   │   ├── .editorconfig
+│   │   ├── brand_database.py
+│   │   ├── calibrations_reset.py
+│   │   ├── device_handler.py
+│   │   ├── dtc_database.py
+│   │   ├── enhanced_integration.py
+│   │   ├── enhanced_style_manager.py
+│   │   ├── install_linux_deps.sh
+│   │   ├── install_professional_deps.sh
+│   │   ├── integration_autodiag.py
+│   │   ├── security_manager.py
+│   │   ├── special_functions.py
+│   │   ├── style_manager.py
+│   │   ├── vin_decoder.py
+│   ├── tests/
+│   │   ├── __init__.py
+│   │   ├── conftest.py
+│   │   ├── pytest.ini
+│   │   ├── AutoDiag/
+│   │   │   ├── __init__.py
+│   │   │   ├── test_main.py
+│   │   │   ├── test_main_v2_beta.py
+│   │   │   ├── functional/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── test_brand_specific_protocols.py
+│   │   │   │   ├── test_full_diagnostic_session.py
+│   │   │   ├── integration/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── test_dtc_workflow.py
+│   │   │   │   ├── test_live_data_stream.py
+│   │   │   │   ├── test_vehicle_connect.py
+│   │   │   ├── unit/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── test_connection_flow.py
+│   │   │   │   ├── test_dtc_display.py
+│   │   │   │   ├── test_ui_initialization.py
+│   │   ├── fictures/
+│   │   │   ├── hardware_profiles.json
+│   │   │   ├── sample_dtcs.json
+│   │   │   ├── sample_vins.json
+│   │   │   ├── vehicle_responses/
+│   │   │   │   ├── toyota_responses.json
+│   │   │   │   ├── vw_responses.json
+│   │   ├── integration_tests/
+│   │   │   ├── __init__.py
+│   │   │   ├── test_autodiag_autoecu.py
+│   │   │   ├── test_launcher.py
+│   │   ├── mock/
+│   │   │   ├── __init__.py
+│   │   │   ├── mock_adapters.py
+│   │   │   ├── mock_responses.py
+│   │   │   ├── mock_vehicles.py
+│   │   │   ├── test_mock_mode.py
+│   │   ├── performance/
+│   │   │   ├── __init__.py
+│   │   ├── security/
+│   │   │   ├── __init__.py
+│   │   ├── shared/
+│   │   │   ├── __init__.py
+│   │   │   ├── test_brand_database.py
+│   │   │   ├── test_calibrations_reset.py
+│   │   │   ├── test_device_handler.py
+│   │   │   ├── test_dtc_database.py
+│   │   │   ├── test_security_manager.py
+│   │   │   ├── test_special_functions.py
+│   │   │   ├── test_style_manager.py
+│   │   │   ├── test_vin_decoder.py
 ```
 
 System Requirements
