@@ -1,1 +1,13 @@
+# This workflow is temporarily disabled.
+# Uncomment and configure when ready to use.
+
+# name: Coverage Report
+# on:
+#   push:
+#     branches: [ main ]
+# jobs:
+#   report:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - run: echo "Coming soon"
 
