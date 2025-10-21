@@ -63,6 +63,9 @@ def mock_dtc_database():
 # TEST SUITE 1: DEVICE HANDLER TESTS
 # ============================================================================
 
+@pytest.mark.unit
+@pytest.mark.hardware
+@pytest.mark.mock
 class TestDeviceHandler:
     """Test hardware device handling"""
     
@@ -127,6 +130,7 @@ class TestDeviceHandler:
 # TEST SUITE 2: DTC DATABASE TESTS
 # ============================================================================
 
+@pytest.mark.unit
 class TestDTCDatabase:
     """Test DTC database functionality"""
     
@@ -179,6 +183,8 @@ class TestDTCDatabase:
 # TEST SUITE 3: SECURITY TESTS (Abstract - No Sensitive Code)
 # ============================================================================
 
+@pytest.mark.unit
+@pytest.mark.security
 class TestSecurityModule:
     """Test security functionality (abstracted)"""
     
@@ -216,22 +222,21 @@ class TestSecurityModule:
 # TEST SUITE 4: UI COMPONENT TESTS
 # ============================================================================
 
+@pytest.mark.ui
+@pytest.mark.skip(reason="Requires full UI initialization")
 class TestUIComponents:
     """Test UI components (requires Qt)"""
     
-    @pytest.mark.skip(reason="Requires full UI initialization")
     def test_login_dialog_creation(self, qapp):
         """Test login dialog can be created"""
         # This would test LoginDialog initialization
         pass
     
-    @pytest.mark.skip(reason="Requires full UI initialization")
     def test_main_window_creation(self, qapp, mock_security_manager):
         """Test main window creation"""
         # This would test AutoDiagPro initialization
         pass
     
-    @pytest.mark.skip(reason="Requires full UI initialization")
     def test_tab_widget_creation(self, qapp):
         """Test tab widget contains all expected tabs"""
         pass
@@ -240,6 +245,8 @@ class TestUIComponents:
 # TEST SUITE 5: INTEGRATION TESTS
 # ============================================================================
 
+@pytest.mark.integration
+@pytest.mark.mock
 class TestIntegration:
     """Integration tests for complete workflows"""
     
@@ -281,6 +288,7 @@ class TestIntegration:
 # TEST SUITE 6: ERROR HANDLING TESTS
 # ============================================================================
 
+@pytest.mark.unit
 class TestErrorHandling:
     """Test error handling and edge cases"""
     
@@ -312,6 +320,8 @@ class TestErrorHandling:
 # TEST SUITE 7: PERFORMANCE TESTS
 # ============================================================================
 
+@pytest.mark.benchmark
+@pytest.mark.slow
 class TestPerformance:
     """Test performance and efficiency"""
     
