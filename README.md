@@ -284,8 +284,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Big Thank You to:
 
-.[![Godiag Team](https://img.shields.io/badge/Godiag-.com-green.svg)](https://godiag.com)
-.[![ScanTool.net Team](https://img.shields.io/badge/ScanTool-.net-green.svg)](https://scantool.net)
+[![Godiag Team](https://img.shields.io/badge/Godiag-.com-green.svg)](https://godiag.com)
+[![ScanTool.net](https://img.shields.io/badge/ScanTool-.net-green.svg)](https://scantool.net)
 ### for sponsoring there latest devices for robust testing with integration to the 3 Suites. without you guys we would not have done this.
 
 # AI colabiration
