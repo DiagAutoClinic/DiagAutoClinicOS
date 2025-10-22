@@ -5,9 +5,6 @@
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![PyQt6](https://img.shields.io/badge/PyQt6-GUI-green.svg)](https://pypi.org/project/PyQt6/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Downloads](https://img.shields.io/badge/ISO-Download-brightgreen)](https://diagautoclinic.co.za/downloads/build_v1.0.0_release.iso)
-
-![DiagAutoClinicOS Demo](assets/demo-screenshot.png)
 
 ## 🌟 Overview
 
@@ -50,13 +47,7 @@ DiagAutoClinicOS is a comprehensive, open-source automotive diagnostic platform 
 ## 🚀 Quick Start
 
 ### ISO Download (Recommended)
-Download our pre-configured live environment:
-```bash
-# Download the latest release ISO
-https://diagautoclinic.co.za/downloads/build_v1.0.0_release.iso
-
-# Create bootable USB or run in VM
-```
+Download our pre-configured live environment: coming soon!
 
 ## Structure
 ``` plaintext
@@ -287,5 +278,18 @@ This project is licensed under the MIT License - see the LICENSE file for detail
     • Documentation: Check our comprehensive docs first
     • Community Forum: Get help from other users
     • GitHub Issues: Report bugs and request features
-    • Email: support@diagautoclinic.co.za
+    • Email: dacos@diagautoclinic.co.za
+
+# Sponsorship
+
+## 🙏 Big Thank You to:
+
+##.[![Godiag Team](https://img.shields.io/badge/PyQt6-GUI-green.svg)](https://godiag.com)
+##.[![ScanTool.net Team](https://img.shields.io/badge/PyQt6-GUI-green.svg)](https://scantool.net)
+### for sponsoring there latest devices for robust testing with integration to the 3 Suites. without you guys we would not have done this.
+
+# AI colabiration
+
+### Thanks to Claude a trusted partner in this project. Without you we wouldn't have covered so much in such short time.
+
 
