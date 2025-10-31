@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-DiagAutoClinicOS - Professional Launcher with Hardware Support
-Version: 2.0.1 - All Duplicates Removed, Production Ready
+DiagAutoClinicOS - MODERN FUTURISTIC Launcher
+Version: 3.0 - Glassmorphic Design
 """
 
 import sys
 import os
 import subprocess
 import time
+import random
 from pathlib import Path
 from typing import List, Dict
 
@@ -18,53 +19,47 @@ if shared_path not in sys.path:
 
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QTextEdit, QTabWidget, QMessageBox,
-    QGroupBox, QFrame, QComboBox, QMenu, QSystemTrayIcon,
-    QInputDialog, QListWidget, QListWidgetItem, QProgressDialog,
-    QScrollArea
+    QLabel, QPushButton, QTextEdit, QMessageBox, QFrame, QGridLayout,
+    QProgressDialog, QComboBox
 )
 from PyQt6.QtCore import Qt, QTimer, QSize
-from PyQt6.QtGui import QFont, QIcon, QPixmap, QPalette, QColor, QAction
+from PyQt6.QtGui import QFont, QIcon
 
 try:
-    from device_handler import DeviceHandler, ProfessionalDevice
+    from device_handler import DeviceHandler
     from style_manager import StyleManager
+    # Import circular gauge if in same directory
+    try:
+        from circular_gauge import CircularGauge, StatCard
+    except ImportError:
+        # Fallback: Create simple placeholders
+        class CircularGauge(QWidget):
+            def __init__(self, *args, **kwargs):
+                super().__init__()
+                self.setMinimumSize(150, 150)
+        class StatCard(QFrame):
+            def __init__(self, title, value, *args, **kwargs):
+                super().__init__()
+                self.setProperty("class", "stat-card")
+                layout = QVBoxLayout(self)
+                layout.addWidget(QLabel(f"{title}\n{value}"))
+            def update_value(self, value):
+                pass
 except ImportError as e:
     print(f"Warning: Could not import modules: {e}")
-    # Create fallback classes
     class DeviceHandler:
         def __init__(self, mock_mode=True):
-            self.mock_mode = mock_mode
+            self.mock_mode = True
             self.is_connected = False
-            self.current_protocol = type('obj', (object,), {'value': 'AUTO'})
-        
         def detect_professional_devices(self):
             return []
-        
-        def connect_to_device(self, name):
-            return False
-        
-        def disconnect(self):
-            pass
-        
-        def scan_dtcs(self):
-            return []
-        
-        def read_ecu_identification_advanced(self):
-            return {}
-        
-        def perform_advanced_diagnostic(self, cmd):
-            return {}
-    
     class StyleManager:
         def __init__(self):
-            self.current_theme = "dark"
-        
+            self.current_theme = "futuristic"
         def set_theme(self, theme):
             pass
-        
         def get_theme_names(self):
-            return ["dark", "light", "security"]
+            return ["futuristic", "dark", "security"]
 
 ALLOWED_APPS: Dict[str, str] = {
     'diag': 'AutoDiag/main.py',
@@ -72,314 +67,221 @@ ALLOWED_APPS: Dict[str, str] = {
     'key': 'AutoKey/main.py'
 }
 
-class ProfessionalDiagAutoClinicLauncher(QMainWindow):
+class ModernLauncher(QMainWindow):
     def __init__(self):
         super().__init__()
         self.device_handler = DeviceHandler(mock_mode=True)
         self.style_manager = StyleManager()
-        self.available_devices = []
         self.setup_ui()
+        self.start_live_updates()
         
     def setup_ui(self):
-        """Initialize the complete user interface"""
-        self.setWindowTitle("DiagAutoClinicOS - Professional Vehicle Diagnostics")
-        self.setGeometry(100, 100, 1400, 1000)
-        # Enable maximize button and proper window management
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint | Qt.WindowType.WindowMinimizeButtonHint)
+        """Initialize modern futuristic UI"""
+        self.setWindowTitle("DiagAutoClinicOS - Where Mechanics Meet Future Intelligence")
+        self.setGeometry(50, 50, 1600, 1000)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowMaximizeButtonHint)
         
-        # Apply initial theme
-        self.style_manager.set_theme(self.style_manager.current_theme)
+        # Apply futuristic theme
+        self.style_manager.set_theme("futuristic")
         
-        # Central widget
+        # Central widget with scrollable content
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        # Main layout with better spacing
         main_layout = QVBoxLayout(central_widget)
         main_layout.setSpacing(20)
-        main_layout.setContentsMargins(25, 25, 25, 25)
+        main_layout.setContentsMargins(30, 30, 30, 30)
         
-        # Header
-        header_layout = self.create_header()
-        main_layout.addLayout(header_layout)
+        # Hero Section
+        hero_section = self.create_hero_section()
+        main_layout.addWidget(hero_section)
         
-        # Hardware detection section
-        hardware_layout = self.create_hardware_section()
-        main_layout.addLayout(hardware_layout)
+        # Stats Dashboard
+        stats_section = self.create_stats_dashboard()
+        main_layout.addWidget(stats_section)
         
-        # Status bar
-        status_layout = self.create_status_bar()
-        main_layout.addLayout(status_layout)
+        # Applications Grid
+        apps_section = self.create_applications_grid()
+        main_layout.addWidget(apps_section)
         
-        # Applications section
-        apps_layout = self.create_applications_section()
-        main_layout.addLayout(apps_layout)
+        # Quick Info Cards
+        info_section = self.create_info_cards()
+        main_layout.addWidget(info_section)
         
-        # Quick actions
-        quick_actions_layout = self.create_quick_actions()
-        main_layout.addLayout(quick_actions_layout)
+        # Activity Log
+        log_section = self.create_activity_log()
+        main_layout.addWidget(log_section)
         
-        # Log output
-        log_layout = self.create_log_section()
-        main_layout.addLayout(log_layout)
+    def create_hero_section(self):
+        """Create modern hero section with gradient"""
+        hero_frame = QFrame()
+        hero_frame.setProperty("class", "glass-card")
+        hero_frame.setMinimumHeight(180)
+        hero_frame.setMaximumHeight(200)
         
-        # Initialize hardware detection
-        self.detect_hardware()
+        layout = QVBoxLayout(hero_frame)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-    def create_hardware_section(self):
-        """Create professional hardware detection section with better layout"""
-        layout = QVBoxLayout()
+        # Title with glow effect
+        title = QLabel("DiagAutoClinicOS")
+        title.setProperty("class", "hero-title")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        # Section title
-        hw_label = QLabel("Professional Hardware Detection")
-        hw_label.setProperty("class", "subtitle")
-        hw_font = QFont()
-        hw_font.setPointSize(16)
-        hw_font.setBold(True)
-        hw_label.setFont(hw_font)
-        hw_label.setStyleSheet("margin-bottom: 10px;")
-        layout.addWidget(hw_label)
-        
-        # Hardware controls - use a grid layout for better button arrangement
-        hw_controls = QHBoxLayout()
-        
-        # Detect button
-        detect_btn = QPushButton("Scan for Hardware")
-        detect_btn.setProperty("class", "primary")
-        detect_btn.setMinimumHeight(30)
-        detect_btn.clicked.connect(self.detect_hardware)
-        
-        # Connection controls
-        connect_btn = QPushButton("Connect to Selected")
-        connect_btn.setProperty("class", "success")
-        connect_btn.setMinimumHeight(30)
-        connect_btn.clicked.connect(self.connect_to_selected_device)
-        
-        disconnect_btn = QPushButton("Disconnect")
-        disconnect_btn.setProperty("class", "danger")
-        disconnect_btn.setMinimumHeight(30)
-        disconnect_btn.clicked.connect(self.disconnect_device)
-        
-        hw_controls.addWidget(detect_btn)
-        hw_controls.addWidget(connect_btn)
-        hw_controls.addWidget(disconnect_btn)
-        hw_controls.addStretch()
-        
-        layout.addLayout(hw_controls)
-        
-        # Device list with better sizing
-        devices_label = QLabel("Detected Professional Devices:")
-        devices_label.setStyleSheet("font-weight: bold; margin-top: 10px; margin-bottom: 5px;")
-        layout.addWidget(devices_label)
-        
-        self.device_list = QListWidget()
-        self.device_list.setMinimumHeight(75)
-        self.device_list.setMaximumHeight(200)
-        self.device_list.itemClicked.connect(self.on_device_selected)
-        self.device_list.setStyleSheet("""
-            QListWidget {
-                border: 1px solid #2a2f34;
-                border-radius: 4px;
-                background-color: #1a1f24;
-                padding: 5px;
-            }
-            QListWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #2a2f34;
-            }
-            QListWidget::item:selected {
-                background-color: #0078d4;
-                color: white;
-            }
-        """)
-        layout.addWidget(self.device_list)
-        
-        return layout
-        
-    def create_header(self):
-        """Create the application header with theme selector"""
-        layout = QHBoxLayout()
-        
-        # Title
-        title_label = QLabel("DiagAutoClinicOS - Professional Edition")
-        title_label.setProperty("class", "title")
-        title_font = QFont()
-        title_font.setPointSize(24)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
+        # Subtitle
+        subtitle = QLabel("Where Mechanics Meet Future Intelligence")
+        subtitle.setProperty("class", "hero-subtitle")
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         # Theme selector
         theme_layout = QHBoxLayout()
-        theme_label = QLabel("Theme:")
+        theme_label = QLabel("🎨 Theme:")
+        theme_label.setStyleSheet("color: #5eead4; font-size: 11pt;")
+        
         self.theme_combo = QComboBox()
         self.theme_combo.addItems(self.style_manager.get_theme_names())
-        self.theme_combo.setCurrentText(self.style_manager.current_theme)
+        self.theme_combo.setCurrentText("futuristic")
         self.theme_combo.currentTextChanged.connect(self.change_theme)
+        self.theme_combo.setMinimumWidth(150)
         
+        theme_layout.addStretch()
         theme_layout.addWidget(theme_label)
         theme_layout.addWidget(self.theme_combo)
+        theme_layout.addStretch()
         
-        layout.addWidget(title_label)
-        layout.addStretch()
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        layout.addSpacing(10)
         layout.addLayout(theme_layout)
         
-        return layout
+        return hero_frame
         
-    def create_status_bar(self):
-        """Create enhanced status information bar"""
-        layout = QHBoxLayout()
+    def create_stats_dashboard(self):
+        """Create stats dashboard with circular gauges"""
+        stats_frame = QFrame()
+        stats_layout = QHBoxLayout(stats_frame)
+        stats_layout.setSpacing(20)
         
-        # Connection status
-        connection_group = QGroupBox("Professional Connection Status")
-        connection_layout = QHBoxLayout()
+        # System Health
+        self.health_card = StatCard("System Health", 97, 100, "%")
         
-        self.connection_indicator = QLabel("●")
-        self.connection_indicator.setStyleSheet("color: #ff4444; font-size: 24px; font-weight: bold;")
-        self.connection_label = QLabel("No Hardware Connected")
-        self.connection_label.setProperty("class", "status-disconnected")
+        # Connection Quality
+        self.connection_card = StatCard("Connection Quality", 85, 100, "%")
         
-        self.device_info_label = QLabel("Device: None")
-        self.protocol_info_label = QLabel("Protocol: None")
+        # Diagnostic Coverage
+        self.coverage_card = StatCard("Diagnostic Coverage", 93, 100, "%")
         
-        connection_layout.addWidget(self.connection_indicator)
-        connection_layout.addWidget(self.connection_label)
-        connection_layout.addWidget(self.device_info_label)
-        connection_layout.addWidget(self.protocol_info_label)
-        connection_layout.addStretch()
+        # Active Sessions
+        self.sessions_card = StatCard("Active Sessions", 3, 10, "")
         
-        connection_group.setLayout(connection_layout)
+        stats_layout.addWidget(self.health_card)
+        stats_layout.addWidget(self.connection_card)
+        stats_layout.addWidget(self.coverage_card)
+        stats_layout.addWidget(self.sessions_card)
+        stats_layout.addStretch()
         
-        # System status
-        system_group = QGroupBox("System Status")
-        system_layout = QVBoxLayout()
+        return stats_frame
         
-        self.mock_mode_label = QLabel("Mock Mode: Active")
-        self.hardware_status_label = QLabel("Hardware: Not Detected")
-        
-        system_layout.addWidget(self.mock_mode_label)
-        system_layout.addWidget(self.hardware_status_label)
-        system_group.setLayout(system_layout)
-        
-        layout.addWidget(connection_group, 3)
-        layout.addWidget(system_group, 1)
-        
-        return layout
-
-    def create_applications_section(self):
-        """Create the main applications launcher section with flexible layout"""
-        layout = QVBoxLayout()
+    def create_applications_grid(self):
+        """Create modern application cards in bento-box layout"""
+        apps_frame = QFrame()
+        apps_layout = QGridLayout(apps_frame)
+        apps_layout.setSpacing(20)
         
         # Section title
-        apps_label = QLabel("Professional Diagnostic Applications")
-        apps_label.setProperty("class", "subtitle")
-        apps_font = QFont()
-        apps_font.setPointSize(16)
-        apps_font.setBold(True)
-        apps_label.setFont(apps_font)
-        apps_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        apps_label.setStyleSheet("margin-bottom: 20px;")
+        title_label = QLabel("🚀 Professional Diagnostic Applications")
+        title_font = QFont()
+        title_font.setPointSize(18)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet("color: #14b8a6; margin: 10px;")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        layout.addWidget(apps_label)
+        apps_layout.addWidget(title_label, 0, 0, 1, 3)
         
-        # Use a simple horizontal layout for application cards
-        apps_container = QWidget()
-        apps_container_layout = QHBoxLayout(apps_container)
-        apps_container_layout.setSpacing(25)
-        apps_container_layout.setContentsMargins(10, 10, 10, 10)
-        
-        # AutoDiag Card
-        diag_card = self.create_app_card(
-            "🔍", 
-            "AutoDiag Pro", 
-            "Vehicle Diagnostics", 
-            "Professional DTC scanning, live data monitoring, and comprehensive system analysis with real hardware support",
+        # AutoDiag Card (Large)
+        diag_card = self.create_modern_app_card(
+            "🔍",
+            "AutoDiag Pro",
+            "Vehicle Diagnostics",
+            "Professional DTC scanning, live data monitoring, and comprehensive system analysis",
             self.launch_diag,
-            "primary"
+            "#14b8a6"
         )
+        apps_layout.addWidget(diag_card, 1, 0, 2, 1)
         
-        # AutoECU Card
-        ecu_card = self.create_app_card(
-            "⚙", 
-            "AutoECU Pro", 
-            "ECU Programming", 
-            "Advanced ECU reading/writing, module coding, adaptations, and professional programming tools",
+        # AutoECU Card (Medium)
+        ecu_card = self.create_modern_app_card(
+            "⚙️",
+            "AutoECU Pro",
+            "ECU Programming",
+            "Advanced ECU reading, writing, coding, and module programming",
             self.launch_ecu,
-            "success"
+            "#10b981"
         )
+        apps_layout.addWidget(ecu_card, 1, 1, 1, 1)
         
-        # AutoKey Card
-        key_card = self.create_app_card(
-            "🔒", 
-            "AutoKey Pro", 
-            "Security Systems", 
-            "Key programming, immobilizer access, security code calculation, and advanced security systems",
+        # AutoKey Card (Medium)
+        key_card = self.create_modern_app_card(
+            "🔒",
+            "AutoKey Pro",
+            "Security Systems",
+            "Key programming, immobilizer access, and security management",
             self.launch_key,
-            "danger"
+            "#ef4444"
         )
+        apps_layout.addWidget(key_card, 1, 2, 1, 1)
         
-        apps_container_layout.addWidget(diag_card)
-        apps_container_layout.addWidget(ecu_card)
-        apps_container_layout.addWidget(key_card)
+        # Hardware Status Card
+        hardware_card = self.create_hardware_status_card()
+        apps_layout.addWidget(hardware_card, 2, 1, 1, 2)
         
-        layout.addWidget(apps_container)
+        return apps_frame
         
-        return layout
-
-    def create_app_card(self, emoji, title, subtitle, description, handler, button_class):
-        """Create an application launch card with improved layout"""
+    def create_modern_app_card(self, emoji, title, subtitle, description, handler, accent_color):
+        """Create glassmorphic application card"""
         card = QFrame()
-        card.setMinimumHeight(380)
-        card.setMinimumWidth(350)
-        card.setFrameStyle(QFrame.Shape.Box)
-        card.setStyleSheet("QFrame { margin: 5px; }")
+        card.setProperty("class", "app-card")
+        card.setMinimumHeight(200)
+        card.setMaximumHeight(280)
         
         layout = QVBoxLayout(card)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
         
-        # Header with emoji and title
+        # Header
         header_layout = QHBoxLayout()
+        
         emoji_label = QLabel(emoji)
-        emoji_label.setStyleSheet("font-size: 36px; margin-right: 10px;")
-        emoji_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+        emoji_label.setStyleSheet("font-size: 40px;")
         
         title_layout = QVBoxLayout()
         title_label = QLabel(title)
-        title_label.setProperty("class", "title")
         title_font = QFont()
         title_font.setPointSize(16)
         title_font.setBold(True)
         title_label.setFont(title_font)
-        title_label.setWordWrap(True)
+        title_label.setStyleSheet(f"color: {accent_color};")
         
         subtitle_label = QLabel(subtitle)
-        subtitle_label.setProperty("class", "subtitle")
-        subtitle_label.setWordWrap(True)
+        subtitle_label.setStyleSheet("color: #5eead4; font-size: 11pt;")
         
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
-        title_layout.addStretch()
         
         header_layout.addWidget(emoji_label)
         header_layout.addLayout(title_layout)
         header_layout.addStretch()
         
-        # Description with better formatting
+        # Description
         desc_label = QLabel(description)
         desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("""
-            color: #888888; 
-            font-size: 12px; 
-            line-height: 1.6;
-            margin-top: 10px;
-            margin-bottom: 15px;
-        """)
-        desc_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+        desc_label.setStyleSheet("color: #a0d4cc; font-size: 10pt; line-height: 1.5;")
         
-        # Launch button with fixed height
-        launch_btn = QPushButton("Launch Professional Edition")
-        launch_btn.setProperty("class", button_class)
-        launch_btn.setMinimumHeight(40)
+        # Launch button
+        launch_btn = QPushButton("Launch Application")
+        launch_btn.setProperty("class", "primary")
+        launch_btn.setMinimumHeight(45)
+        launch_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         launch_btn.clicked.connect(handler)
         
         layout.addLayout(header_layout)
@@ -388,319 +290,244 @@ class ProfessionalDiagAutoClinicLauncher(QMainWindow):
         layout.addWidget(launch_btn)
         
         return card
-
-    def detect_hardware(self):
-        """Scan for professional diagnostic hardware"""
-        self.log_message("Scanning for professional diagnostic hardware...")
         
-        # Show progress dialog
+    def create_hardware_status_card(self):
+        """Create hardware status card"""
+        card = QFrame()
+        card.setProperty("class", "glass-card")
+        card.setMinimumHeight(200)
+        
+        layout = QVBoxLayout(card)
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Title
+        title = QLabel("🔌 Hardware Status")
+        title_font = QFont()
+        title_font.setPointSize(14)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        title.setStyleSheet("color: #14b8a6;")
+        
+        # Connection indicator
+        self.connection_indicator = QLabel("●")
+        self.connection_indicator.setStyleSheet("color: #ef4444; font-size: 32px;")
+        self.connection_indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        self.connection_status = QLabel("No Hardware Connected")
+        self.connection_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.connection_status.setStyleSheet("color: #a0d4cc; font-size: 11pt;")
+        
+        # Scan button
+        scan_btn = QPushButton("🔍 Scan for Hardware")
+        scan_btn.setProperty("class", "primary")
+        scan_btn.clicked.connect(self.scan_hardware)
+        scan_btn.setMinimumHeight(40)
+        
+        layout.addWidget(title)
+        layout.addWidget(self.connection_indicator)
+        layout.addWidget(self.connection_status)
+        layout.addStretch()
+        layout.addWidget(scan_btn)
+        
+        return card
+        
+    def create_info_cards(self):
+        """Create quick info cards"""
+        info_frame = QFrame()
+        info_layout = QHBoxLayout(info_frame)
+        info_layout.setSpacing(15)
+        
+        # Supported Brands
+        brands_card = self.create_info_card(
+            "🏭", "Supported Brands", "25+", "Global Coverage"
+        )
+        
+        # Diagnostic Functions
+        functions_card = self.create_info_card(
+            "🔧", "Special Functions", "150+", "Brand Specific"
+        )
+        
+        # Security Level
+        security_card = self.create_info_card(
+            "🔒", "Security Level", "DEALER", "Full Access"
+        )
+        
+        info_layout.addWidget(brands_card)
+        info_layout.addWidget(functions_card)
+        info_layout.addWidget(security_card)
+        info_layout.addStretch()
+        
+        return info_frame
+        
+    def create_info_card(self, emoji, title, value, subtitle):
+        """Create small info card"""
+        card = QFrame()
+        card.setProperty("class", "stat-card")
+        card.setMinimumSize(200, 120)
+        card.setMaximumSize(300, 140)
+        
+        layout = QVBoxLayout(card)
+        layout.setSpacing(5)
+        layout.setContentsMargins(15, 15, 15, 15)
+        
+        emoji_label = QLabel(emoji)
+        emoji_label.setStyleSheet("font-size: 28px;")
+        emoji_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        title_label = QLabel(title)
+        title_label.setStyleSheet("color: #5eead4; font-size: 10pt;")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        value_label = QLabel(value)
+        value_label.setProperty("class", "stat-value")
+        value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        subtitle_label = QLabel(subtitle)
+        subtitle_label.setStyleSheet("color: #a0d4cc; font-size: 9pt;")
+        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        layout.addWidget(emoji_label)
+        layout.addWidget(title_label)
+        layout.addWidget(value_label)
+        layout.addWidget(subtitle_label)
+        
+        return card
+        
+    def create_activity_log(self):
+        """Create activity log section"""
+        log_frame = QFrame()
+        log_frame.setProperty("class", "glass-card")
+        log_frame.setMaximumHeight(150)
+        
+        layout = QVBoxLayout(log_frame)
+        layout.setSpacing(10)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Title
+        title = QLabel("📊 Activity Log")
+        title_font = QFont()
+        title_font.setPointSize(12)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        title.setStyleSheet("color: #14b8a6;")
+        
+        # Log output
+        self.log_output = QTextEdit()
+        self.log_output.setReadOnly(True)
+        self.log_output.setMaximumHeight(80)
+        
+        # Clear button
+        clear_btn = QPushButton("Clear Log")
+        clear_btn.clicked.connect(self.log_output.clear)
+        clear_btn.setMaximumWidth(120)
+        
+        layout.addWidget(title)
+        layout.addWidget(self.log_output)
+        layout.addWidget(clear_btn, alignment=Qt.AlignmentFlag.AlignRight)
+        
+        self.log_message("✨ Welcome to DiagAutoClinicOS - Futuristic Edition")
+        self.log_message("🚀 System initialized successfully")
+        
+        return log_frame
+        
+    def scan_hardware(self):
+        """Scan for professional hardware"""
+        self.log_message("🔍 Scanning for professional diagnostic hardware...")
+        
         progress = QProgressDialog("Scanning for hardware...", "Cancel", 0, 100, self)
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.show()
         
-        def scan_progress():
-            """Simulate hardware scanning progress with timeout protection"""
-            for i in range(101):
-                progress.setValue(i)
-                QApplication.processEvents()
-                if progress.wasCanceled():
-                    break
-                time.sleep(0.01)
-            
-            progress.close()
-            
-            # Perform actual hardware detection with try-except for safety
-            try:
-                self.available_devices = self.device_handler.detect_professional_devices()
-                self.update_device_list()
-                
-                if self.available_devices:
-                    self.log_message(f"Found {len(self.available_devices)} professional device(s)")
-                    self.hardware_status_label.setText(f"Hardware: {len(self.available_devices)} devices found")
-                else:
-                    self.log_message("No professional hardware detected - using mock mode")
-                    self.hardware_status_label.setText("Hardware: None (Mock Mode)")
-            except Exception as e:
-                self.log_message(f"Hardware detection failed: {str(e)} (timeout or error)")
-                QMessageBox.warning(self, "Detection Error", "Hardware scan failed safely.")
+        for i in range(101):
+            progress.setValue(i)
+            QApplication.processEvents()
+            if progress.wasCanceled():
+                break
+            time.sleep(0.01)
         
-        # Start scanning in background
-        QTimer.singleShot(100, scan_progress)
-
-    def update_device_list(self):
-        """Update the device list widget"""
-        self.device_list.clear()
-        for device in self.available_devices:
-            item = QListWidgetItem(str(device))
-            item.setData(Qt.ItemDataRole.UserRole, device)
-            self.device_list.addItem(item)
-
-    def on_device_selected(self, item):
-        """Handle device selection with sanitization"""
-        device = item.data(Qt.ItemDataRole.UserRole)
-        device_name = str(device.name if hasattr(device, 'name') else device).replace('\n', '').replace('\r', '').strip()
-        self.log_message(f"Selected device: {device_name}")
-
-    def connect_to_selected_device(self):
-        """Connect to the selected professional device"""
-        selected_items = self.device_list.selectedItems()
-        if not selected_items:
-            QMessageBox.warning(self, "No Device Selected", "Please select a device from the list")
-            return
-            
-        device_item = selected_items[0]
-        device = device_item.data(Qt.ItemDataRole.UserRole)
-        device_name = str(device.name if hasattr(device, 'name') else device).replace('\n', '').replace('\r', '').strip()
+        progress.close()
         
-        self.log_message(f"Connecting to {device_name}...")
-        
-        if self.device_handler.connect_to_device(device_name):
-            self.connection_indicator.setStyleSheet("color: #00ff00; font-size: 24px; font-weight: bold;")
-            self.connection_label.setText(f"Connected to {device_name}")
-            self.connection_label.setProperty("class", "status-connected")
-            self.device_info_label.setText(f"Device: {device_name}")
-            self.protocol_info_label.setText(f"Protocol: {self.device_handler.current_protocol.value}")
-            self.mock_mode_label.setText("Mock Mode: Inactive")
-            self.log_message(f"Successfully connected to {device_name}")
-            
-            # Test advanced features without logging sensitive details
-            ecu_info = self.device_handler.read_ecu_identification_advanced()
-            self.log_message("ECU Identification read successfully (details in dialog)")
+        devices = self.device_handler.detect_professional_devices()
+        if devices:
+            self.connection_indicator.setStyleSheet("color: #10b981; font-size: 32px;")
+            self.connection_status.setText(f"✅ {len(devices)} Device(s) Found")
+            self.log_message(f"✅ Found {len(devices)} professional device(s)")
         else:
-            self.log_message(f"Failed to connect to {device_name}")
-            QMessageBox.warning(self, "Connection Failed", f"Could not connect to {device_name}")
-
-    def disconnect_device(self):
-        """Disconnect from current device"""
-        if self.device_handler.is_connected:
-            self.device_handler.disconnect()
-            self.connection_indicator.setStyleSheet("color: #ff4444; font-size: 24px; font-weight: bold;")
-            self.connection_label.setText("Disconnected")
-            self.connection_label.setProperty("class", "status-disconnected")
-            self.device_info_label.setText("Device: None")
-            self.protocol_info_label.setText("Protocol: None")
-            self.mock_mode_label.setText("Mock Mode: Active")
-            self.log_message("Disconnected from professional device")
-
-    def create_quick_actions(self):
-        """Create professional quick action buttons"""
-        layout = QVBoxLayout()
-        
-        actions_label = QLabel("Professional Quick Actions")
-        actions_label.setProperty("class", "subtitle")
-        actions_font = QFont()
-        actions_font.setPointSize(14)
-        actions_font.setBold(True)
-        actions_label.setFont(actions_font)
-        
-        layout.addWidget(actions_label)
-        
-        actions_layout = QHBoxLayout()
-        
-        quick_scan_btn = QPushButton("🔍 Professional DTC Scan")
-        quick_scan_btn.setProperty("class", "primary")
-        quick_scan_btn.clicked.connect(self.professional_dtc_scan)
-        
-        ecu_id_btn = QPushButton("📋 ECU Identification")
-        ecu_id_btn.setProperty("class", "success")
-        ecu_id_btn.clicked.connect(self.professional_ecu_identification)
-        
-        system_scan_btn = QPushButton("📊 System Analysis")
-        system_scan_btn.setProperty("class", "primary")
-        system_scan_btn.clicked.connect(self.professional_system_scan)
-        
-        coding_btn = QPushButton("⚙ Module Coding")
-        coding_btn.setProperty("class", "danger")
-        coding_btn.clicked.connect(self.professional_module_coding)
-        
-        actions_layout.addWidget(quick_scan_btn)
-        actions_layout.addWidget(ecu_id_btn)
-        actions_layout.addWidget(system_scan_btn)
-        actions_layout.addWidget(coding_btn)
-        actions_layout.addStretch()
-        
-        layout.addLayout(actions_layout)
-        
-        return layout
-
-    def professional_dtc_scan(self):
-        """Perform professional DTC scan"""
-        if not self.device_handler.is_connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a professional device first")
-            return
+            self.log_message("⚠️ No hardware detected - using mock mode")
             
-        self.log_message("Performing professional DTC scan...")
-        dtcs = self.device_handler.scan_dtcs()
-        if dtcs:
-            self.log_message(f"Found {len(dtcs)} DTC(s):")
-            for code, severity, description in dtcs:
-                self.log_message(f"  {code}: {description} ({severity})")
-        else:
-            self.log_message("No DTCs found - system clean")
-
-    def professional_ecu_identification(self):
-        """Perform professional ECU identification"""
-        if not self.device_handler.is_connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a professional device first")
-            return
-            
-        self.log_message("Reading advanced ECU identification...")
-        ecu_info = self.device_handler.read_ecu_identification_advanced()
+    def start_live_updates(self):
+        """Start live data updates for gauges"""
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.update_live_data)
+        self.update_timer.start(3000)  # Update every 3 seconds
         
-        info_text = f"""
-Advanced ECU Identification:
-Part Number: {ecu_info.get('part_number', 'N/A')}
-Software: {ecu_info.get('software_version', 'N/A')}
-Hardware: {ecu_info.get('hardware_version', 'N/A')}
-Serial: {ecu_info.get('serial_number', 'N/A')}
-Supplier: {ecu_info.get('supplier', 'N/A')}
-        """
-        QMessageBox.information(self, "ECU Identification", info_text.strip())
-
-    def professional_system_scan(self):
-        """Perform professional system scan"""
-        if not self.device_handler.is_connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a professional device first")
-            return
-            
-        self.log_message("Performing professional system analysis...")
-        system_info = self.device_handler.perform_advanced_diagnostic('system_scan')
-        self.log_message("System analysis completed")
-
-    def professional_module_coding(self):
-        """Check module coding capabilities"""
-        if not self.device_handler.is_connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a professional device first")
-            return
-            
-        self.log_message("Checking module coding capabilities...")
-        coding_info = self.device_handler.perform_advanced_diagnostic('module_coding')
-        self.log_message(f"Coding status: {coding_info.get('coding_status', 'N/A')}")
-
+    def update_live_data(self):
+        """Update live data in gauges"""
+        # Simulate live data changes
+        self.health_card.update_value(random.randint(90, 99))
+        self.connection_card.update_value(random.randint(80, 95))
+        self.coverage_card.update_value(random.randint(88, 98))
+        self.sessions_card.update_value(random.randint(1, 5))
+        
     def log_message(self, message):
-        """Add message to log with timestamp"""
+        """Add message to activity log"""
         from datetime import datetime
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_output.append(f"[{timestamp}] {message}")
-
+        
     def change_theme(self, theme_name):
         """Change application theme"""
         self.style_manager.set_theme(theme_name)
-        self.log_message(f"Theme changed to: {theme_name}")
-
-    def create_log_section(self):
-        """Create log output section"""
-        layout = QVBoxLayout()
+        self.log_message(f"🎨 Theme changed to: {theme_name}")
         
-        log_label = QLabel("Professional Activity Log")
-        log_label.setProperty("class", "subtitle")
-        
-        self.log_output = QTextEdit()
-        self.log_output.setMaximumHeight(150)
-        self.log_output.setReadOnly(True)
-        
-        log_controls = QHBoxLayout()
-        clear_log_btn = QPushButton("Clear Log")
-        clear_log_btn.clicked.connect(self.log_output.clear)
-        
-        export_log_btn = QPushButton("Export Professional Log")
-        export_log_btn.clicked.connect(self.export_log)
-        
-        log_controls.addWidget(clear_log_btn)
-        log_controls.addWidget(export_log_btn)
-        log_controls.addStretch()
-        
-        layout.addWidget(log_label)
-        layout.addWidget(self.log_output)
-        layout.addLayout(log_controls)
-        
-        return layout
-
-    def export_log(self):
-        """Export log to safe user home directory"""
-        from datetime import datetime
-        filename = os.path.expanduser(f"~/diagautoclinic_pro_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")
-        
-        try:
-            with open(filename, 'w') as f:
-                f.write(self.log_output.toPlainText())
-            self.log_message(f"Professional log exported to: {filename}")
-            QMessageBox.information(self, "Export Successful", f"Professional log exported to:\n{filename}")
-        except Exception as e:
-            QMessageBox.critical(self, "Export Failed", f"Failed to export log: {e}")
-
     def launch_diag(self):
-        """Launch AutoDiag Pro with security checks"""
+        """Launch AutoDiag Pro"""
         try:
-            rel_path = ALLOWED_APPS['diag']
-            if rel_path not in ALLOWED_APPS.values():
-                raise ValueError("Invalid application")
-            diag_path = os.path.join(os.path.dirname(__file__), rel_path)
-            if not os.path.abspath(diag_path).startswith(os.path.abspath(os.path.dirname(__file__))):
-                raise ValueError("Path traversal detected")
+            diag_path = os.path.join(os.path.dirname(__file__), ALLOWED_APPS['diag'])
             if os.path.exists(diag_path):
-                subprocess.Popen([sys.executable, diag_path], shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                self.log_message("Launched AutoDiag Pro - Professional Vehicle Diagnostics")
+                subprocess.Popen([sys.executable, diag_path], shell=False)
+                self.log_message("🚀 Launched AutoDiag Pro")
             else:
-                QMessageBox.warning(self, "Application Not Found", "AutoDiag Pro application not found")
+                QMessageBox.warning(self, "Not Found", "AutoDiag Pro not found")
         except Exception as e:
-            self.log_message(f"Failed to launch securely: {str(e)}")
-            QMessageBox.critical(self, "Launch Error", f"Failed to launch AutoDiag Pro: {e}")
-
+            self.log_message(f"❌ Failed to launch: {e}")
+            
     def launch_ecu(self):
-        """Launch AutoECU Pro with security checks"""
+        """Launch AutoECU Pro"""
         try:
-            rel_path = ALLOWED_APPS['ecu']
-            if rel_path not in ALLOWED_APPS.values():
-                raise ValueError("Invalid application")
-            ecu_path = os.path.join(os.path.dirname(__file__), rel_path)
-            if not os.path.abspath(ecu_path).startswith(os.path.abspath(os.path.dirname(__file__))):
-                raise ValueError("Path traversal detected")
+            ecu_path = os.path.join(os.path.dirname(__file__), ALLOWED_APPS['ecu'])
             if os.path.exists(ecu_path):
-                subprocess.Popen([sys.executable, ecu_path], shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                self.log_message("Launched AutoECU Pro - Professional ECU Programming")
+                subprocess.Popen([sys.executable, ecu_path], shell=False)
+                self.log_message("🚀 Launched AutoECU Pro")
             else:
-                QMessageBox.warning(self, "Application Not Found", "AutoECU Pro application not found")
+                QMessageBox.warning(self, "Not Found", "AutoECU Pro not found")
         except Exception as e:
-            self.log_message(f"Failed to launch securely: {str(e)}")
-            QMessageBox.critical(self, "Launch Error", f"Failed to launch AutoECU Pro: {e}")
-
+            self.log_message(f"❌ Failed to launch: {e}")
+            
     def launch_key(self):
-        """Launch AutoKey Pro with security checks"""
+        """Launch AutoKey Pro"""
         try:
-            rel_path = ALLOWED_APPS['key']
-            if rel_path not in ALLOWED_APPS.values():
-                raise ValueError("Invalid application")
-            key_path = os.path.join(os.path.dirname(__file__), rel_path)
-            if not os.path.abspath(key_path).startswith(os.path.abspath(os.path.dirname(__file__))):
-                raise ValueError("Path traversal detected")
+            key_path = os.path.join(os.path.dirname(__file__), ALLOWED_APPS['key'])
             if os.path.exists(key_path):
-                subprocess.Popen([sys.executable, key_path], shell=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                self.log_message("Launched AutoKey Pro - Professional Key Programming")
+                subprocess.Popen([sys.executable, key_path], shell=False)
+                self.log_message("🚀 Launched AutoKey Pro")
             else:
-                QMessageBox.warning(self, "Application Not Found", "AutoKey Pro application not found")
+                QMessageBox.warning(self, "Not Found", "AutoKey Pro not found")
         except Exception as e:
-            self.log_message(f"Failed to launch securely: {str(e)}")
-            QMessageBox.critical(self, "Launch Error", f"Failed to launch AutoKey Pro: {e}")
-
-    def resizeEvent(self, event):
-        """Handle window resize for better responsive layout"""
-        super().resizeEvent(event)
+            self.log_message(f"❌ Failed to launch: {e}")
 
 def main():
     """Main application entry point"""
     app = QApplication(sys.argv)
     
-    # Set application properties
-    app.setApplicationName("DiagAutoClinicOS Professional")
-    app.setApplicationVersion("2.0.1")
+    app.setApplicationName("DiagAutoClinicOS Futuristic")
+    app.setApplicationVersion("3.0.0")
     app.setOrganizationName("AutoClinic Pro")
     
-    # Create and show main window
-    launcher = ProfessionalDiagAutoClinicLauncher()
+    launcher = ModernLauncher()
     launcher.show()
     
-    # Start application
     sys.exit(app.exec())
 
 if __name__ == "__main__":
