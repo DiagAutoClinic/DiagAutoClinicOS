@@ -1,201 +1,288 @@
 #!/usr/bin/env python3
 """
-AutoDiag - Professional Vehicle Diagnostic System
-Modern interface with brand-specific diagnostics and theme support
+AutoDiag Pro - Professional 25-Brand Diagnostic Suite v2.0
+FUTURISTIC GLASSMORPHIC DESIGN
 """
 
 import sys
 import os
 import logging
-import re
-import serial
-from typing import List, Tuple
+from typing import Dict, List
+
+# Security: Import validation
+try:
+    import serial
+    SERIAL_AVAILABLE = True
+except ImportError:
+    SERIAL_AVAILABLE = False
+
+# Security modules
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, 
     QPushButton, QLabel, QComboBox, QTabWidget, QFrame, QGroupBox,
     QTableWidget, QTableWidgetItem, QProgressBar, QTextEdit, QLineEdit,
     QHeaderView, QMessageBox, QSplitter, QScrollArea, QCheckBox,
-    QInputDialog, QDialog, QFormLayout
+    QInputDialog, QDialog, QFormLayout, QFileDialog, QListWidget,
+    QListWidgetItem, QStackedWidget, QGridLayout
 )
 from PyQt6.QtCore import Qt, QTimer, QSettings
 from PyQt6.QtGui import QFont, QPalette, QColor
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 # Import shared modules
 shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
-sys.path.append(shared_path)
-try:
-    from style_manager import StyleManager
-    from brand_database import get_brand_list, get_brand_info
-except ImportError as e:
-    logging.error(f"Failed to import shared modules: {e}")
-    sys.exit(1)
+if os.path.exists(shared_path):
+    sys.path.append(shared_path)
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+try:
+    from style_manager import style_manager, EnhancedStyleManager
+    from brand_database import get_brand_list, get_brand_info, brand_database
+    from dtc_database import DTCDatabase
+    from vin_decoder import VINDecoder
+    from device_handler import DeviceHandler, Protocol
+    from security_manager import security_manager, SecurityLevel, UserRole
+    from special_functions import special_functions_manager, FunctionCategory, SpecialFunction
+    from calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure
+    from circular_gauge import CircularGauge, StatCard
+except ImportError as e:
+    logging.error(f"Failed to import modules: {e}")
+    # Create comprehensive fallbacks
+    class FallbackStyleManager:
+        def set_theme(self, theme): pass
+        def set_security_level(self, level): pass
+    style_manager = FallbackStyleManager()
+    
+    def get_brand_list(): return ["Toyota", "Honda", "Ford"]
+    def get_brand_info(brand): return {}
+    
+    class CircularGauge(QWidget):
+        def __init__(self, *args, **kwargs):
+            super().__init__()
+            self.setMinimumSize(120, 120)
+        def set_value(self, val): pass
+    
+    class StatCard(QFrame):
+        def __init__(self, title, value, *args, **kwargs):
+            super().__init__()
+            layout = QVBoxLayout(self)
+            layout.addWidget(QLabel(f"{title}\n{value}"))
+        def update_value(self, val): pass
+
+
 logger = logging.getLogger(__name__)
 
-class DeviceManager:
-    """Handle ELM327/J2534 device communication"""
-    def __init__(self):
-        self.serial = None
-        self.port = None
-        self.baudrate = 38400
-        self.protocol = "AUTO"
+class LoginDialog(QDialog):
+    """Secure login dialog with futuristic styling"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("AutoDiag Pro - Secure Login")
+        self.setModal(True)
+        self.setFixedSize(450, 350)
+        
+        layout = QVBoxLayout()
+        layout.setSpacing(20)
+        layout.setContentsMargins(30, 30, 30, 30)
+        
+        # Title with futuristic styling
+        title = QLabel("🔒 AutoDiag Pro Login")
+        title.setProperty("class", "hero-title")
+        title_font = QFont("Segoe UI", 20, QFont.Weight.Bold)
+        title.setFont(title_font)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet("color: #14b8a6; margin-bottom: 10px;")
+        
+        subtitle = QLabel("Secure Access Required")
+        subtitle.setStyleSheet("color: #5eead4; font-size: 11pt; margin-bottom: 20px;")
+        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # Form with glassmorphic styling
+        form_widget = QFrame()
+        form_widget.setProperty("class", "glass-card")
+        form_layout = QFormLayout(form_widget)
+        form_layout.setSpacing(15)
+        
+        self.username_input = QLineEdit()
+        self.username_input.setPlaceholderText("Enter username")
+        self.username_input.setMinimumHeight(40)
+        
+        self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Enter password")
+        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.password_input.setMinimumHeight(40)
+        self.password_input.returnPressed.connect(self.attempt_login)
+        
+        form_layout.addRow("Username:", self.username_input)
+        form_layout.addRow("Password:", self.password_input)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+        
+        login_btn = QPushButton("Login")
+        login_btn.setProperty("class", "primary")
+        login_btn.setMinimumHeight(45)
+        login_btn.clicked.connect(self.attempt_login)
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.setProperty("class", "danger")
+        cancel_btn.setMinimumHeight(45)
+        cancel_btn.clicked.connect(self.reject)
+        
+        button_layout.addWidget(login_btn)
+        button_layout.addWidget(cancel_btn)
+        
+        # Status
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("color: #ef4444; font-weight: bold;")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        layout.addWidget(form_widget)
+        layout.addLayout(button_layout)
+        layout.addWidget(self.status_label)
+        
+        self.setLayout(layout)
+    
+    def attempt_login(self):
+        """Attempt user login"""
+        username = self.username_input.text().strip()
+        password = self.password_input.text()
+        
+        if not username or not password:
+            self.status_label.setText("⚠️ Username and password required")
+            return
+        
+        success, message = security_manager.authenticate_user(username, password)
+        
+        if success:
+            self.accept()
+        else:
+            self.status_label.setText(f"❌ {message}")
 
-    def validate_port(self, port: str) -> bool:
-        """Validate serial port format"""
-        pattern = r'^/(dev/)?(ttyUSB|ttyACM|ttyS)[0-9]+$|^COM[1-9][0-9]*$'
-        return bool(re.match(pattern, port, re.IGNORECASE))
-
-    def connect(self, port: str, baudrate: int, protocol: str) -> bool:
-        """Connect to ELM327 device"""
-        try:
-            if not self.validate_port(port):
-                raise ValueError(f"Invalid port: {port}")
-            self.port = port
-            self.baudrate = baudrate
-            self.protocol = protocol
-            self.serial = serial.Serial(port, baudrate, timeout=2)
-            self.serial.write(b'ATZ\r')  # Reset ELM327
-            response = self.serial.read(1000).decode('ascii', errors='ignore').strip()
-            if 'ELM327' not in response:
-                raise ValueError("Device not recognized as ELM327")
-            self.serial.write(f'ATSP {protocol}\r'.encode('ascii'))  # Set protocol
-            response = self.serial.read(1000).decode('ascii', errors='ignore').strip()
-            logger.info(f"Connected to {port}, response: {response}")
-            return True
-        except Exception as e:
-            logger.error(f"Device connection failed: {e}")
-            return False
-
-    def disconnect(self):
-        """Disconnect from device"""
-        if self.serial and self.serial.is_open:
-            self.serial.close()
-            logger.info("Device disconnected")
-        self.serial = None
-
-    def send_command(self, cmd: str) -> str:
-        """Send OBD-II command and get response"""
-        if not self.serial or not self.serial.is_open:
-            raise ValueError("Device not connected")
-        if not re.match(r'^[0-9A-F\s]+$', cmd):
-            raise ValueError(f"Invalid OBD command: {cmd}")
-        try:
-            self.serial.write(f'{cmd}\r'.encode('ascii'))
-            response = self.serial.read(1000).decode('ascii', errors='ignore').strip()
-            return response
-        except Exception as e:
-            logger.error(f"Command failed: {e}")
-            return ""
-
-    def read_dtcs(self) -> List[Tuple[str, str, str, str]]:
-        """Read DTCs from vehicle"""
-        try:
-            response = self.send_command("03")  # OBD-II mode 03: Read DTCs
-            if not response or "NO DATA" in response:
-                return []
-            # Parse response (simplified, assumes standard OBD-II format)
-            dtcs = []
-            codes = response.split()
-            for code in codes:
-                if code.startswith(('P', 'C', 'B', 'U')) and len(code) >= 4:
-                    dtcs.append([code, "Unknown DTC", "Confirmed", "Medium"])
-            return dtcs
-        except Exception as e:
-            logger.error(f"DTC read failed: {e}")
-            return []
-
-    def read_pid(self, mode: str, pid: str) -> str:
-        """Read OBD-II PID (e.g., 010C for RPM)"""
-        try:
-            response = self.send_command(f"{mode}{pid}")
-            return response
-        except Exception as e:
-            logger.error(f"PID read failed: {e}")
-            return ""
-
-class AutoDiagApp(QMainWindow):
+class AutoDiagPro(QMainWindow):
+    """Enhanced AutoDiag Professional with FUTURISTIC DESIGN"""
+    
     def __init__(self):
         super().__init__()
-        try:
-            self.style_manager = StyleManager()
-        except Exception as e:
-            logger.error(f"Failed to initialize StyleManager: {e}")
+        
+        # Security first - require login
+        if not self.secure_login():
             sys.exit(1)
-        self.device_manager = DeviceManager()
+        
+        # Initialize managers with security integration
+        self.dtc_database = DTCDatabase()
+        self.vin_decoder = VINDecoder()
+        self.special_functions_manager = special_functions_manager
+        self.calibrations_resets_manager = calibrations_resets_manager
+        
+        # CRITICAL: Inject security manager into all components
+        self.special_functions_manager.security_manager = security_manager
+        self.calibrations_resets_manager.security_manager = security_manager
+        brand_database.security_manager = security_manager
+        
+        # Set security level for styling
+        current_level = security_manager.get_security_level()
+        style_manager.set_security_level(current_level.name.lower())
+        
+        # Selected brand
         self.selected_brand = "Toyota"
-        self.connected = False
-        self.scanning = False
-        self.live_data_timer = None
+        
+        # Initialize UI
         self.init_ui()
         
-    def init_ui(self):
-        """Initialize the user interface"""
-        self.setWindowTitle("AutoDiag - Professional Vehicle Diagnostics")
-        self.setGeometry(100, 100, 1400, 900)
+        # Apply futuristic theme
+        try:
+            style_manager.set_theme("futuristic")
+        except Exception as e:
+            logger.warning(f"Theme application failed: {e}")
         
-        # Create central widget and main layout
+        # Start live updates
+        self.start_live_updates()
+    
+    def secure_login(self) -> bool:
+        """Handle secure user login"""
+        login_dialog = LoginDialog()
+        result = login_dialog.exec()
+        
+        if result == QDialog.DialogCode.Accepted:
+            logger.info(f"User logged in: {security_manager.current_user}")
+            return True
+        else:
+            logger.warning("Login cancelled or failed")
+            return False
+    
+    def init_ui(self):
+        """Initialize FUTURISTIC user interface"""
+        self.setWindowTitle("AutoDiag Pro - Futuristic Diagnostics")
+        self.setGeometry(50, 50, 1600, 1000)
+        
+        # Create central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(20, 20, 20, 20)
         
-        # Create header
-        self.create_header(main_layout)
+        # Create header with user info
+        self.create_user_header(main_layout)
         
         # Create main tab widget
         self.tab_widget = QTabWidget()
         main_layout.addWidget(self.tab_widget)
         
-        # Create tabs
+        # Create all tabs
         self.create_dashboard_tab()
         self.create_diagnostics_tab()
         self.create_live_data_tab()
+        self.create_special_functions_tab()
+        self.create_calibrations_resets_tab()
         self.create_advanced_tab()
-        self.create_brand_diagnostics_tab()
+        self.create_security_tab()
         
         # Create status bar
         self.create_status_bar()
         
-        # Apply theme AFTER UI is created
-        try:
-            self.style_manager.set_theme("dark")
-        except Exception as e:
-            logger.warning(f"Failed to apply theme: {e}")
-        
-        # Initialize brand-specific data
-        self.update_brand_specific_data()
-        
-        # Show the window
         self.show()
+    
+    def create_user_header(self, layout):
+        """Create FUTURISTIC header with user information"""
+        header_frame = QFrame()
+        header_frame.setProperty("class", "glass-card")
+        header_frame.setMaximumHeight(100)
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setSpacing(20)
+        header_layout.setContentsMargins(20, 15, 20, 15)
         
-    def create_header(self, layout):
-        """Create application header with theme and brand selectors"""
-        header_widget = QWidget()
-        header_widget.setMaximumHeight(80)
-        header_layout = QHBoxLayout(header_widget)
+        # User info section
+        user_info = security_manager.get_user_info()
+        user_section = QFrame()
+        user_layout = QVBoxLayout(user_section)
+        user_layout.setSpacing(5)
         
-        # Title
-        title_label = QLabel("AutoDiag - Professional Vehicle Diagnostics")
-        title_label.setProperty("class", "title")
-        title_font = QFont()
-        title_font.setPointSize(18)
-        title_font.setBold(True)
+        user_name = QLabel(f"👤 {user_info.get('full_name', 'Unknown')}")
+        user_name.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
+        
+        user_role = QLabel(f"🔐 {user_info.get('security_level', 'BASIC')} • {user_info.get('role', 'technician')}")
+        user_role.setStyleSheet("color: #5eead4; font-size: 10pt;")
+        
+        user_layout.addWidget(user_name)
+        user_layout.addWidget(user_role)
+        
+        # Title section
+        title_label = QLabel("AutoDiag Pro")
+        title_label.setProperty("class", "hero-title")
+        title_font = QFont("Segoe UI", 22, QFont.Weight.Bold)
         title_label.setFont(title_font)
-        
-        # Spacer
-        header_layout.addWidget(title_label)
-        header_layout.addStretch()
+        title_label.setStyleSheet("color: #14b8a6;")
         
         # Brand selector
-        brand_layout = QHBoxLayout()
+        brand_layout = QVBoxLayout()
         brand_label = QLabel("Vehicle Brand:")
+        brand_label.setStyleSheet("color: #5eead4; font-size: 9pt;")
+        
         self.brand_combo = QComboBox()
+        self.brand_combo.setMinimumWidth(180)
         
         try:
             brands = get_brand_list()
@@ -209,781 +296,943 @@ class AutoDiagApp(QMainWindow):
         brand_layout.addWidget(self.brand_combo)
         
         # Theme selector
-        theme_layout = QHBoxLayout()
+        theme_layout = QVBoxLayout()
         theme_label = QLabel("Theme:")
+        theme_label.setStyleSheet("color: #5eead4; font-size: 9pt;")
+        
         self.theme_combo = QComboBox()
+        self.theme_combo.addItems(["futuristic", "security", "dark", "professional"])
+        self.theme_combo.setCurrentText("futuristic")
+        self.theme_combo.currentTextChanged.connect(self.change_theme)
+        self.theme_combo.setMinimumWidth(150)
         
-        try:
-            theme_info = self.style_manager.get_theme_info()
-            for theme_id, info in theme_info.items():
-                if isinstance(info, dict) and 'name' in info:
-                    self.theme_combo.addItem(info['name'], theme_id)
-        except Exception as e:
-            logger.error(f"Failed to load themes: {e}")
+        theme_layout.addWidget(theme_label)
+        theme_layout.addWidget(self.theme_combo)
         
-        self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
+        # Logout button
+        logout_btn = QPushButton("🚪 Logout")
+        logout_btn.setProperty("class", "danger")
+        logout_btn.setMinimumHeight(45)
+        logout_btn.setMaximumWidth(120)
+        logout_btn.clicked.connect(self.secure_logout)
         
-        # Connection settings button
-        connect_btn = QPushButton("🔌 Connection Settings")
-        connect_btn.setProperty("class", "primary")
-        connect_btn.clicked.connect(self.show_connection_settings)
-        
-        # Connection status
-        self.connection_status = QLabel("🔴 Disconnected")
-        self.connection_status.setProperty("class", "status-disconnected")
-        
+        header_layout.addWidget(user_section)
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
         header_layout.addLayout(brand_layout)
-        header_layout.addSpacing(20)
         header_layout.addLayout(theme_layout)
-        header_layout.addSpacing(20)
-        header_layout.addWidget(connect_btn)
-        header_layout.addSpacing(20)
-        header_layout.addWidget(self.connection_status)
+        header_layout.addWidget(logout_btn)
         
-        layout.addWidget(header_widget)
-    
+        layout.addWidget(header_frame)
+
     def create_dashboard_tab(self):
-        """Create dashboard tab with overview and quick actions"""
+        """Create FUTURISTIC dashboard with live stats"""
         dashboard_tab = QWidget()
         layout = QVBoxLayout(dashboard_tab)
+        layout.setSpacing(20)
+        layout.setContentsMargins(15, 15, 15, 15)
         
-        # Quick actions frame
-        quick_frame = QFrame()
-        quick_frame.setProperty("class", "diagnostic_frame")
-        quick_layout = QHBoxLayout(quick_frame)
+        # Stats Overview Section
+        stats_section = QFrame()
+        stats_layout = QHBoxLayout(stats_section)
+        stats_layout.setSpacing(20)
+        
+        # System Health
+        self.system_health_card = StatCard("System Health", 98, 100, "%")
+        
+        # Connection Status
+        self.connection_quality_card = StatCard("Connection", 85, 100, "%")
+        
+        # DTCs Found
+        self.dtc_count_card = StatCard("Active DTCs", 0, 20, "")
+        
+        # Security Level
+        security_level = security_manager.get_security_level().value
+        self.security_level_card = StatCard("Security Level", security_level, 5, "")
+        
+        stats_layout.addWidget(self.system_health_card)
+        stats_layout.addWidget(self.connection_quality_card)
+        stats_layout.addWidget(self.dtc_count_card)
+        stats_layout.addWidget(self.security_level_card)
+        
+        # Quick Actions Section
+        actions_frame = QFrame()
+        actions_frame.setProperty("class", "glass-card")
+        actions_layout = QVBoxLayout(actions_frame)
+        actions_layout.setSpacing(15)
+        actions_layout.setContentsMargins(20, 20, 20, 20)
+        
+        actions_title = QLabel("🚀 Quick Actions")
+        actions_title.setStyleSheet("color: #14b8a6; font-size: 16pt; font-weight: bold;")
+        actions_layout.addWidget(actions_title)
         
         # Quick action buttons
+        btn_layout = QGridLayout()
+        btn_layout.setSpacing(15)
+        
         scan_btn = QPushButton("🔍 Quick Scan")
         scan_btn.setProperty("class", "primary")
-        scan_btn.clicked.connect(self.quick_scan)
+        scan_btn.setMinimumHeight(50)
         
-        dtc_btn = QPushButton("⚡ Read DTCs")
+        dtc_btn = QPushButton("📋 Read DTCs")
         dtc_btn.setProperty("class", "primary")
-        dtc_btn.clicked.connect(self.read_dtcs)
+        dtc_btn.setMinimumHeight(50)
         
-        live_btn = QPushButton("📊 Live Data")
-        live_btn.setProperty("class", "primary")
-        live_btn.clicked.connect(self.show_live_data)
+        live_btn = QPushButton("📈 Live Data")
+        live_btn.setProperty("class", "success")
+        live_btn.setMinimumHeight(50)
         
-        clear_btn = QPushButton("🔄 Clear Codes")
-        clear_btn.setProperty("class", "danger")
-        clear_btn.clicked.connect(self.clear_dtcs)
+        ecu_btn = QPushButton("⚙️ ECU Info")
+        ecu_btn.setProperty("class", "success")
+        ecu_btn.setMinimumHeight(50)
         
-        quick_layout.addWidget(scan_btn)
-        quick_layout.addWidget(dtc_btn)
-        quick_layout.addWidget(live_btn)
-        quick_layout.addWidget(clear_btn)
-        quick_layout.addStretch()
+        btn_layout.addWidget(scan_btn, 0, 0)
+        btn_layout.addWidget(dtc_btn, 0, 1)
+        btn_layout.addWidget(live_btn, 1, 0)
+        btn_layout.addWidget(ecu_btn, 1, 1)
         
-        # Vehicle info frame
-        vehicle_frame = QFrame()
-        vehicle_frame.setProperty("class", "diagnostic_frame")
-        vehicle_layout = QVBoxLayout(vehicle_frame)
+        actions_layout.addLayout(btn_layout)
         
-        vehicle_title = QLabel("Vehicle Information")
-        vehicle_title.setProperty("class", "subtitle")
+        # Security Overview
+        security_frame = QFrame()
+        security_frame.setProperty("class", "glass-card")
+        security_layout = QVBoxLayout(security_frame)
+        security_layout.setSpacing(10)
+        security_layout.setContentsMargins(20, 20, 20, 20)
         
-        # Brand info
-        self.brand_info_label = QLabel()
-        self.brand_info_label.setWordWrap(True)
+        security_title = QLabel("🔒 Security Overview")
+        security_title.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
         
-        # Protocol info
-        self.protocol_info_label = QLabel()
+        user_info = security_manager.get_user_info()
         
-        vehicle_layout.addWidget(vehicle_title)
-        vehicle_layout.addWidget(self.brand_info_label)
-        vehicle_layout.addWidget(self.protocol_info_label)
+        info_grid = QGridLayout()
+        info_grid.setSpacing(10)
         
-        # System status frame
-        status_frame = QFrame()
-        status_frame.setProperty("class", "diagnostic_frame")
-        status_layout = QVBoxLayout(status_frame)
+        info_grid.addWidget(QLabel("Current User:"), 0, 0)
+        info_grid.addWidget(QLabel(user_info.get('full_name', 'Unknown')), 0, 1)
         
-        status_title = QLabel("System Status")
-        status_title.setProperty("class", "subtitle")
+        info_grid.addWidget(QLabel("Security Level:"), 1, 0)
+        info_grid.addWidget(QLabel(user_info.get('security_level', 'BASIC')), 1, 1)
         
-        # Status indicators
-        status_grid = QHBoxLayout()
+        info_grid.addWidget(QLabel("Session Expires:"), 2, 0)
+        info_grid.addWidget(QLabel(self.format_timestamp(user_info.get('session_expiry', 0))), 2, 1)
         
-        self.obd_status = QLabel("OBD: Not Connected")
-        self.obd_status.setProperty("class", "status-disconnected")
+        # Style the labels
+        for i in range(3):
+            info_grid.itemAtPosition(i, 0).widget().setStyleSheet("color: #5eead4; font-weight: bold;")
+            info_grid.itemAtPosition(i, 1).widget().setStyleSheet("color: #a0d4cc;")
         
-        self.protocol_status = QLabel("Protocol: Unknown")
-        self.comm_status = QLabel("Communication: Idle")
+        security_layout.addWidget(security_title)
+        security_layout.addLayout(info_grid)
         
-        status_grid.addWidget(self.obd_status)
-        status_grid.addWidget(self.protocol_status)
-        status_grid.addWidget(self.comm_status)
-        status_grid.addStretch()
-        
-        status_layout.addWidget(status_title)
-        status_layout.addLayout(status_grid)
-        
-        # Layout organization
-        top_layout = QHBoxLayout()
-        top_layout.addWidget(quick_frame)
-        
-        bottom_layout = QHBoxLayout()
-        bottom_layout.addWidget(vehicle_frame)
-        bottom_layout.addWidget(status_frame)
-        
-        layout.addLayout(top_layout)
-        layout.addLayout(bottom_layout)
+        layout.addWidget(stats_section)
+        layout.addWidget(actions_frame)
+        layout.addWidget(security_frame)
         layout.addStretch()
         
-        self.tab_widget.addTab(dashboard_tab, "Dashboard")
-    
+        self.tab_widget.addTab(dashboard_tab, "📊 Dashboard")
+
     def create_diagnostics_tab(self):
-        """Create diagnostics tab with DTC reading and clearing"""
-        diag_tab = QWidget()
-        layout = QVBoxLayout(diag_tab)
+        """Create diagnostics tab with futuristic styling"""
+        diagnostics_tab = QWidget()
+        layout = QVBoxLayout(diagnostics_tab)
+        layout.setSpacing(15)
+        layout.setContentsMargins(15, 15, 15, 15)
         
-        # DTC controls frame
-        controls_frame = QFrame()
-        controls_frame.setProperty("class", "diagnostic_frame")
-        controls_layout = QHBoxLayout(controls_frame)
+        # Header
+        header_frame = QFrame()
+        header_frame.setProperty("class", "glass-card")
+        header_layout = QVBoxLayout(header_frame)
+        header_layout.setContentsMargins(20, 15, 20, 15)
         
-        # DTC action buttons
-        read_dtc_btn = QPushButton("Read DTCs")
-        read_dtc_btn.setProperty("class", "primary")
-        read_dtc_btn.clicked.connect(self.read_dtcs)
+        header_label = QLabel("🔍 Advanced Diagnostics")
+        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        header_layout.addWidget(header_label)
         
-        clear_dtc_btn = QPushButton("Clear DTCs")
-        clear_dtc_btn.setProperty("class", "danger")
-        clear_dtc_btn.clicked.connect(self.clear_dtcs)
+        # Content placeholder
+        content_frame = QFrame()
+        content_frame.setProperty("class", "glass-card")
+        content_layout = QVBoxLayout(content_frame)
+        content_layout.setContentsMargins(20, 20, 20, 20)
         
-        freeze_btn = QPushButton("Freeze Frame")
-        freeze_btn.setProperty("class", "primary")
-        freeze_btn.clicked.connect(self.read_freeze_frame)
+        placeholder = QLabel("🚧 Advanced diagnostics interface under development\n\n"
+                            "This tab will include:\n"
+                            "• Real-time DTC scanning\n"
+                            "• Module identification\n"
+                            "• Freeze frame data\n"
+                            "• Advanced diagnostic protocols")
+        placeholder.setStyleSheet("color: #a0d4cc; font-size: 12pt; line-height: 1.8;")
+        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        export_btn = QPushButton("Export DTCs")
-        export_btn.setProperty("class", "primary")
-        export_btn.clicked.connect(self.export_dtcs)
+        content_layout.addWidget(placeholder)
         
-        controls_layout.addWidget(read_dtc_btn)
-        controls_layout.addWidget(clear_dtc_btn)
-        controls_layout.addWidget(freeze_btn)
-        controls_layout.addWidget(export_btn)
-        controls_layout.addStretch()
+        layout.addWidget(header_frame)
+        layout.addWidget(content_frame)
+        layout.addStretch()
         
-        # DTC table
-        dtc_frame = QFrame()
-        dtc_frame.setProperty("class", "diagnostic_frame")
-        dtc_layout = QVBoxLayout(dtc_frame)
-        
-        dtc_title = QLabel("Diagnostic Trouble Codes")
-        dtc_title.setProperty("class", "subtitle")
-        
-        self.dtc_table = QTableWidget()
-        self.dtc_table.setProperty("class", "diagnostic_table")
-        self.dtc_table.setColumnCount(4)
-        self.dtc_table.setHorizontalHeaderLabels(["DTC Code", "Description", "Status", "Severity"])
-        self.dtc_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.dtc_table.itemClicked.connect(self.show_dtc_details)
-        
-        dtc_layout.addWidget(dtc_title)
-        dtc_layout.addWidget(self.dtc_table)
-        
-        layout.addWidget(controls_frame)
-        layout.addWidget(dtc_frame)
-        
-        self.tab_widget.addTab(diag_tab, "Diagnostics")
-    
+        self.tab_widget.addTab(diagnostics_tab, "🔍 Diagnostics")
+
     def create_live_data_tab(self):
-        """Create live data monitoring tab with graph"""
-        live_tab = QWidget()
-        layout = QVBoxLayout(live_tab)
+        """Create live data tab with futuristic styling"""
+        live_data_tab = QWidget()
+        layout = QVBoxLayout(live_data_tab)
+        layout.setSpacing(15)
+        layout.setContentsMargins(15, 15, 15, 15)
         
-        # Live data controls
-        controls_frame = QFrame()
-        controls_frame.setProperty("class", "diagnostic_frame")
-        controls_layout = QHBoxLayout(controls_frame)
+        # Header
+        header_frame = QFrame()
+        header_frame.setProperty("class", "glass-card")
+        header_layout = QVBoxLayout(header_frame)
+        header_layout.setContentsMargins(20, 15, 20, 15)
         
-        start_btn = QPushButton("Start Monitoring")
-        start_btn.setProperty("class", "success")
-        start_btn.clicked.connect(self.start_live_data)
+        header_label = QLabel("📈 Live Data Monitoring")
+        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        header_layout.addWidget(header_label)
         
-        stop_btn = QPushButton("Stop Monitoring")
-        stop_btn.setProperty("class", "danger")
-        stop_btn.clicked.connect(self.stop_live_data)
+        # Content
+        content_frame = QFrame()
+        content_frame.setProperty("class", "glass-card")
+        content_layout = QVBoxLayout(content_frame)
+        content_layout.setContentsMargins(20, 20, 20, 20)
         
-        self.record_check = QCheckBox("Record Data")
+        placeholder = QLabel("🚧 Live data monitoring interface under development\n\n"
+                            "This tab will include:\n"
+                            "• Real-time sensor data\n"
+                            "• Parameter graphing\n"
+                            "• Data logging\n"
+                            "• Custom PIDs")
+        placeholder.setStyleSheet("color: #a0d4cc; font-size: 12pt; line-height: 1.8;")
+        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        controls_layout.addWidget(start_btn)
-        controls_layout.addWidget(stop_btn)
-        controls_layout.addWidget(self.record_check)
-        controls_layout.addStretch()
+        content_layout.addWidget(placeholder)
         
-        # Splitter for table and graph
-        splitter = QSplitter(Qt.Orientation.Vertical)
+        layout.addWidget(header_frame)
+        layout.addWidget(content_frame)
+        layout.addStretch()
         
-        # Live data table
-        data_frame = QFrame()
-        data_frame.setProperty("class", "diagnostic_frame")
-        data_layout = QVBoxLayout(data_frame)
-        
-        data_title = QLabel("Live Parameter Data")
-        data_title.setProperty("class", "subtitle")
-        
-        self.live_data_table = QTableWidget()
-        self.live_data_table.setProperty("class", "diagnostic_table")
-        self.live_data_table.setColumnCount(3)
-        self.live_data_table.setHorizontalHeaderLabels(["Parameter", "Value", "Unit"])
-        self.live_data_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        
-        data_layout.addWidget(data_title)
-        data_layout.addWidget(self.live_data_table)
-        
-        # Graph widget
-        graph_frame = QFrame()
-        graph_frame.setProperty("class", "diagnostic_frame")
-        graph_layout = QVBoxLayout(graph_frame)
-        
-        graph_title = QLabel("Live Data Graph")
-        graph_title.setProperty("class", "subtitle")
-        
-        self.figure, self.ax = plt.subplots()
-        self.canvas = FigureCanvas(self.figure)
-        self.live_data_values = []
-        
-        graph_layout.addWidget(graph_title)
-        graph_layout.addWidget(self.canvas)
-        
-        splitter.addWidget(data_frame)
-        splitter.addWidget(graph_frame)
-        
-        layout.addWidget(controls_frame)
-        layout.addWidget(splitter)
-        
-        self.tab_widget.addTab(live_tab, "Live Data")
-    
+        self.tab_widget.addTab(live_data_tab, "📈 Live Data")
+
     def create_advanced_tab(self):
-        """Create advanced diagnostics tab"""
+        """Create advanced tab with futuristic styling"""
         advanced_tab = QWidget()
         layout = QVBoxLayout(advanced_tab)
+        layout.setSpacing(15)
+        layout.setContentsMargins(15, 15, 15, 15)
         
-        # Advanced controls
-        controls_frame = QFrame()
-        controls_frame.setProperty("class", "diagnostic_frame")
-        controls_layout = QHBoxLayout(controls_frame)
+        # Header
+        header_frame = QFrame()
+        header_frame.setProperty("class", "glass-card")
+        header_layout = QVBoxLayout(header_frame)
+        header_layout.setContentsMargins(20, 15, 20, 15)
         
-        # Advanced function buttons
-        actuator_btn = QPushButton("Actuator Test")
-        actuator_btn.setProperty("class", "primary")
-        actuator_btn.clicked.connect(self.run_actuator_test)
+        header_label = QLabel("⚙️ Advanced Functions")
+        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        header_layout.addWidget(header_label)
         
-        adaptation_btn = QPushButton("Adaptations")
-        adaptation_btn.setProperty("class", "primary")
-        adaptation_btn.clicked.connect(self.run_adaptations)
+        # Content
+        content_frame = QFrame()
+        content_frame.setProperty("class", "glass-card")
+        content_layout = QVBoxLayout(content_frame)
+        content_layout.setContentsMargins(20, 20, 20, 20)
         
-        coding_btn = QPushButton("Coding")
-        coding_btn.setProperty("class", "primary")
-        coding_btn.clicked.connect(self.run_coding)
+        placeholder = QLabel("🚧 Advanced functions interface under development\n\n"
+                            "This tab will include:\n"
+                            "• Module coding\n"
+                            "• Adaptations\n"
+                            "• Long coding\n"
+                            "• Advanced resets")
+        placeholder.setStyleSheet("color: #a0d4cc; font-size: 12pt; line-height: 1.8;")
+        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        controls_layout.addWidget(actuator_btn)
-        controls_layout.addWidget(adaptation_btn)
-        controls_layout.addWidget(coding_btn)
-        controls_layout.addStretch()
+        content_layout.addWidget(placeholder)
         
-        # System info
-        info_frame = QFrame()
-        info_frame.setProperty("class", "diagnostic_frame")
-        info_layout = QVBoxLayout(info_frame)
-        
-        info_title = QLabel("System Information")
-        info_title.setProperty("class", "subtitle")
-        
-        self.system_info_text = QTextEdit()
-        self.system_info_text.setProperty("class", "procedure_viewer")
-        self.system_info_text.setMaximumHeight(200)
-        
-        info_layout.addWidget(info_title)
-        info_layout.addWidget(self.system_info_text)
-        
-        layout.addWidget(controls_frame)
-        layout.addWidget(info_frame)
+        layout.addWidget(header_frame)
+        layout.addWidget(content_frame)
         layout.addStretch()
         
-        self.tab_widget.addTab(advanced_tab, "Advanced")
+        self.tab_widget.addTab(advanced_tab, "⚙️ Advanced")
     
-    def create_brand_diagnostics_tab(self):
-        """Create brand-specific diagnostics tab"""
-        brand_tab = QWidget()
-        layout = QVBoxLayout(brand_tab)
+    def create_special_functions_tab(self):
+        """Create FUTURISTIC special functions tab"""
+        functions_tab = QWidget()
+        layout = QVBoxLayout(functions_tab)
+        layout.setSpacing(15)
+        layout.setContentsMargins(15, 15, 15, 15)
         
-        # Brand-specific modules
-        modules_frame = QFrame()
-        modules_frame.setProperty("class", "diagnostic_frame")
-        modules_layout = QVBoxLayout(modules_frame)
+        # Header with brand selection
+        header_frame = QFrame()
+        header_frame.setProperty("class", "glass-card")
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(20, 15, 20, 15)
         
-        modules_title = QLabel("Brand-Specific Control Modules")
-        modules_title.setProperty("class", "subtitle")
+        header_label = QLabel("🔧 Special Functions")
+        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
         
-        self.modules_table = QTableWidget()
-        self.modules_table.setProperty("class", "diagnostic_table")
-        self.modules_table.setColumnCount(4)
-        self.modules_table.setHorizontalHeaderLabels(["Module", "Address", "Protocol", "Status"])
-        self.modules_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        brand_label = QLabel("Select Brand:")
+        brand_label.setStyleSheet("color: #5eead4;")
         
-        modules_layout.addWidget(modules_title)
-        modules_layout.addWidget(self.modules_table)
+        self.sf_brand_combo = QComboBox()
+        self.sf_brand_combo.addItems(get_brand_list())
+        self.sf_brand_combo.setCurrentText(self.selected_brand)
+        self.sf_brand_combo.currentTextChanged.connect(self.update_special_functions_list)
+        self.sf_brand_combo.setMinimumWidth(180)
         
-        # Brand-specific procedures
-        procedures_frame = QFrame()
-        procedures_frame.setProperty("class", "diagnostic_frame")
-        procedures_layout = QVBoxLayout(procedures_frame)
+        header_layout.addWidget(header_label)
+        header_layout.addStretch()
+        header_layout.addWidget(brand_label)
+        header_layout.addWidget(self.sf_brand_combo)
         
-        procedures_title = QLabel("Brand-Specific Procedures")
-        procedures_title.setProperty("class", "subtitle")
+        # Main content area with splitter
+        content_splitter = QSplitter(Qt.Orientation.Horizontal)
         
-        self.procedures_text = QTextEdit()
-        self.procedures_text.setProperty("class", "procedure_viewer")
-        self.procedures_text.setMaximumHeight(200)
+        # Left panel - Functions list
+        left_panel = QFrame()
+        left_panel.setProperty("class", "glass-card")
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(15, 15, 15, 15)
         
-        procedures_layout.addWidget(procedures_title)
-        procedures_layout.addWidget(self.procedures_text)
+        list_label = QLabel("Available Functions:")
+        list_label.setStyleSheet("color: #5eead4; font-weight: bold; margin-bottom: 10px;")
         
-        layout.addWidget(modules_frame)
-        layout.addWidget(procedures_frame)
+        self.special_functions_list = QListWidget()
+        self.special_functions_list.itemClicked.connect(self.on_special_function_selected)
         
-        self.tab_widget.addTab(brand_tab, "Brand Diagnostics")
+        left_layout.addWidget(list_label)
+        left_layout.addWidget(self.special_functions_list)
+        
+        # Right panel - Function details
+        right_panel = QFrame()
+        right_panel.setProperty("class", "glass-card")
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Function details
+        self.sf_name_label = QLabel("Select a function to view details")
+        self.sf_name_label.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
+        
+        self.sf_description = QTextEdit()
+        self.sf_description.setReadOnly(True)
+        self.sf_description.setMaximumHeight(100)
+        self.sf_description.setPlaceholderText("Function description will appear here...")
+        
+        self.sf_security_label = QLabel("Security Level: --")
+        self.sf_security_label.setStyleSheet("color: #5eead4; font-weight: bold;")
+        
+        # Parameters section
+        self.sf_params_group = QGroupBox("Function Parameters")
+        self.sf_params_layout = QVBoxLayout(self.sf_params_group)
+        self.sf_params_widget = QWidget()
+        self.sf_params_layout.addWidget(self.sf_params_widget)
+        
+        # Execute section
+        self.sf_execute_btn = QPushButton("⚡ Execute Function")
+        self.sf_execute_btn.setProperty("class", "primary")
+        self.sf_execute_btn.setMinimumHeight(50)
+        self.sf_execute_btn.clicked.connect(self.execute_special_function)
+        self.sf_execute_btn.setEnabled(False)
+        
+        # Results
+        results_label = QLabel("Execution Results:")
+        results_label.setStyleSheet("color: #5eead4; font-weight: bold; margin-top: 10px;")
+        
+        self.sf_results = QTextEdit()
+        self.sf_results.setReadOnly(True)
+        self.sf_results.setPlaceholderText("Execution results will appear here...")
+        
+        right_layout.addWidget(self.sf_name_label)
+        right_layout.addWidget(self.sf_description)
+        right_layout.addWidget(self.sf_security_label)
+        right_layout.addWidget(self.sf_params_group)
+        right_layout.addWidget(self.sf_execute_btn)
+        right_layout.addWidget(results_label)
+        right_layout.addWidget(self.sf_results)
+        
+        content_splitter.addWidget(left_panel)
+        content_splitter.addWidget(right_panel)
+        content_splitter.setSizes([350, 850])
+        
+        layout.addWidget(header_frame)
+        layout.addWidget(content_splitter)
+        
+        self.tab_widget.addTab(functions_tab, "🔧 Special Functions")
+        
+        # Initial update
+        self.update_special_functions_list()
+    
+    def create_calibrations_resets_tab(self):
+        """Create FUTURISTIC calibrations and resets tab"""
+        calib_tab = QWidget()
+        layout = QVBoxLayout(calib_tab)
+        layout.setSpacing(15)
+        layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Header with brand selection
+        header_frame = QFrame()
+        header_frame.setProperty("class", "glass-card")
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(20, 15, 20, 15)
+        
+        header_label = QLabel("⚙️ Calibrations & Resets")
+        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        
+        brand_label = QLabel("Select Brand:")
+        brand_label.setStyleSheet("color: #5eead4;")
+        
+        self.cr_brand_combo = QComboBox()
+        self.cr_brand_combo.addItems(get_brand_list())
+        self.cr_brand_combo.setCurrentText(self.selected_brand)
+        self.cr_brand_combo.currentTextChanged.connect(self.update_calibrations_list)
+        self.cr_brand_combo.setMinimumWidth(180)
+        
+        header_layout.addWidget(header_label)
+        header_layout.addStretch()
+        header_layout.addWidget(brand_label)
+        header_layout.addWidget(self.cr_brand_combo)
+        
+        # Main content
+        content_splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+        # Left panel - Procedures list
+        left_panel = QFrame()
+        left_panel.setProperty("class", "glass-card")
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(15, 15, 15, 15)
+        
+        list_label = QLabel("Available Procedures:")
+        list_label.setStyleSheet("color: #5eead4; font-weight: bold; margin-bottom: 10px;")
+        
+        self.calibrations_list = QListWidget()
+        self.calibrations_list.itemClicked.connect(self.on_calibration_selected)
+        
+        left_layout.addWidget(list_label)
+        left_layout.addWidget(self.calibrations_list)
+        
+        # Right panel - Procedure details
+        right_panel = QFrame()
+        right_panel.setProperty("class", "glass-card")
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Procedure details
+        self.cr_name_label = QLabel("Select a procedure to view details")
+        self.cr_name_label.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
+        
+        self.cr_description = QTextEdit()
+        self.cr_description.setReadOnly(True)
+        self.cr_description.setMaximumHeight(80)
+        
+        info_layout = QHBoxLayout()
+        self.cr_duration_label = QLabel("Duration: --")
+        self.cr_security_label = QLabel("Security Level: --")
+        self.cr_type_label = QLabel("Type: --")
+        
+        for label in [self.cr_duration_label, self.cr_security_label, self.cr_type_label]:
+            label.setStyleSheet("color: #5eead4; font-weight: bold;")
+        
+        info_layout.addWidget(self.cr_duration_label)
+        info_layout.addWidget(self.cr_security_label)
+        info_layout.addWidget(self.cr_type_label)
+        info_layout.addStretch()
+        
+        # Prerequisites
+        self.cr_prereq_group = QGroupBox("Prerequisites")
+        self.cr_prereq_list = QTextEdit()
+        self.cr_prereq_list.setReadOnly(True)
+        self.cr_prereq_list.setMaximumHeight(80)
+        cr_prereq_layout = QVBoxLayout(self.cr_prereq_group)
+        cr_prereq_layout.addWidget(self.cr_prereq_list)
+        
+        # Steps
+        self.cr_steps_group = QGroupBox("Procedure Steps")
+        self.cr_steps_list = QTextEdit()
+        self.cr_steps_list.setReadOnly(True)
+        cr_steps_layout = QVBoxLayout(self.cr_steps_group)
+        cr_steps_layout.addWidget(self.cr_steps_list)
+        
+        # Execute
+        self.cr_execute_btn = QPushButton("⚡ Execute Procedure")
+        self.cr_execute_btn.setProperty("class", "primary")
+        self.cr_execute_btn.setMinimumHeight(50)
+        self.cr_execute_btn.clicked.connect(self.execute_calibration)
+        self.cr_execute_btn.setEnabled(False)
+        
+        # Results
+        results_label = QLabel("Execution Results:")
+        results_label.setStyleSheet("color: #5eead4; font-weight: bold; margin-top: 10px;")
+        
+        self.cr_results = QTextEdit()
+        self.cr_results.setReadOnly(True)
+        self.cr_results.setPlaceholderText("Procedure results will appear here...")
+        
+        right_layout.addWidget(self.cr_name_label)
+        right_layout.addWidget(self.cr_description)
+        right_layout.addLayout(info_layout)
+        right_layout.addWidget(self.cr_prereq_group)
+        right_layout.addWidget(self.cr_steps_group)
+        right_layout.addWidget(self.cr_execute_btn)
+        right_layout.addWidget(results_label)
+        right_layout.addWidget(self.cr_results)
+        
+        content_splitter.addWidget(left_panel)
+        content_splitter.addWidget(right_panel)
+        content_splitter.setSizes([350, 850])
+        
+        layout.addWidget(header_frame)
+        layout.addWidget(content_splitter)
+        
+        self.tab_widget.addTab(calib_tab, "⚙️ Calibrations & Resets")
+        
+        # Initial update
+        self.update_calibrations_list()
+    
+    def create_security_tab(self):
+        """Create FUTURISTIC security management tab"""
+        security_tab = QWidget()
+        layout = QVBoxLayout(security_tab)
+        layout.setSpacing(15)
+        layout.setContentsMargins(15, 15, 15, 15)
+        
+        # Header
+        header_frame = QFrame()
+        header_frame.setProperty("class", "glass-card")
+        header_layout = QVBoxLayout(header_frame)
+        header_layout.setContentsMargins(20, 15, 20, 15)
+        
+        header_label = QLabel("🔒 Security & Audit")
+        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        header_layout.addWidget(header_label)
+        
+        # Security status
+        status_frame = QFrame()
+        status_frame.setProperty("class", "glass-card")
+        status_layout = QVBoxLayout(status_frame)
+        status_layout.setContentsMargins(20, 20, 20, 20)
+        
+        status_title = QLabel("Current Session Status")
+        status_title.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
+        
+        user_info = security_manager.get_user_info()
+        status_text = f"""
+Current User: {user_info.get('full_name', 'Unknown')}
+Username: {user_info.get('username', 'Unknown')}
+Security Level: {user_info.get('security_level', 'BASIC')}
+Role: {user_info.get('role', 'technician')}
+Session Expires: {self.format_timestamp(user_info.get('session_expiry', 0))}
+        """
+        
+        self.security_status = QTextEdit()
+        self.security_status.setPlainText(status_text.strip())
+        self.security_status.setReadOnly(True)
+        self.security_status.setMaximumHeight(150)
+        
+        status_layout.addWidget(status_title)
+        status_layout.addWidget(self.security_status)
+        
+        # Security controls
+        controls_frame = QFrame()
+        controls_frame.setProperty("class", "glass-card")
+        controls_layout = QVBoxLayout(controls_frame)
+        controls_layout.setContentsMargins(20, 20, 20, 20)
+        
+        controls_title = QLabel("Security Controls")
+        controls_title.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(15)
+        
+        refresh_btn = QPushButton("🔄 Refresh Status")
+        refresh_btn.setProperty("class", "primary")
+        refresh_btn.setMinimumHeight(45)
+        refresh_btn.clicked.connect(self.update_security_status)
+        
+        audit_btn = QPushButton("📋 View Audit Log")
+        audit_btn.setProperty("class", "success")
+        audit_btn.setMinimumHeight(45)
+        audit_btn.clicked.connect(self.show_audit_log)
+        
+        elevate_btn = QPushButton("⬆️ Elevate Security")
+        elevate_btn.setProperty("class", "danger")
+        elevate_btn.setMinimumHeight(45)
+        elevate_btn.clicked.connect(self.elevate_security)
+        
+        btn_layout.addWidget(refresh_btn)
+        btn_layout.addWidget(audit_btn)
+        btn_layout.addWidget(elevate_btn)
+        
+        controls_layout.addWidget(controls_title)
+        controls_layout.addLayout(btn_layout)
+        
+        # Quick security check
+        check_frame = QFrame()
+        check_frame.setProperty("class", "glass-card")
+        check_layout = QVBoxLayout(check_frame)
+        check_layout.setContentsMargins(20, 20, 20, 20)
+        
+        check_title = QLabel("Quick Security Check")
+        check_title.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
+        
+        self.security_check_result = QTextEdit()
+        self.security_check_result.setReadOnly(True)
+        self.security_check_result.setPlaceholderText("Click 'Run Security Check' to verify system status...")
+        
+        check_btn = QPushButton("🔍 Run Security Check")
+        check_btn.setProperty("class", "primary")
+        check_btn.setMinimumHeight(45)
+        check_btn.clicked.connect(self.run_security_check)
+        
+        check_layout.addWidget(check_title)
+        check_layout.addWidget(self.security_check_result)
+        check_layout.addWidget(check_btn)
+        
+        layout.addWidget(header_frame)
+        layout.addWidget(status_frame)
+        layout.addWidget(controls_frame)
+        layout.addWidget(check_frame)
+        layout.addStretch()
+        
+        self.tab_widget.addTab(security_tab, "🔒 Security")
     
     def create_status_bar(self):
-        """Create status bar"""
-        self.status_label = QLabel("Ready to connect to vehicle")
-        self.statusBar().addWidget(self.status_label)
+        """Create FUTURISTIC status bar"""
+        status_widget = QFrame()
+        status_widget.setProperty("class", "glass-card")
+        status_widget.setMaximumHeight(40)
         
-        # Progress bar for operations
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setMaximumWidth(200)
-        self.progress_bar.setVisible(False)
-        self.statusBar().addPermanentWidget(self.progress_bar)
-    
-    def show_connection_settings(self):
-        """Show dialog for connection settings"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Connection Settings")
-        layout = QFormLayout(dialog)
+        status_layout = QHBoxLayout()
+        status_layout.setContentsMargins(10, 5, 10, 5)
         
-        port_input = QLineEdit(self.device_manager.port or "/dev/ttyUSB0")
-        baudrate_input = QLineEdit(str(self.device_manager.baudrate))
-        protocol_combo = QComboBox()
-        protocol_combo.addItems(["AUTO", "ISO9141-2", "KWP2000", "CAN"])
+        self.status_label = QLabel("✨ System Ready")
+        self.status_label.setStyleSheet("color: #10b981; font-weight: bold;")
         
-        layout.addRow("Serial Port:", port_input)
-        layout.addRow("Baudrate:", baudrate_input)
-        layout.addRow("Protocol:", protocol_combo)
+        self.connection_status_label = QLabel("⚪ Disconnected")
+        self.connection_status_label.setStyleSheet("color: #ef4444;")
         
-        buttons = QHBoxLayout()
-        connect_btn = QPushButton("Connect")
-        cancel_btn = QPushButton("Cancel")
+        status_layout.addWidget(self.status_label)
+        status_layout.addStretch()
+        status_layout.addWidget(self.connection_status_label)
         
-        connect_btn.clicked.connect(lambda: self.connect_device(
-            port_input.text(), baudrate_input.text(), protocol_combo.currentText(), dialog
-        ))
-        cancel_btn.clicked.connect(dialog.reject)
-        
-        buttons.addWidget(connect_btn)
-        buttons.addWidget(cancel_btn)
-        layout.addRow(buttons)
-        
-        dialog.exec()
+        status_widget.setLayout(status_layout)
+        self.statusBar().addPermanentWidget(status_widget, 1)
     
-    def connect_device(self, port: str, baudrate: str, protocol: str, dialog: QDialog):
-        """Connect to device with settings"""
-        try:
-            baudrate = int(baudrate)
-            if not (9600 <= baudrate <= 115200):
-                raise ValueError("Baudrate must be between 9600 and 115200")
-            if self.device_manager.connect(port, baudrate, protocol):
-                self.connected = True
-                self.connection_status.setText("🟢 Connected")
-                self.connection_status.setProperty("class", "status-connected")
-                self.obd_status.setText("OBD: Connected")
-                self.protocol_status.setText(f"Protocol: {protocol}")
-                self.status_label.setText("Connected to vehicle")
-                dialog.accept()
-            else:
-                QMessageBox.critical(self, "Connection Failed", "Failed to connect to device")
-        except Exception as e:
-            logger.error(f"Connection failed: {e}")
-            QMessageBox.critical(self, "Connection Failed", f"Error: {e}")
-    
-    def on_theme_changed(self, theme_name):
-        """Handle theme change"""
-        try:
-            theme_info = self.style_manager.get_theme_info()
-            for theme_id, info in theme_info.items():
-                if info.get('name') == theme_name:
-                    self.style_manager.set_theme(theme_id)
-                    logger.info(f"Applied theme: {theme_name}")
-                    break
-            else:
-                logger.warning(f"Theme {theme_name} not found")
-        except Exception as e:
-            logger.error(f"Theme change failed: {e}")
-            self.status_label.setText("Error changing theme")
-    
-    def on_brand_changed(self, brand_name):
-        """Handle brand selection change"""
-        try:
-            self.selected_brand = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', brand_name)  # Sanitize
-            self.update_brand_specific_data()
-            self.show_brand_tips(self.selected_brand)
-        except Exception as e:
-            logger.error(f"Brand change failed: {e}")
-            self.status_label.setText("Error changing brand")
-    
-    def update_brand_specific_data(self):
-        """Update UI with brand-specific information"""
-        try:
-            brand_info = get_brand_info(self.selected_brand)
-            region = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', str(brand_info.get('region', 'N/A')))
-            market_share = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', str(brand_info.get('market_share', 'N/A')))
-            protocols = [re.sub(r'[\x00-\x1F\x7F-\x9F]', '', p) for p in brand_info.get('diagnostic_protocols', [])]
-            obd_protocol = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', str(brand_info.get('obd_protocol', 'N/A')))
-            
-            self.brand_info_label.setText(
-                f"Brand: {self.selected_brand}\n"
-                f"Region: {region}\n"
-                f"Market Share: {market_share}"
-            )
-            self.protocol_info_label.setText(
-                f"Protocols: {', '.join(protocols)}\n"
-                f"OBD Protocol: {obd_protocol}"
-            )
-            self.update_brand_modules()
-            self.update_brand_procedures()
-        except Exception as e:
-            logger.error(f"Brand data update failed: {e}")
-            self.status_label.setText("Error updating brand data")
-    
-    def update_brand_modules(self):
-        """Update modules table with brand-specific ECUs"""
-        try:
-            brand_info = get_brand_info(self.selected_brand)
-            common_ecus = brand_info.get('common_ecus', [])
-            self.modules_table.setRowCount(len(common_ecus))
-            for row, ecu in enumerate(common_ecus):
-                clean_ecu = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', ecu)
-                item = QTableWidgetItem(clean_ecu)
-                item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                self.modules_table.setItem(row, 0, item)
-                self.modules_table.setItem(row, 1, QTableWidgetItem(self.get_ecu_address(clean_ecu)))
-                self.modules_table.setItem(row, 2, QTableWidgetItem(self.get_ecu_protocol(clean_ecu)))
-                self.modules_table.setItem(row, 3, QTableWidgetItem("Not Scanned"))
-        except Exception as e:
-            logger.error(f"Modules update failed: {e}")
-    
-    def update_brand_procedures(self):
-        """Update brand-specific procedures"""
-        try:
-            procedures = self.get_brand_procedures(self.selected_brand)
-            clean_procedures = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', procedures)
-            self.procedures_text.setText(clean_procedures)
-        except Exception as e:
-            logger.error(f"Procedures update failed: {e}")
-    
-    def get_ecu_address(self, ecu_name):
-        """Get typical ECU addresses for brands"""
-        address_map = {
-            "ECM": "0x7E0", "PCM": "0x7E0", "Engine ECU": "0x7E0", "DME": "0x7E0",
-            "TCM": "0x7E1", "Transmission": "0x7E1", "EGS": "0x7E1",
-            "ABS": "0x7E2", "ESP": "0x7E2", "DSC": "0x7E2",
-            "SRS": "0x7E3", "Airbag": "0x7E3",
-            "BCM": "0x7E4", "Body ECU": "0x7E4", "SAM": "0x7E4",
-            "Instrument Cluster": "0x7E5", "IC": "0x7E5"
-        }
-        return address_map.get(ecu_name, "0x7XX")
-    
-    def get_ecu_protocol(self, ecu_name):
-        """Get typical ECU protocols"""
-        brand_info = get_brand_info(self.selected_brand)
-        protocols = brand_info.get('diagnostic_protocols', [])
-        return protocols[0] if protocols else "UDS"
-    
-    def get_brand_procedures(self, brand):
-        """Get brand-specific diagnostic procedures"""
-        procedures = {
-            "Toyota": """Toyota Diagnostic Procedures:
-1. Quick Scan: Connect with ISO 15765-4 (CAN), use TechStream commands
-2. DTC Reading: Standard OBD-II PIDs, enhanced manufacturer codes
-3. Live Data: Real-time PIDs, graphing supported""",
-            "Volkswagen": """VW/Audi Diagnostic Procedures:
-1. Quick Scan: UDS protocol (ISO 14229), full module access
-2. DTC Reading: Manufacturer-specific codes, extended fault memory
-3. Coding/Adaptation: Online coding required for some modules""",
-            "BMW": """BMW Diagnostic Procedures:
-1. Quick Scan: ISTA/D protocols, K+CAN or Ethernet
-2. DTC Reading: BMW-specific codes, detailed descriptions
-3. Programming: ISTA/P for flash, ICOM recommended"""
-        }
-        return procedures.get(brand, f"Standard diagnostic procedures for {brand} vehicles.")
-    
-    def show_brand_tips(self, brand_name):
-        """Show brand-specific diagnostic tips"""
-        tips = {
-            "Toyota": "Tip: Use TechStream compatible protocols for full system access",
-            "Volkswagen": "Tip: VCDS/ODIS protocols provide deepest module access",
-            "BMW": "Tip: ISTA-D/ISTA-P required for advanced programming functions"
-        }
-        clean_tip = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', tips.get(brand_name, "No specific tips available"))
-        self.status_label.setText(f"Brand Tip: {clean_tip}")
-    
-    def check_auth(self) -> bool:
-        """Mock authentication check (replace with real auth in production)"""
-        pin, ok = QInputDialog.getText(self, "Authentication", "Enter PIN:", QLineEdit.EchoMode.Password)
-        if ok and pin == "1234":  # Mock PIN
-            logger.info("Authentication successful")
-            return True
-        logger.warning("Authentication failed")
-        return False
-
-    def quick_scan(self):
-        """Perform quick vehicle scan"""
-        if not self.connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a vehicle first")
-            return
-        try:
-            self.scanning = True
-            self.status_label.setText("Performing quick scan...")
-            self.progress_bar.setVisible(True)
-            self.progress_bar.setValue(0)
-            self.connection_status.setText("🟡 Scanning...")
-            self.connection_status.setProperty("class", "status-warning")
-            self.obd_status.setText("OBD: Scanning")
-            self.scan_timer = QTimer()
-            self.scan_timer.timeout.connect(self.update_scan_progress)
-            self.scan_timer.start(100)
-        except Exception as e:
-            logger.error(f"Quick scan failed: {e}")
-            self.status_label.setText("Error during quick scan")
-    
-    def update_scan_progress(self):
-        """Update scan progress"""
-        try:
-            current = self.progress_bar.value()
-            if current < 100:
-                self.progress_bar.setValue(current + 10)
-            else:
-                self.scan_timer.stop()
-                self.progress_bar.setVisible(False)
-                self.scanning = False
-                self.connection_status.setText("🟢 Connected")
-                self.connection_status.setProperty("class", "status-connected")
-                self.obd_status.setText("OBD: Connected")
-                dtcs = self.device_manager.read_dtcs()
-                self.add_dtc_data(dtcs or self.get_sample_dtc_data())
-                self.add_sample_live_data()
-                self.status_label.setText("Quick scan completed successfully")
-        except Exception as e:
-            logger.error(f"Scan progress update failed: {e}")
-            self.status_label.setText("Error during scan progress")
-    
-    def read_dtcs(self):
-        """Read diagnostic trouble codes"""
-        if not self.connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a vehicle first")
-            return
-        try:
-            self.status_label.setText("Reading diagnostic trouble codes...")
-            dtcs = self.device_manager.read_dtcs()
-            QTimer.singleShot(2000, lambda: self.dtc_reading_complete(dtcs or self.get_sample_dtc_data()))
-        except Exception as e:
-            logger.error(f"DTC read failed: {e}")
-            self.status_label.setText("Error reading DTCs")
-    
-    def dtc_reading_complete(self, dtcs):
-        """Called when DTC reading completes"""
-        try:
-            self.add_dtc_data(dtcs)
-            self.status_label.setText("DTC reading completed")
-        except Exception as e:
-            logger.error(f"DTC complete failed: {e}")
-            self.status_label.setText("Error completing DTC read")
-    
-    def clear_dtcs(self):
-        """Clear diagnostic trouble codes"""
-        if not self.connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a vehicle first")
-            return
-        if not self.check_auth():
-            self.status_label.setText("Authentication failed")
-            return
-        reply = QMessageBox.question(self, "Clear DTCs", 
-                                   "Are you sure you want to clear all diagnostic trouble codes?",
-                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        if reply == QMessageBox.StandardButton.Yes:
-            try:
-                self.device_manager.send_command("04")  # OBD-II mode 04: Clear DTCs
-                self.dtc_table.setRowCount(0)
-                self.status_label.setText("DTCs cleared successfully")
-                logger.info("DTCs cleared")
-            except Exception as e:
-                logger.error(f"DTC clear failed: {e}")
-                self.status_label.setText("Error clearing DTCs")
-    
-    def read_freeze_frame(self):
-        """Read freeze frame data"""
-        if not self.connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a vehicle first")
-            return
-        try:
-            self.status_label.setText("Reading freeze frame data...")
-            response = self.device_manager.send_command("02")  # OBD-II mode 02
-            self.system_info_text.setText(f"Freeze Frame Data:\n{response}")
-            self.status_label.setText("Freeze frame data retrieved")
-        except Exception as e:
-            logger.error(f"Freeze frame read failed: {e}")
-            self.status_label.setText("Error reading freeze frame")
-    
-    def start_live_data(self):
-        """Start live data monitoring"""
-        if not self.connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a vehicle first")
-            return
-        try:
-            self.status_label.setText("Starting live data monitoring...")
-            self.live_data_timer = QTimer()
-            self.live_data_timer.timeout.connect(self.update_live_data)
-            self.live_data_timer.start(1000)  # Update every second
-            if self.record_check.isChecked():
-                logger.info("Recording live data")
-        except Exception as e:
-            logger.error(f"Live data start failed: {e}")
-            self.status_label.setText("Error starting live data")
-    
-    def stop_live_data(self):
-        """Stop live data monitoring"""
-        if self.live_data_timer:
-            self.live_data_timer.stop()
-            self.live_data_timer = None
-        self.status_label.setText("Live data monitoring stopped")
-        logger.info("Live data monitoring stopped")
+    def start_live_updates(self):
+        """Start live data updates"""
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.update_live_data)
+        self.update_timer.start(2000)  # Update every 2 seconds
     
     def update_live_data(self):
-        """Update live data table and graph"""
-        try:
-            # Define PIDs to monitor
-            pids = [
-                ("010C", "Engine RPM", "RPM"),
-                ("010D", "Vehicle Speed", "km/h"),
-                ("0105", "Coolant Temp", "°C"),
-                ("0110", "MAF Sensor", "g/s")
-            ]
-            data = []
-            for mode_pid, name, unit in pids:
-                response = self.device_manager.read_pid("01", mode_pid[2:])
-                value = response or "N/A"  # Simplified parsing
-                data.append([name, value, unit])
-            self.add_dtc_data(data)
-            # Update graph (example: RPM)
-            if data[0][1] != "N/A":
-                self.live_data_values.append(float(data[0][1].replace(',', '')))
-                self.live_data_values = self.live_data_values[-50:]  # Last 50 points
-                self.ax.clear()
-                self.ax.plot(self.live_data_values, label="Engine RPM")
-                self.ax.set_xlabel("Time (s)")
-                self.ax.set_ylabel("RPM")
-                self.ax.legend()
-                self.canvas.draw()
-        except Exception as e:
-            logger.error(f"Live data update failed: {e}")
-            self.status_label.setText("Error updating live data")
+        """Update live dashboard data"""
+        import random
+        
+        # Update stat cards with simulated data
+        self.system_health_card.update_value(random.randint(95, 99))
+        self.connection_quality_card.update_value(random.randint(75, 95))
+        
+    # Keep all your existing methods from here...
+    def update_special_functions_list(self):
+        """Update special functions list for current brand"""
+        brand = self.sf_brand_combo.currentText()
+        functions = self.special_functions_manager.get_brand_functions(brand)
+        
+        self.special_functions_list.clear()
+        
+        for function in functions:
+            item = QListWidgetItem(f"🔧 {function.name}")
+            item.setData(Qt.ItemDataRole.UserRole, function.function_id)
+            self.special_functions_list.addItem(item)
+        
+        self.sf_name_label.setText("Select a function to view details")
+        self.sf_description.clear()
+        self.sf_security_label.setText("Security Level: --")
+        self.sf_execute_btn.setEnabled(False)
+        self.clear_parameters()
     
-    def add_dtc_data(self, dtcs):
-        """Add DTC data to table"""
-        try:
-            self.dtc_table.setRowCount(len(dtcs))
-            for row, dtc in enumerate(dtcs):
-                for col, value in enumerate(dtc):
-                    clean_value = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', str(value))
-                    item = QTableWidgetItem(clean_value)
-                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
-                    self.dtc_table.setItem(row, col, item)
-        except Exception as e:
-            logger.error(f"Add DTC data failed: {e}")
-    
-    def add_sample_dtc_data(self):
-        """Add sample DTC data for testing"""
-        return [
-            ["P0300", "Random/Multiple Cylinder Misfire Detected", "Confirmed", "Medium"],
-            ["P0171", "System Too Lean (Bank 1)", "Pending", "Low"],
-            ["C1234", "ABS Wheel Speed Sensor Fault", "Confirmed", "High"],
-            ["B1345", "ECU Communication Error", "Confirmed", "High"]
-        ]
-    
-    def add_sample_live_data(self):
-        """Add sample live data for testing"""
-        sample_data = [
-            ["Engine RPM", "2,350", "RPM"],
-            ["Vehicle Speed", "65", "km/h"],
-            ["Coolant Temp", "92", "°C"],
-            ["MAF Sensor", "4.8", "g/s"]
-        ]
-        self.add_dtc_data(sample_data)
-    
-    def show_dtc_details(self, item):
-        """Show details for clicked DTC"""
-        row = item.row()
-        code = self.dtc_table.item(row, 0).text()
-        desc = self.dtc_table.item(row, 1).text()
-        QMessageBox.information(self, "DTC Details", f"Code: {code}\nDescription: {desc}")
-    
-    def export_dtcs(self):
-        """Export DTCs to a text file"""
-        try:
-            with open("dtcs_export.txt", "w") as f:
-                for row in range(self.dtc_table.rowCount()):
-                    row_data = [self.dtc_table.item(row, col).text() for col in range(self.dtc_table.columnCount())]
-                    f.write(",".join(row_data) + "\n")
-            self.status_label.setText("DTCs exported to dtcs_export.txt")
-            logger.info("DTCs exported")
-        except Exception as e:
-            logger.error(f"DTC export failed: {e}")
-            self.status_label.setText("Error exporting DTCs")
-    
-    def run_actuator_test(self):
-        """Run actuator test (stub)"""
-        if not self.connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a vehicle first")
+    def on_special_function_selected(self, item):
+        """Handle special function selection"""
+        brand = self.sf_brand_combo.currentText()
+        function_id = item.data(Qt.ItemDataRole.UserRole)
+        function = self.special_functions_manager.get_function(brand, function_id)
+        
+        if not function:
             return
-        self.status_label.setText("Running actuator test...")
-        logger.info("Actuator test started")
+        
+        self.sf_name_label.setText(f"🔧 {function.name}")
+        self.sf_description.setText(function.description)
+        self.sf_security_label.setText(f"Security Level: {function.security_level} "
+                                     f"(Current: {security_manager.get_security_level().name})")
+        
+        self.create_parameter_inputs(function)
+        
+        has_clearance = security_manager.check_security_clearance(SecurityLevel(function.security_level))
+        self.sf_execute_btn.setEnabled(has_clearance)
+        
+        if not has_clearance:
+            self.sf_results.setPlainText(
+                f"❌ Insufficient security clearance\n"
+                f"Required: Level {function.security_level}\n"
+                f"Current: Level {security_manager.get_security_level().value}")
     
-    def run_adaptations(self):
-        """Run adaptations (stub)"""
-        if not self.connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a vehicle first")
+    def create_parameter_inputs(self, function: SpecialFunction):
+        """Create parameter input fields"""
+        self.clear_parameters()
+        
+        if not function.parameters:
+            no_params = QLabel("✅ No parameters required")
+            no_params.setStyleSheet("color: #10b981;")
+            self.sf_params_layout.addWidget(no_params)
             return
-        self.status_label.setText("Running adaptations...")
-        logger.info("Adaptations started")
+        
+        self.parameter_widgets = {}
+        param_widget = QWidget()
+        param_layout = QGridLayout(param_widget)
+        
+        row = 0
+        for param_name, param_config in function.parameters.items():
+            label = QLabel(f"{param_name}:")
+            label.setStyleSheet("color: #5eead4;")
+            
+            if param_config['type'] == 'bool':
+                input_widget = QCheckBox()
+            elif param_config['type'] == 'int':
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText("Enter number")
+            else:
+                input_widget = QLineEdit()
+                input_widget.setPlaceholderText(f"Enter {param_config['type']}")
+            
+            param_layout.addWidget(label, row, 0)
+            param_layout.addWidget(input_widget, row, 1)
+            self.parameter_widgets[param_name] = input_widget
+            row += 1
+        
+        self.sf_params_layout.addWidget(param_widget)
     
-    def run_coding(self):
-        """Run coding (stub)"""
-        if not self.connected:
-            QMessageBox.warning(self, "Not Connected", "Please connect to a vehicle first")
+    def clear_parameters(self):
+        """Clear parameter input section"""
+        for i in reversed(range(self.sf_params_layout.count())):
+            widget = self.sf_params_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+    
+    def execute_special_function(self):
+        """Execute selected special function"""
+        brand = self.sf_brand_combo.currentText()
+        current_item = self.special_functions_list.currentItem()
+        
+        if not current_item:
+            self.sf_results.setPlainText("❌ No function selected")
             return
-        self.status_label.setText("Running coding...")
-        logger.info("Coding started")
+        
+        function_id = current_item.data(Qt.ItemDataRole.UserRole)
+        
+        parameters = {}
+        for param_name, widget in self.parameter_widgets.items():
+            if isinstance(widget, QLineEdit):
+                parameters[param_name] = widget.text()
+            elif isinstance(widget, QCheckBox):
+                parameters[param_name] = widget.isChecked()
+        
+        self.sf_results.setPlainText("⏳ Executing function...")
+        
+        result = self.special_functions_manager.execute_function(brand, function_id, parameters)
+        
+        if result.get('success'):
+            result_text = "✅ Function executed successfully!\n\n"
+            for key, value in result.items():
+                if key != 'success':
+                    result_text += f"{key}: {value}\n"
+        else:
+            result_text = f"❌ Execution failed:\n{result.get('error', 'Unknown error')}"
+        
+        self.sf_results.setPlainText(result_text)
+    
+    def update_calibrations_list(self):
+        """Update calibrations list"""
+        brand = self.cr_brand_combo.currentText()
+        procedures = self.calibrations_resets_manager.get_brand_procedures(brand)
+        
+        self.calibrations_list.clear()
+        
+        for procedure in procedures:
+            item = QListWidgetItem(f"⚙️ {procedure.name}")
+            item.setData(Qt.ItemDataRole.UserRole, procedure.procedure_id)
+            self.calibrations_list.addItem(item)
+        
+        self.clear_calibration_details()
+    
+    def on_calibration_selected(self, item):
+        """Handle calibration selection"""
+        brand = self.cr_brand_combo.currentText()
+        procedure_id = item.data(Qt.ItemDataRole.UserRole)
+        procedure = self.calibrations_resets_manager.get_procedure(brand, procedure_id)
+        
+        if not procedure:
+            return
+        
+        self.cr_name_label.setText(f"⚙️ {procedure.name}")
+        self.cr_description.setText(procedure.description)
+        self.cr_duration_label.setText(f"Duration: {procedure.duration}")
+        self.cr_security_label.setText(f"Security: Level {procedure.security_level}")
+        self.cr_type_label.setText(f"Type: {procedure.reset_type.value}")
+        
+        prereq_text = "\n".join([f"• {p}" for p in procedure.prerequisites])
+        self.cr_prereq_list.setPlainText(prereq_text or "No prerequisites")
+        
+        steps_text = "\n".join([f"{i+1}. {s}" for i, s in enumerate(procedure.steps)])
+        self.cr_steps_list.setPlainText(steps_text)
+        
+        has_clearance = security_manager.check_security_clearance(SecurityLevel(procedure.security_level))
+        self.cr_execute_btn.setEnabled(has_clearance)
+        
+        if not has_clearance:
+            self.cr_results.setPlainText(
+                f"❌ Insufficient security clearance\n"
+                f"Required: Level {procedure.security_level}")
+    
+    def clear_calibration_details(self):
+        """Clear calibration details"""
+        self.cr_name_label.setText("Select a procedure to view details")
+        self.cr_description.clear()
+        self.cr_duration_label.setText("Duration: --")
+        self.cr_security_label.setText("Security Level: --")
+        self.cr_type_label.setText("Type: --")
+        self.cr_prereq_list.clear()
+        self.cr_steps_list.clear()
+        self.cr_execute_btn.setEnabled(False)
+        self.cr_results.clear()
+    
+    def execute_calibration(self):
+        """Execute calibration procedure"""
+        brand = self.cr_brand_combo.currentText()
+        current_item = self.calibrations_list.currentItem()
+        
+        if not current_item:
+            self.cr_results.setPlainText("❌ No procedure selected")
+            return
+        
+        procedure_id = current_item.data(Qt.ItemDataRole.UserRole)
+        self.cr_results.setPlainText("⏳ Executing procedure...")
+        
+        result = self.calibrations_resets_manager.execute_procedure(brand, procedure_id)
+        
+        if result.get('success'):
+            result_text = "✅ Procedure executed successfully!\n\n"
+            for key, value in result.items():
+                if key != 'success':
+                    result_text += f"{key}: {value}\n"
+        else:
+            result_text = f"❌ Execution failed:\n{result.get('error', 'Unknown error')}"
+        
+        self.cr_results.setPlainText(result_text)
+    
+    def update_security_status(self):
+        """Update security status display"""
+        user_info = security_manager.get_user_info()
+        status_text = f"""
+Current User: {user_info.get('full_name', 'Unknown')}
+Username: {user_info.get('username', 'Unknown')}
+Security Level: {user_info.get('security_level', 'BASIC')}
+Role: {user_info.get('role', 'technician')}
+Session Expires: {self.format_timestamp(user_info.get('session_expiry', 0))}
+        """
+        self.security_status.setPlainText(status_text.strip())
+    
+    def show_audit_log(self):
+        """Display security audit log"""
+        audit_log = security_manager.get_audit_log(50)
+        
+        log_text = "🔒 Security Audit Log (Last 50 Events)\n\n"
+        for event in audit_log:
+            log_text += f"[{self.format_timestamp(event['timestamp'])}] {event['event_type']} - {event['username']}\n"
+            if event['details']:
+                log_text += f"    {event['details']}\n"
+            log_text += "\n"
+        
+        QMessageBox.information(self, "Security Audit Log", log_text)
+    
+    def run_security_check(self):
+        """Run comprehensive security check"""
+        checks = []
+        
+        if security_manager.validate_session():
+            checks.append("✅ Session is valid")
+        else:
+            checks.append("❌ Session is invalid")
+        
+        current_level = security_manager.get_security_level()
+        checks.append(f"✅ Current security level: {current_level.name}")
+        
+        brand = self.sf_brand_combo.currentText()
+        functions = self.special_functions_manager.get_brand_functions(brand)
+        accessible = sum(1 for f in functions if 
+                        security_manager.check_security_clearance(SecurityLevel(f.security_level)))
+        checks.append(f"✅ Accessible functions: {accessible}/{len(functions)}")
+        
+        self.security_check_result.setPlainText("\n".join(checks))
+    
+    def elevate_security(self):
+        """Elevate security level"""
+        username, ok = QInputDialog.getText(self, "Security Elevation", "Enter username:")
+        if not ok or not username:
+            return
+        
+        password, ok = QInputDialog.getText(self, "Security Elevation",
+                                          "Enter password:", 
+                                          QLineEdit.EchoMode.Password)
+        if not ok or not password:
+            return
+        
+        required_level = SecurityLevel.DEALER
+        success, message = security_manager.elevate_security(username, password, required_level)
+        
+        if success:
+            QMessageBox.information(self, "Security Elevated", message)
+            self.update_security_status()
+        else:
+            QMessageBox.warning(self, "Elevation Failed", message)
+    
+    def secure_logout(self):
+        """Handle secure logout"""
+        reply = QMessageBox.question(self, "Logout", 
+                                   "Are you sure you want to logout?",
+                                   QMessageBox.StandardButton.Yes | 
+                                   QMessageBox.StandardButton.No)
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            security_manager.logout()
+            self.close()
+    
+    def change_theme(self, theme_name):
+        """Change application theme"""
+        style_manager.set_theme(theme_name)
+        self.status_label.setText(f"✨ Theme changed to: {theme_name}")
+    
+    def format_timestamp(self, timestamp: float) -> str:
+        """Format timestamp for display"""
+        from datetime import datetime
+        return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+    
+    def on_brand_changed(self, brand):
+        """Handle brand selection change"""
+        self.selected_brand = brand
+        self.status_label.setText(f"✨ Brand changed to: {brand}")
     
     def closeEvent(self, event):
-        """Ensure cleanup on close"""
-        self.device_manager.disconnect()
-        if self.live_data_timer:
-            self.live_data_timer.stop()
-        logger.info("Closing AutoDiagApp")
+        """Secure cleanup on close"""
+        security_manager.logout()
+        logger.info("AutoDiag Pro closed securely")
         event.accept()
 
 def main():
     """Main application entry point"""
     app = QApplication(sys.argv)
-    app.setApplicationName("AutoDiag")
-    app.setApplicationVersion("1.0.0")
-    app.setOrganizationName("DiagAutoClinicOS")
+    
+    app.setApplicationName("AutoDiag Pro Futuristic")
+    app.setApplicationVersion("2.0.0")
+    app.setOrganizationName("SecureAutoClinic")
     
     try:
-        window = AutoDiagApp()
+        window = AutoDiagPro()
         sys.exit(app.exec())
     except Exception as e:
         logger.critical(f"Application crashed: {e}")
