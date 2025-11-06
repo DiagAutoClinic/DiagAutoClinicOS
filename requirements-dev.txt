@@ -1,0 +1,173 @@
+# Development and Testing Dependencies for DiagAutoClinicOS
+# Install: pip install -r requirements-dev.txt
+
+# ============================================================================
+# CORE TESTING FRAMEWORK
+# ============================================================================
+
+# pytest - Main testing framework
+pytest==7.4.3
+pytest-qt==4.2.0              # PyQt6 testing support
+pytest-cov==4.1.0             # Code coverage
+pytest-mock==3.12.0           # Mocking utilities
+pytest-timeout==2.2.0         # Test timeouts
+pytest-xdist==3.5.0           # Parallel test execution
+pytest-html==4.1.1            # HTML test reports
+pytest-benchmark==4.0.0       # Performance benchmarking
+
+# ============================================================================
+# CODE QUALITY & LINTING
+# ============================================================================
+
+# Code formatting
+black==23.12.1                # Code formatter
+isort==5.13.2                 # Import sorting
+autopep8==2.0.4              # PEP8 auto-formatting
+
+# Linting
+flake8==7.0.0                # Style guide enforcement
+pylint==3.0.3                # Code analysis
+mypy==1.8.0                  # Static type checking
+bandit==1.7.6                # Security linting
+
+# Code complexity
+radon==6.0.1                 # Cyclomatic complexity
+mccabe==0.7.0                # McCabe complexity checker
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+
+# Sphinx documentation
+sphinx==7.2.6
+sphinx-rtd-theme==2.0.0      # ReadTheDocs theme
+sphinx-autoapi==3.0.0        # Auto API documentation
+sphinx-autodoc-typehints==1.25.2
+
+# Markdown support
+myst-parser==2.0.0           # Markdown parser for Sphinx
+recommonmark==0.7.1
+
+# ============================================================================
+# DEBUGGING TOOLS
+# ============================================================================
+
+# Interactive debugging
+ipdb==0.13.13                # IPython debugger
+pdbpp==0.10.3                # Enhanced pdb
+debugpy==1.8.0               # VS Code debugging
+
+# Profiling
+memory-profiler==0.61.0      # Memory profiling
+line-profiler==4.1.1         # Line-by-line profiling
+py-spy==0.3.14               # Sampling profiler
+
+# ============================================================================
+# MOCKING & FIXTURES
+# ============================================================================
+
+# Enhanced mocking
+responses==0.24.1            # HTTP request mocking
+freezegun==1.4.0             # Time/datetime mocking
+faker==22.0.0                # Fake data generation
+factory-boy==3.3.0           # Test fixtures
+
+# ============================================================================
+# COVERAGE & REPORTING
+# ============================================================================
+
+# Coverage tools
+coverage==7.4.0              # Core coverage
+coverage-badge==1.1.0        # Generate coverage badge
+pytest-cov==4.1.0            # Pytest coverage plugin
+
+# Test reporting
+pytest-html==4.1.1           # HTML reports
+pytest-json-report==1.5.0    # JSON reports
+allure-pytest==2.13.2        # Allure reporting
+
+# ============================================================================
+# CONTINUOUS INTEGRATION
+# ============================================================================
+
+# Pre-commit hooks
+pre-commit==3.6.0            # Git pre-commit hooks
+commitizen==3.13.0           # Conventional commits
+
+# CI tools
+tox==4.11.4                  # Testing automation
+nox==2023.4.22               # Task automation
+
+# ============================================================================
+# SECURITY TESTING
+# ============================================================================
+
+# Security scanning
+safety==3.0.1                # Dependency vulnerability scanner
+pip-audit==2.6.3             # Audit pip packages
+
+# ============================================================================
+# PERFORMANCE TESTING
+# ============================================================================
+
+# Load testing
+locust==2.20.0               # Load testing framework
+pytest-benchmark==4.0.0      # Benchmark testing
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+
+# Development utilities
+watchdog==3.0.0              # File system monitoring
+rich==13.7.0                 # Terminal formatting
+click==8.1.7                 # CLI creation
+colorama==0.4.6              # Cross-platform colored terminal
+
+# Data validation
+pydantic==2.5.3              # Data validation
+jsonschema==4.20.0           # JSON schema validation
+
+# ============================================================================
+# HARDWARE TESTING (Optional)
+# ============================================================================
+
+# Virtual device emulation
+pyserial-asyncio==0.6        # Async serial
+can-utils==0.0.1             # CAN utilities (if available)
+
+# ============================================================================
+# VERSION PINNING
+# ============================================================================
+
+# Pin compatible versions with main requirements
+PyQt6>=6.6.1,<7.0.0
+pyserial>=3.5,<4.0.0
+python-can>=4.2.2,<5.0.0
+
+# ============================================================================
+# INSTALLATION NOTES
+# ============================================================================
+
+# To install all dev dependencies:
+#   pip install -r requirements-dev.txt
+#
+# To install only testing dependencies:
+#   pip install pytest pytest-qt pytest-cov pytest-mock
+#
+# To install only code quality tools:
+#   pip install black flake8 mypy pylint
+#
+# To set up pre-commit hooks:
+#   pre-commit install
+#
+# To run tests with coverage:
+#   pytest --cov=AutoDiag --cov=shared --cov-report=html
+#
+# To run tests in parallel:
+#   pytest -n auto
+#
+# To run specific test markers:
+#   pytest -m unit          # Run only unit tests
+#   pytest -m integration   # Run only integration tests
+#   pytest -m "not slow"    # Skip slow tests

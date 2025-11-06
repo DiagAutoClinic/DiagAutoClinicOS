@@ -1,0 +1,15 @@
+# .github/workflows/placeholder.yml
+name: Placeholder CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Do nothing
+        run: echo "This is a placeholder workflow."

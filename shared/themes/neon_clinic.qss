@@ -1,0 +1,109 @@
+/* NEON CLINIC THEME - Sci-fi Teal Glow UI */
+/* Open-source ready - no Afrikaans comments */
+
+* {
+    font-family: "Segoe UI", "Roboto", sans-serif;
+    font-weight: 500;
+    color: #e0f8ff;
+    font-size: 10pt;
+}
+
+QMainWindow {
+    background: #0a1a2e;
+    background-image: url(../../resources/bg/neon_clinic_bg.jpg);
+    background-size: cover;
+    background-position: center;
+}
+
+/* Hero Title */
+QLabel.hero-title {
+    font-size: 28pt;
+    font-weight: 800;
+    color: #00ffaa;
+    text-shadow: 0 0 12px rgba(0, 255, 170, 0.8);
+    qproperty-alignment: AlignCenter;
+    padding: 12px;
+}
+
+/* Glass Panels */
+QFrame.glass-card, QGroupBox, QWidget#CentralWidget {
+    background: rgba(15, 30, 55, 0.72);
+    border: 1.5px solid rgba(0, 212, 255, 0.4);
+    border-radius: 18px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5),
+                0 0 25px rgba(0, 212, 255, 0.7),
+                0 0 50px rgba(0, 255, 170, 0.4);
+    padding: 16px;
+    margin: 8px;
+}
+
+/* Buttons */
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #00a8cc, stop:1 #007a99);
+    color: white;
+    border: 1.5px solid #00d4ff;
+    border-radius: 14px;
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 120px;
+}
+
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #00d4ff, stop:1 #00a8cc);
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.7),
+                0 0 50px rgba(0, 255, 170, 0.4);
+    transform: translateY(-3px);
+    border: 1.5px solid #00ffaa;
+}
+
+QPushButton:pressed {
+    transform: translateY(2px);
+    box-shadow: 0 0 35px rgba(0, 255, 170, 0.9);
+}
+
+/* Status */
+QLabel.status-connected { color: #10b981; font-weight: bold; text-shadow: 0 0 10px rgba(16,185,129,0.7); }
+QLabel.status-disconnected { color: #ef4444; font-weight: bold; text-shadow: 0 0 10px rgba(239,68,68,0.7); }
+
+/* Tables */
+QTableWidget {
+    background: rgba(15, 30, 55, 0.6);
+    color: #e0f8ff;
+    gridline-color: rgba(0, 212, 255, 0.3);
+    border: 1px solid rgba(0, 212, 255, 0.4);
+    border-radius: 12px;
+}
+
+QHeaderView::section {
+    background: rgba(10, 26, 46, 0.7);
+    color: #00ffaa;
+    padding: 8px;
+    border: none;
+    font-weight: bold;
+    border-bottom: 2px solid #00d4ff;
+}
+
+/* Scrollbars */
+QScrollBar:vertical {
+    background: transparent;
+    width: 12px;
+    border-radius: 6px;
+    margin: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background: #00a8cc;
+    border-radius: 6px;
+    min-height: 40px;
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #00d4ff;
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.9);
+}
