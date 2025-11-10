@@ -4,7 +4,6 @@ AutoECU - Automotive ECU Programming Tool
 FUTURISTIC GLASSMORPHIC DESIGN with Teal Theme
 """
 
-from shared.obd2_live import OBD2Live
 import sys
 import os
 import re
@@ -17,11 +16,11 @@ from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
 # Import the style manager
-shared_path = os.path.abspath(os.path.join(ospath.dirname(__file__), '..', 'shared'))
+shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
 sys.path.append(shared_path)
 
 try:
-    from style_manager import style_manager as StyleManager
+    from style_manager import StyleManager
     from brand_database import get_brand_info, get_brand_list
     from circular_gauge import CircularGauge, StatCard
 except ImportError as e:
@@ -56,13 +55,9 @@ except ImportError as e:
 class AutoECUApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.style_manager = StyleManager
+        self.style_manager = StyleManager()
         self.selected_brand = "Toyota"
         self.init_ui()
-
-        self.obd = OBD2Live()
-        self.obd.connection_status.connect(self.update_status_bar)
-        self.obd.new_data.connect(self.update_gauges)
         
     def init_ui(self):
         """Initialize FUTURISTIC user interface"""
@@ -95,7 +90,7 @@ class AutoECUApp(QMainWindow):
         self.create_status_bar()
         
         # Apply futuristic theme
-        StyleManager.set_theme("futuristic")
+        self.style_manager.set_theme("futuristic")
         
         # Show the window
         self.show()
@@ -123,7 +118,7 @@ class AutoECUApp(QMainWindow):
         title_label.setFont(title_font)
         title_label.setStyleSheet("color: #14b8a6;")
         
-        subtitle_label = QLabel("Professional ECU Programming")
+        subtitle_label = QLabel("⚙️ Professional ECU Programming")
         subtitle_label.setStyleSheet("color: #5eead4; font-size: 11pt;")
         
         title_layout.addWidget(title_label)
@@ -209,7 +204,7 @@ class AutoECUApp(QMainWindow):
         actions_layout.setSpacing(15)
         actions_layout.setContentsMargins(20, 20, 20, 20)
         
-        actions_title = QLabel("Quick Actions")
+        actions_title = QLabel("⚡ Quick Actions")
         actions_title.setStyleSheet("color: #14b8a6; font-size: 16pt; font-weight: bold;")
         actions_layout.addWidget(actions_title)
         
@@ -217,22 +212,22 @@ class AutoECUApp(QMainWindow):
         btn_layout = QGridLayout()
         btn_layout.setSpacing(15)
         
-        scan_btn = QPushButton("Scan ECUs")
+        scan_btn = QPushButton("🔍 Scan ECUs")
         scan_btn.setProperty("class", "primary")
         scan_btn.setMinimumHeight(50)
         scan_btn.clicked.connect(self.scan_ecus)
         
-        read_btn = QPushButton("Read ECU")
+        read_btn = QPushButton("📖 Read ECU")
         read_btn.setProperty("class", "success")
         read_btn.setMinimumHeight(50)
         read_btn.clicked.connect(self.read_ecu)
         
-        write_btn = QPushButton("Write ECU")
+        write_btn = QPushButton("✍️ Write ECU")
         write_btn.setProperty("class", "danger")
         write_btn.setMinimumHeight(50)
         write_btn.clicked.connect(self.write_ecu)
         
-        identify_btn = QPushButton("Identify Modules")
+        identify_btn = QPushButton("🔎 Identify Modules")
         identify_btn.setProperty("class", "primary")
         identify_btn.setMinimumHeight(50)
         identify_btn.clicked.connect(self.identify_modules)
@@ -251,7 +246,7 @@ class AutoECUApp(QMainWindow):
         info_layout.setSpacing(10)
         info_layout.setContentsMargins(20, 20, 20, 20)
         
-        info_title = QLabel("System Information")
+        info_title = QLabel("📋 System Information")
         info_title.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
         
         info_grid = QGridLayout()
@@ -284,7 +279,7 @@ class AutoECUApp(QMainWindow):
         layout.addWidget(info_frame)
         layout.addStretch()
         
-        self.tab_widget.addTab(dashboard_tab, "Dashboard")
+        self.tab_widget.addTab(dashboard_tab, "📊 Dashboard")
 
     def create_ecu_scan_tab(self):
         """Create FUTURISTIC ECU scan tab"""
@@ -299,10 +294,10 @@ class AutoECUApp(QMainWindow):
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
-        header_label = QLabel("ECU Detection & Scanning")
+        header_label = QLabel("🔍 ECU Detection & Scanning")
         header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
         
-        scan_btn = QPushButton("Scan for ECUs")
+        scan_btn = QPushButton("🔄 Scan for ECUs")
         scan_btn.setProperty("class", "primary")
         scan_btn.setMinimumHeight(45)
         scan_btn.clicked.connect(self.scan_ecus)
@@ -333,7 +328,7 @@ class AutoECUApp(QMainWindow):
         status_layout = QHBoxLayout(status_frame)
         status_layout.setContentsMargins(15, 15, 15, 15)
         
-        self.connection_status = QLabel("Disconnected")
+        self.connection_status = QLabel("⚪ Disconnected")
         self.connection_status.setStyleSheet("color: #ef4444; font-size: 12pt; font-weight: bold;")
         
         self.scan_progress = QProgressBar()
@@ -349,7 +344,7 @@ class AutoECUApp(QMainWindow):
         layout.addWidget(controls_frame)
         layout.addWidget(status_frame)
         
-        self.tab_widget.addTab(scan_tab, "ECU Scan")
+        self.tab_widget.addTab(scan_tab, "🔍 ECU Scan")
         
     def create_programming_tab(self):
         """Create FUTURISTIC ECU programming tab"""
@@ -364,7 +359,7 @@ class AutoECUApp(QMainWindow):
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
-        header_label = QLabel("ECU Programming")
+        header_label = QLabel("⚙️ ECU Programming")
         header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
         header_layout.addWidget(header_label)
         
@@ -379,17 +374,17 @@ class AutoECUApp(QMainWindow):
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(15)
         
-        read_btn = QPushButton("Read ECU Memory")
+        read_btn = QPushButton("📖 Read ECU Memory")
         read_btn.setProperty("class", "primary")
         read_btn.setMinimumHeight(50)
         read_btn.clicked.connect(self.read_ecu)
         
-        write_btn = QPushButton("Write ECU Memory")
+        write_btn = QPushButton("✍️ Write ECU Memory")
         write_btn.setProperty("class", "danger")
         write_btn.setMinimumHeight(50)
         write_btn.clicked.connect(self.write_ecu)
         
-        verify_btn = QPushButton("Verify Data")
+        verify_btn = QPushButton("✅ Verify Data")
         verify_btn.setProperty("class", "success")
         verify_btn.setMinimumHeight(50)
         verify_btn.clicked.connect(self.verify_ecu)
@@ -401,7 +396,7 @@ class AutoECUApp(QMainWindow):
         prog_layout.addLayout(btn_layout)
         
         # Hex viewer
-        hex_label = QLabel("ECU Memory View:")
+        hex_label = QLabel("📄 ECU Memory View:")
         hex_label.setStyleSheet("color: #5eead4; font-weight: bold; margin-top: 10px;")
         
         self.hex_viewer = QTextEdit()
@@ -426,7 +421,7 @@ class AutoECUApp(QMainWindow):
         layout.addWidget(header_frame)
         layout.addWidget(prog_frame)
         
-        self.tab_widget.addTab(prog_tab, "Programming")
+        self.tab_widget.addTab(prog_tab, "⚙️ Programming")
         
     def create_parameters_tab(self):
         """Create FUTURISTIC parameter editing tab"""
@@ -441,15 +436,15 @@ class AutoECUApp(QMainWindow):
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
-        header_label = QLabel("ECU Parameters")
+        header_label = QLabel("🎛️ ECU Parameters")
         header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
         
-        load_btn = QPushButton("Load Parameters")
+        load_btn = QPushButton("📥 Load Parameters")
         load_btn.setProperty("class", "primary")
         load_btn.setMinimumHeight(45)
         load_btn.clicked.connect(self.load_parameters)
         
-        save_btn = QPushButton("Save Parameters")
+        save_btn = QPushButton("💾 Save Parameters")
         save_btn.setProperty("class", "success")
         save_btn.setMinimumHeight(45)
         save_btn.clicked.connect(self.save_parameters)
@@ -479,7 +474,7 @@ class AutoECUApp(QMainWindow):
         layout.addWidget(header_frame)
         layout.addWidget(param_frame)
         
-        self.tab_widget.addTab(param_tab, "Parameters")
+        self.tab_widget.addTab(param_tab, "🎛️ Parameters")
         
     def create_diagnostics_tab(self):
         """Create FUTURISTIC diagnostics tab"""
@@ -494,15 +489,15 @@ class AutoECUApp(QMainWindow):
         header_layout = QHBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
-        header_label = QLabel("ECU Diagnostics")
+        header_label = QLabel("🔧 ECU Diagnostics")
         header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
         
-        scan_dtc_btn = QPushButton("Read DTCs")
+        scan_dtc_btn = QPushButton("🔍 Read DTCs")
         scan_dtc_btn.setProperty("class", "primary")
         scan_dtc_btn.setMinimumHeight(45)
         scan_dtc_btn.clicked.connect(self.read_dtcs)
         
-        clear_dtc_btn = QPushButton("Clear DTCs")
+        clear_dtc_btn = QPushButton("🗑️ Clear DTCs")
         clear_dtc_btn.setProperty("class", "danger")
         clear_dtc_btn.setMinimumHeight(45)
         clear_dtc_btn.clicked.connect(self.clear_dtcs)
@@ -532,7 +527,7 @@ class AutoECUApp(QMainWindow):
         layout.addWidget(header_frame)
         layout.addWidget(diag_frame)
         
-        self.tab_widget.addTab(diag_tab, "Diagnostics")
+        self.tab_widget.addTab(diag_tab, "🔧 Diagnostics")
 
     def create_coding_tab(self):
         """Create FUTURISTIC coding/adaptations tab"""
@@ -547,7 +542,7 @@ class AutoECUApp(QMainWindow):
         header_layout = QVBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
-        header_label = QLabel("Module Coding & Adaptations")
+        header_label = QLabel("🔐 Module Coding & Adaptations")
         header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
         header_layout.addWidget(header_label)
         
@@ -557,7 +552,7 @@ class AutoECUApp(QMainWindow):
         content_layout = QVBoxLayout(content_frame)
         content_layout.setContentsMargins(20, 20, 20, 20)
         
-        placeholder = QLabel("Module coding interface under development\n\n"
+        placeholder = QLabel("🚧 Module coding interface under development\n\n"
                             "This tab will include:\n"
                             "• Long coding editor\n"
                             "• Adaptation values\n"
@@ -572,7 +567,7 @@ class AutoECUApp(QMainWindow):
         layout.addWidget(content_frame)
         layout.addStretch()
         
-        self.tab_widget.addTab(coding_tab, "Coding")
+        self.tab_widget.addTab(coding_tab, "🔐 Coding")
         
     def create_status_bar(self):
         """Create FUTURISTIC status bar"""
@@ -583,7 +578,7 @@ class AutoECUApp(QMainWindow):
         status_layout = QHBoxLayout()
         status_layout.setContentsMargins(10, 5, 10, 5)
         
-        self.status_label = QLabel("Ready to program ECUs")
+        self.status_label = QLabel("✨ Ready to program ECUs")
         self.status_label.setStyleSheet("color: #10b981; font-weight: bold;")
         
         status_layout.addWidget(self.status_label)
@@ -591,24 +586,8 @@ class AutoECUApp(QMainWindow):
         
         status_frame.setLayout(status_layout)
         self.statusBar().addPermanentWidget(status_frame, 1)
-
-    def update_status_bar(self, text, color):
-        self.statusBar().showMessage(text)
-        self.statusBar().setStyleSheet(f"background: {color}; color: white;")
-
-    def update_gauges(self, data):
-        if "RPM" in data:
-            self.rpm_gauge.setValue(data["RPM"])
-            self.rpm_label.setText(f"{data['RPM']} RPM")
-        if "Speed" in data:
-            self.speed_label.setText(f"{data['Speed']} km/h")
-        if "Coolant" in data:
-            self.temp_label.setText(f"{data['Coolant']}°C")
-        if "VIN" in data:
-            self.vin_label.setText(data["VIN"][-17:])
         
     def start_live_updates(self):
-        self.obd.start_live()
         """Start live updates for dashboard gauges"""
         self.live_timer = QTimer()
         self.live_timer.timeout.connect(self.update_live_data)
@@ -635,38 +614,38 @@ class AutoECUApp(QMainWindow):
             for theme_id, info in theme_info.items():
                 if info.get('name') == theme_name:
                     self.style_manager.set_theme(theme_id)
-                    self.status_label.setText(f"Theme changed to: {theme_name}")
+                    self.status_label.setText(f"✨ Theme changed to: {theme_name}")
                     return
         except Exception as e:
-            self.status_label.setText(f"Error changing theme: {e}")
+            self.status_label.setText(f"⚠️ Error changing theme: {e}")
     
     def on_brand_changed(self, brand):
         """Handle brand change"""
         self.selected_brand = brand
         self.brand_info_label.setText(brand)
-        self.status_label.setText(f"Brand changed to: {brand}")
+        self.status_label.setText(f"✨ Brand changed to: {brand}")
         
     def identify_modules(self):
         """Identify ECU modules"""
         try:
-            self.status_label.setText("Identifying ECU modules...")
+            self.status_label.setText("🔍 Identifying ECU modules...")
             self.last_op_label.setText("Module Identification")
             self.last_op_label.setStyleSheet("color: #10b981;")
             
             # Simulate identification process
             QTimer.singleShot(1500, self.complete_identification)
         except Exception as e:
-            self.status_label.setText(f"Error identifying modules: {e}")
+            self.status_label.setText(f"❌ Error identifying modules: {e}")
     
     def complete_identification(self):
         """Complete module identification"""
-        self.status_label.setText("Module identification completed")
+        self.status_label.setText("✅ Module identification completed")
         self.modules_card.update_value(8)  # Update modules count
         
     def verify_ecu(self):
         """Verify ECU data"""
         try:
-            self.status_label.setText("Verifying ECU data...")
+            self.status_label.setText("✅ Verifying ECU data...")
             self.prog_progress.setValue(0)
             
             # Simulate verification progress
@@ -674,7 +653,7 @@ class AutoECUApp(QMainWindow):
             self.verify_timer.timeout.connect(self.update_verify_progress)
             self.verify_timer.start(100)
         except Exception as e:
-            self.status_label.setText(f"Error verifying ECU: {e}")
+            self.status_label.setText(f"❌ Error verifying ECU: {e}")
     
     def update_verify_progress(self):
         """Update verification progress"""
@@ -683,18 +662,18 @@ class AutoECUApp(QMainWindow):
             self.prog_progress.setValue(current + 10)
         else:
             self.verify_timer.stop()
-            self.status_label.setText("ECU verification successful")
+            self.status_label.setText("✅ ECU verification successful")
             self.prog_progress.setValue(100)
                 
     def scan_ecus(self):
         """Simulate ECU scanning"""
         try:
-            self.connection_status.setText("Scanning...")
+            self.connection_status.setText("🔄 Scanning...")
             self.connection_status.setStyleSheet("color: #f59e0b; font-size: 12pt; font-weight: bold;")
             self.scan_progress.setVisible(True)
             self.scan_progress.setValue(0)
             
-            self.status_label.setText("Scanning for ECU modules...")
+            self.status_label.setText("🔍 Scanning for ECU modules...")
             self.last_op_label.setText("ECU Scan")
             self.last_op_label.setStyleSheet("color: #10b981;")
             
@@ -703,7 +682,7 @@ class AutoECUApp(QMainWindow):
             self.scan_timer.timeout.connect(self.update_scan_progress)
             self.scan_timer.start(100)
         except Exception as e:
-            self.status_label.setText(f"Error during scan: {e}")
+            self.status_label.setText(f"❌ Error during scan: {e}")
         
     def update_scan_progress(self):
         """Update scan progress"""
@@ -714,27 +693,27 @@ class AutoECUApp(QMainWindow):
             else:
                 self.scan_timer.stop()
                 self.scan_progress.setVisible(False)
-                self.connection_status.setText("Connected")
+                self.connection_status.setText("✅ Connected")
                 self.connection_status.setStyleSheet("color: #10b981; font-size: 12pt; font-weight: bold;")
                 self.conn_info_label.setText("Connected")
                 self.conn_info_label.setStyleSheet("color: #10b981;")
                 
                 # Add sample ECU data
                 self.add_sample_ecu_data()
-                self.status_label.setText("ECU scan completed successfully")
+                self.status_label.setText("✅ ECU scan completed successfully")
                 
                 # Update modules count
                 self.modules_card.update_value(4)
         except Exception as e:
-            self.status_label.setText(f"Error updating progress: {e}")
+            self.status_label.setText(f"❌ Error updating progress: {e}")
             
     def add_sample_ecu_data(self):
         """Add sample ECU data to table"""
         sample_data = [
-            ["Engine Control Module", "CAN", "Online", "0x7E0"],
-            ["Transmission Control", "CAN", "Online", "0x7E1"],
-            ["ABS Module", "CAN", "Online", "0x7E2"],
-            ["Body Control Module", "LIN", "Online", "0x7E3"]
+            ["Engine Control Module", "CAN", "✅ Online", "0x7E0"],
+            ["Transmission Control", "CAN", "✅ Online", "0x7E1"],
+            ["ABS Module", "CAN", "✅ Online", "0x7E2"],
+            ["Body Control Module", "LIN", "✅ Online", "0x7E3"]
         ]
         
         self.ecu_table.setRowCount(len(sample_data))
@@ -749,7 +728,7 @@ class AutoECUApp(QMainWindow):
     def read_ecu(self):
         """Simulate ECU reading"""
         try:
-            self.status_label.setText("Reading ECU memory...")
+            self.status_label.setText("📖 Reading ECU memory...")
             self.last_op_label.setText("ECU Read")
             self.last_op_label.setStyleSheet("color: #10b981;")
             self.prog_progress.setValue(0)
@@ -759,7 +738,7 @@ class AutoECUApp(QMainWindow):
             self.read_timer.timeout.connect(self.update_read_progress)
             self.read_timer.start(50)
         except Exception as e:
-            self.status_label.setText(f"Error reading ECU: {e}")
+            self.status_label.setText(f"❌ Error reading ECU: {e}")
     
     def update_read_progress(self):
         """Update read progress"""
@@ -768,7 +747,7 @@ class AutoECUApp(QMainWindow):
             self.prog_progress.setValue(current + 5)
         else:
             self.read_timer.stop()
-            self.status_label.setText("ECU memory read successfully")
+            self.status_label.setText("✅ ECU memory read successfully")
             self.hex_viewer.setText(
                 "0000: 12 34 56 78 9A BC DE F0  11 22 33 44 55 66 77 88\n"
                 "0010: FF EE DD CC BB AA 99 88  77 66 55 44 33 22 11 00\n"
@@ -781,7 +760,7 @@ class AutoECUApp(QMainWindow):
     def write_ecu(self):
         """Simulate ECU writing"""
         try:
-            self.status_label.setText("Writing to ECU...")
+            self.status_label.setText("✍️ Writing to ECU...")
             self.last_op_label.setText("ECU Write")
             self.last_op_label.setStyleSheet("color: #10b981;")
             self.prog_progress.setValue(0)
@@ -791,7 +770,7 @@ class AutoECUApp(QMainWindow):
             self.write_timer.timeout.connect(self.update_write_progress)
             self.write_timer.start(80)
         except Exception as e:
-            self.status_label.setText(f"Error writing ECU: {e}")
+            self.status_label.setText(f"❌ Error writing ECU: {e}")
     
     def update_write_progress(self):
         """Update write progress"""
@@ -800,14 +779,14 @@ class AutoECUApp(QMainWindow):
             self.prog_progress.setValue(current + 8)
         else:
             self.write_timer.stop()
-            self.status_label.setText("ECU programming completed successfully")
+            self.status_label.setText("✅ ECU programming completed successfully")
             self.programming_card.update_value(100)
             self.prog_progress.setValue(100)
     
     def load_parameters(self):
         """Load sample parameters"""
         try:
-            self.status_label.setText("Loading ECU parameters...")
+            self.status_label.setText("📥 Loading ECU parameters...")
             
             sample_params = [
                 ["Engine RPM Limit", "6800", "RPM"],
@@ -825,32 +804,32 @@ class AutoECUApp(QMainWindow):
                 for col, value in enumerate(data):
                     self.param_table.setItem(row, col, QTableWidgetItem(value))
             
-            self.status_label.setText("Parameters loaded successfully")
+            self.status_label.setText("✅ Parameters loaded successfully")
             self.last_op_label.setText("Load Parameters")
             self.last_op_label.setStyleSheet("color: #10b981;")
         except Exception as e:
-            self.status_label.setText(f"Error loading parameters: {e}")
+            self.status_label.setText(f"❌ Error loading parameters: {e}")
     
     def save_parameters(self):
         """Save parameters (simulated)"""
         try:
-            self.status_label.setText("Saving parameters...")
-            QTimer.singleShot(1000, lambda: self.status_label.setText("Parameters saved successfully"))
+            self.status_label.setText("💾 Saving parameters...")
+            QTimer.singleShot(1000, lambda: self.status_label.setText("✅ Parameters saved successfully"))
             self.last_op_label.setText("Save Parameters")
             self.last_op_label.setStyleSheet("color: #10b981;")
         except Exception as e:
-            self.status_label.setText(f"Error saving parameters: {e}")
+            self.status_label.setText(f"❌ Error saving parameters: {e}")
     
     def read_dtcs(self):
         """Read diagnostic trouble codes"""
         try:
-            self.status_label.setText("Reading diagnostic trouble codes...")
+            self.status_label.setText("🔍 Reading diagnostic trouble codes...")
             
             sample_dtcs = [
                 ["P0300", "Random/Multiple Cylinder Misfire Detected", "Active"],
                 ["P0128", "Coolant Thermostat (Coolant Temperature Below Thermostat Regulating Temperature)", "Pending"],
                 ["U0100", "Lost Communication With ECM/PCM 'A'", "Inactive"],
-                ["C003oprol", "Left Front Wheel Speed Sensor Circuit", "Active"]
+                ["C0034", "Left Front Wheel Speed Sensor Circuit", "Active"]
             ]
             
             self.dtc_table.setRowCount(len(sample_dtcs))
@@ -866,22 +845,22 @@ class AutoECUApp(QMainWindow):
                             item.setForeground(Qt.GlobalColor.gray)
                     self.dtc_table.setItem(row, col, item)
             
-            self.status_label.setText("DTCs read successfully")
+            self.status_label.setText("✅ DTCs read successfully")
             self.last_op_label.setText("Read DTCs")
             self.last_op_label.setStyleSheet("color: #10b981;")
         except Exception as e:
-            self.status_label.setText(f"Error reading DTCs: {e}")
+            self.status_label.setText(f"❌ Error reading DTCs: {e}")
     
     def clear_dtcs(self):
         """Clear diagnostic trouble codes"""
         try:
-            self.status_label.setText("Clearing diagnostic trouble codes...")
+            self.status_label.setText("🗑️ Clearing diagnostic trouble codes...")
             self.dtc_table.setRowCount(0)
-            QTimer.singleShot(1000, lambda: self.status_label.setText("DTCs cleared successfully"))
+            QTimer.singleShot(1000, lambda: self.status_label.setText("✅ DTCs cleared successfully"))
             self.last_op_label.setText("Clear DTCs")
             self.last_op_label.setStyleSheet("color: #10b981;")
         except Exception as e:
-            self.status_label.setText(f"Error clearing DTCs: {e}")
+            self.status_label.setText(f"❌ Error clearing DTCs: {e}")
 
 def main():
     app = QApplication(sys.argv)
