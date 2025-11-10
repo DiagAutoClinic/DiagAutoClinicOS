@@ -109,12 +109,12 @@ class LoginDialog(QDialog):
         
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Enter username")
-        self.username_input.setMinimumHeight(40)
+        self.username_input.setMinimumHeight(20)
         
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Enter password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.password_input.setMinimumHeight(40)
+        self.password_input.setMinimumHeight(20)
         self.password_input.returnPressed.connect(self.attempt_login)
         
         form_layout.addRow("Username:", self.username_input)

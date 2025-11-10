@@ -15,8 +15,6 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
-import style_manager
-
 # Import the style manager
 shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
 sys.path.append(shared_path)
@@ -101,7 +99,7 @@ class AutoECUApp(QMainWindow):
         self.start_live_updates()
         
     def create_header(self, layout):
-        """Create FUTURISTIC header with theme selector - FIXED TEXT VISIBILITY"""
+        """Create FUTURISTIC header with theme selector"""
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
         header_frame.setMaximumHeight(100)
@@ -109,16 +107,19 @@ class AutoECUApp(QMainWindow):
         header_layout.setSpacing(20)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
-        # Title section - FIXED: Use proper CSS classes instead of inline styles
+        # Title section
         title_section = QWidget()
         title_layout = QVBoxLayout(title_section)
         title_layout.setSpacing(5)
         
         title_label = QLabel("AutoECU Pro")
-        title_label.setProperty("class", "hero-title")  # Use CSS class
+        title_label.setProperty("class", "hero-title")
+        title_font = QFont("Segoe UI", 22, QFont.Weight.Bold)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet("color: #14b8a6;")
         
         subtitle_label = QLabel("⚙️ Professional ECU Programming")
-        subtitle_label.setProperty("class", "subtitle")  # Use CSS class
+        subtitle_label.setStyleSheet("color: #5eead4; font-size: 11pt;")
         
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
@@ -129,7 +130,7 @@ class AutoECUApp(QMainWindow):
         brand_layout.setSpacing(5)
         
         brand_label = QLabel("Vehicle Brand:")
-        brand_label.setProperty("class", "section-label")
+        brand_label.setStyleSheet("color: #5eead4; font-size: 9pt;")
         
         self.brand_combo = QComboBox()
         self.brand_combo.addItems(get_brand_list())
@@ -146,10 +147,14 @@ class AutoECUApp(QMainWindow):
         theme_layout.setSpacing(5)
         
         theme_label = QLabel("Theme:")
-        theme_label.setProperty("class", "section-label")
+        theme_label.setStyleSheet("color: #5eead4; font-size: 9pt;")
         
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(style_manager.get_theme_names())
+        theme_info = self.style_manager.get_theme_info()
+        for theme_id, info in theme_info.items():
+            self.theme_combo.addItem(info['name'], theme_id)
+        
+        self.theme_combo.setCurrentText("Futuristic Teal")
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         self.theme_combo.setMinimumWidth(150)
         
@@ -862,7 +867,7 @@ def main():
     
     # Set application properties
     app.setApplicationName("AutoECU Pro")
-    app.setApplicationVersion("2.0.0")
+    app.setApplicationVersion("3.0.0")
     app.setOrganizationName("DiagAutoClinicOS")
     
     try:

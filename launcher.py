@@ -56,14 +56,26 @@ except ImportError as e:
         def update_value(self, v): 
             if hasattr(self, 'value_label'):
                 self.value_label.setText(str(v))
-
+     
     CircularGauge = QWidget
 
 # === CONSTANTS - FIXED PATHS ===
-ALLOWED_APPS: Dict[str, str] = {
-    'diag': 'AutoDiag/main.py',
-    'ecu': 'AutoECU/main.py', 
-    'key': 'AutoKey/main.py'
+ALLOWED_APPS: Dict[str, dict] = {
+    'diag': {
+        'name': 'AutoDiag Pro',
+        'path': 'AutoDiag/main.py',
+        'alt_paths': ['../AutoDiag/main.py', 'AutoDiag/main.py', './AutoDiag/main.py']
+    },
+    'ecu': {
+        'name': 'AutoECU Pro', 
+        'path': 'AutoECU/main.py',
+        'alt_paths': ['../AutoECU/main.py', 'AutoECU/main.py', './AutoECU/main.py']
+    },
+    'key': {
+        'name': 'AutoKey Pro',
+        'path': 'AutoKey/main.py',
+        'alt_paths': ['../AutoKey/main.py', 'AutoKey/main.py', './AutoKey/main.py']
+    }
 }
 
 # === MAIN LAUNCHER ===
@@ -316,7 +328,7 @@ class ModernLauncher(QMainWindow):
     def _launch_app(self, key, name):
         """FIXED: Proper path resolution and error handling"""
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        app_path = os.path.join(base_dir, ALLOWED_APPS[key])
+        app_path = os.path.join(base_dir, ALLOWED_APPS[key]['path'])
         
         self.log_message(f"Attempting to launch {name}...")
         self.log_message(f"Path: {app_path}")

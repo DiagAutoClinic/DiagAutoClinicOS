@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-"""
-Enhanced Special Functions Module - Fixed Security Integration
-"""
 
 import logging
 import re
@@ -164,6 +161,59 @@ class EnhancedSpecialFunctionsManager:
         functions.append(func)
         
         return functions
+
+    def _create_lexus_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Lexus special functions"""
+        functions = []
+        
+        # Throttle Body Learning
+        func = EnhancedSpecialFunction(
+            "lexus_throttle_learn", 
+            "Throttle Body Learning", 
+            FunctionCategory.ADAPTATION,
+            "Performs throttle body position learning and reset after cleaning or replacement",
+            2, "lexus"
+        )
+        func.add_parameter("engine_temperature", "int", True, "70-105")
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_parameter("throttle_clean", "bool", False)
+        func.add_prerequisite("Engine at operating temperature")
+        func.add_prerequisite("Battery voltage > 12.5V")
+        func.add_prerequisite("All electrical loads OFF")
+        func.add_risk("Incorrect adaptation may cause poor idle quality")
+        functions.append(func)
+        
+        # Immobilizer Registration
+        func = EnhancedSpecialFunction(
+            "Lexus_immobilizer_reg", 
+            "Immobilizer Registration", 
+            FunctionCategory.SECURITY,
+            "Register new keys to immobilizer system - requires security access",
+            5, "Lexus"
+        )
+        func.add_parameter("key_count", "int", True, "1-8")
+        func.add_parameter("security_code", "string", True)
+        func.add_prerequisite("All keys present")
+        func.add_prerequisite("Security code available")
+        func.add_prerequisite("Stable power supply")
+        func.add_risk("Vehicle may become immobilized if procedure fails")
+        functions.append(func)
+        
+        # Steering Angle Calibration
+        func = EnhancedSpecialFunction(
+            "lexus_steering_angle", 
+            "Steering Angle Sensor Calibration", 
+            FunctionCategory.CALIBRATION,
+            "Reset and calibrate steering angle sensor after alignment or sensor replacement",
+            3, "Toyota"
+        )
+        func.add_parameter("wheel_alignment_done", "bool", True)
+        func.add_prerequisite("Wheel alignment completed")
+        func.add_prerequisite("Steering wheel centered")
+        func.add_prerequisite("Vehicle on level surface")
+        functions.append(func)
+        
+        return functions
     
     def _create_volkswagen_functions(self) -> List[EnhancedSpecialFunction]:
         """Create Volkswagen special functions"""
@@ -200,8 +250,978 @@ class EnhancedSpecialFunctionsManager:
         functions.append(func)
         
         return functions
+
+    def _create_audi_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Audi special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "audi_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Audi"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "audi_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Audi"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
     
-    # Add similar creation methods for all 25 brands...
+    def _create_skoda_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Skoda special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "sko_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Skoda"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "sko_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Skoda"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_seat_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Seat special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "vw_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Seat"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "vw_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Seat"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_bmw_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create BMW special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "bmw_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "BMW"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "bmw_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "BMW"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_mini_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Mini special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "mini_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Mini"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "mini_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Mini"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_mercedes_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Mercedes-Benz special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "mb_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Mercedes-Benz"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "mb_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Mercedes-Benz"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_ford_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Ford special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "ford_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Ford"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "ford_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Ford"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_lincoln_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Lincoln special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "lincoln_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Lincoln"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "lincoln_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Lincoln"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_chevrolet_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Chevrolet special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "chev_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Chevrolet"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "chev_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Chevrolet"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_cadillac_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Cadillac special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "cadi_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Cadillac"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "cadi_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Cadillac"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_gmc_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create GMC special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "gmc_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "GMC"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "gmc_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "GMC"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_buick_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Buick special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "bck_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Buick"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "bck_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Buick"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_hyundai_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Hyundai special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "hyu_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Hyundai"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "hyu_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Hyundai"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_kia_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Kia special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "kia_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Kia"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "kia_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Kia"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_jeep_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Jeep special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "jeep_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Jeep"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "jeep_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Jeep"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_chrysler_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Chrysler special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "cys_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Chrysler"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "cys_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Chrysler"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_dodge_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Dodge special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "dod_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Dodge"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "dod_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Dodge"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_ram_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create RAM special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "ram_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "RAM"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "ram_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "RAM"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_honda_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Honda special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "hda_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Honda"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "hda_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Honda"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_nissan_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Audi special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "nsn_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Nissan"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "nsn_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Nissan"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_mazda_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Mazda special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "mza_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Mazda"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "mza_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Mazda"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_subaru_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Subaru special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "sub_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Subaru"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "sub_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Subaru"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_mitsubishi_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Mitsubishi special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "mit_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Mitsubishi"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "mit_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Mitsubishi"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions
+
+    def _create_volvo_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Volvo special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "vol_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Volvo"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "vol_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Volvo"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_porsche_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Porsche special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "psc_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Porsche"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "psc_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Porsche"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_jaguar_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Jaguar special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "jag_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Jaguar"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "jag_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Jaguar"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions    
+
+    def _create_landrover_functions(self) -> List[EnhancedSpecialFunction]:
+        """Create Land Rover special functions"""
+        functions = []
+        
+        # DPF Regeneration
+        func = EnhancedSpecialFunction(
+            "jlr_dpf_regeneration", 
+            "DPF Forced Regeneration", 
+            FunctionCategory.MAINTENANCE,
+            "Force diesel particulate filter regeneration when automatic regeneration fails",
+            4, "Land Rover"
+        )
+        func.add_parameter("engine_temperature", "int", True, "80-100")
+        func.add_parameter("vehicle_stationary", "bool", True)
+        func.add_parameter("parking_brake", "bool", True)
+        func.add_prerequisite("Adequate fuel level")
+        func.add_prerequisite("DPF not physically damaged")
+        func.add_prerequisite("No exhaust leaks")
+        func.add_risk("High exhaust temperatures - ensure safe working area")
+        functions.append(func)
+        
+        # Throttle Valve Adaptation
+        func = EnhancedSpecialFunction(
+            "jlr_throttle_adaptation", 
+            "Throttle Valve Adaptation", 
+            FunctionCategory.ADAPTATION,
+            "Basic setting for throttle valve control module",
+            3, "Land Rover"
+        )
+        func.add_parameter("ignition_on", "bool", True)
+        func.add_prerequisite("Throttle body clean")
+        func.add_prerequisite("No air leaks")
+        functions.append(func)
+        
+        return functions        
     
     def execute_function(self, brand: str, function_id: str, parameters: Dict) -> Dict:
         """Enhanced function execution with comprehensive security"""
