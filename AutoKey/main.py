@@ -70,7 +70,7 @@ class AutoKeyApp(QMainWindow):
     def init_ui(self):
         """Initialize FUTURISTIC user interface"""
         self.setWindowTitle("AutoKey Pro - Futuristic Key Programming")
-        self.setGeometry(50, 50, 1400, 900)
+        self.setGeometry(50, 50, 1366, 768)
         
         # Create central widget and main layout
         central_widget = QWidget()
