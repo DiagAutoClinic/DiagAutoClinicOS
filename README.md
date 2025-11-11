@@ -192,17 +192,17 @@ We welcome contributions! Please see our [Contributing Guide](https://diagautocl
 
 #### **Special Hardware Sponsors**
 
-- **EshuTech Computers**  
-  Sponsored a brand new Acer TravelMate G2 Core i7 Laptop  
-  [Learn more about EshuTech Computers](https://eshutech.co.za)
+ **EshuTech Computers**  
+ Sponsored a brand new Acer TravelMate G2 Core i7 Laptop  
+ [Learn more about EshuTech Computers](https://eshutech.co.za)
 
-- **Godiag (https://godiag.com)**  
-  Provided a GT100 Plus GPT device for advanced testing and integration  
-  [Visit Godiag.com](https://godiag.com)
+ **Godiag (https://godiag.com)**  
+ Provided a GT100 Plus GPT device for advanced testing and integration  
+ [Visit Godiag.com](https://godiag.com)
 
-- **ScanTool.net (https://www.scantool.net)**  
-  Sponsored 2 x OBDLink MX+ adapters for extensive compatibility testing  
-  [Visit ScanTool.net](https://www.scantool.net)
+**ScanTool.net (https://www.scantool.net)**  
+Sponsored 2 x OBDLink MX+ adapters for extensive compatibility testing  
+[Visit ScanTool.net](https://www.scantool.net)
 
 </div>
 
