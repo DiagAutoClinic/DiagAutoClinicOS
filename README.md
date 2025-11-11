@@ -196,9 +196,9 @@ git commit -am "Add new module"
 git push origin feature/new-module
 ```
 
-If you’re a hardware vendor or workshop interested in integration testing, reach out at:
- 📧 **shaun@diagautoclinic.co.za**
+If you’re a hardware vendor or workshop interested in integration testing, reach out at:<br>
 
+ 📧 **shaun@diagautoclinic.co.za**
  | **dacos@diagautoclinic.co.za**
 
 ------
