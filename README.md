@@ -84,7 +84,7 @@ DiagAutoClinicOS/
 ├── tests/                  # Unit and integration tests
 │   ├── AutoDiag/
 │   ├── shared/
-│   └── integration_tests/
+│   └── integration_tests/https://diagautoclinic.co.za/assets/logo.png
 │
 ├── launcher.py             # Main startup script
 ├── requirements.txt        # Python dependencies
@@ -146,7 +146,7 @@ python launcher.py
 🚀 *Sponsored two OBDLink MX+ adapters enabling extensive compatibility and reliability testing.*
  🔗 Visit [ScanTool.net](https://www.scantool.net)
 
-<p><center><img  src="https://diagautoclinic.co.za/assets/sponsors.png"></center></p><br/>   <p><center><h1><sub>Powered by <strong>Our Proud Sponsors</strong></sub></h1></center></p>
+<p align="center"><img  src="https://diagautoclinic.co.za/assets/sponsors.png"></center></p><br/>   <p><center><h1><sub>Powered by <strong>Our Proud Sponsors</strong></sub></h1></center></p>
 
 ------
 
