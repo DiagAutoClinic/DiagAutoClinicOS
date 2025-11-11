@@ -1,7 +1,7 @@
 
 <!-- HEADER -->
 <p align="center">
-  <img src="https://diagautoclinic.co.za/assets/logo.png" alt="DiagAutoClinicOS Logo" width="200"/>
+  <img src="https://diagautoclinic.co.za/assets/logo.png" alt="DiagAutoClinicOS Logo" width="1366"/>
 </p>
 
 <h1 align="center">🚗 DiagAutoClinicOS</h1>
