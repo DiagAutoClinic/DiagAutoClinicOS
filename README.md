@@ -146,11 +146,7 @@ python launcher.py
 🚀 *Sponsored two OBDLink MX+ adapters enabling extensive compatibility and reliability testing.*
  🔗 Visit [ScanTool.net](https://www.scantool.net)
 
-![Generated image](https://chatgpt.com/backend-api/estuary/content?id=file_000000004e3871f58649410736d77a3a&ts=489690&p=fs&cid=1&sig=cdf87b82ce6cb8d65d84d5ad1f62e609bed1dc300df5a542eb80c003d658a9f7&v=0)
-
-![Generated image](https://chatgpt.com/backend-api/estuary/content?id=file_00000000e878720cb6fc884ded086f47&ts=489690&p=fs&cid=1&sig=030abd5f1bd86d1aa21928b813b1d69398034303104846ab9a982dae210af22d&v=0)![Generated image](https://chatgpt.com/backend-api/estuary/content?id=file_000000004e3871f58649410736d77a3a&ts=489690&p=fs&cid=1&sig=cdf87b82ce6cb8d65d84d5ad1f62e609bed1dc300df5a542eb80c003d658a9f7&v=0)
-
-![Generated image](https://chatgpt.com/backend-api/estuary/content?id=file_00000000e878720cb6fc884ded086f47&ts=489690&p=fs&cid=1&sig=030abd5f1bd86d1aa21928b813b1d69398034303104846ab9a982dae210af22d&v=0)![Generated image](https://chatgpt.com/backend-api/estuary/content?id=file_000000004e3871f58649410736d77a3a&ts=489690&p=fs&cid=1&sig=cdf87b82ce6cb8d65d84d5ad1f62e609bed1dc300df5a542eb80c003d658a9f7&v=0)
+<p align="center">   <img  src="https://diagautoclinic.co.za/assets/sponsors.png"  width="80%"><br/>   <sub>Powered by <strong>Our Proud Sponsors</strong>
 
 ------
 
@@ -207,7 +203,7 @@ Licensed under the **MIT License**.
 
 ------
 
-<p align="center">   <img  src="https://raw.githubusercontent.com/DiagAutoClinic/DiagAutoClinicOS/main/docs/banner.png"  width="80%"><br/>   <sub>Powered by <strong>DiagAutoClinic</strong> •  Open Source Diagnostic Engineering</sub> </p> ```
+<p align="center">   <img  src="https://diagautoclinic.co.za/assets/logo.png"  width="80%"><br/>   <sub>Powered by <strong>DiagAutoClinic</strong> •  Where Mechanics Meet Future Intelligence</sub> </p>
 
 ------
 
