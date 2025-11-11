@@ -237,14 +237,15 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 - **claud.ai** Claude-Code
 - **grok.com** Grok 4
 - **deepseek.com** Deepseek-Coder
-- **My Wife** Patience and support like non-other
+- **My Wife** Patience and support like non-other ❤️❤️❤️
 
 ---
 
 <div align="center">
 
-**Made with ❤️ by the DiagAutoClinic Team**
+**Made with ❤️ by the Human-AI Colab Team**
 
-*Empowering automotive technicians with open-source tools.*
+*Empowering automotive technicians with open-source tools.
+Where Mechanics Meet Future Intelligence*
 
 </div>
