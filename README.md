@@ -146,7 +146,7 @@ python launcher.py
 🚀 *Sponsored two OBDLink MX+ adapters enabling extensive compatibility and reliability testing.*
  🔗 Visit [ScanTool.net](https://www.scantool.net)
 
-<p align="center">   <img  src="https://diagautoclinic.co.za/assets/sponsors.png"><br/>   <h1><sub>Powered by <strong>Our Proud Sponsors</strong></sub></h1></p>
+<p align="center">   <img  src="https://diagautoclinic.co.za/assets/sponsors.png"></p>><br/>   <p align="center"><h1><sub>Powered by <strong>Our Proud Sponsors</strong></sub></h1></p>
 
 ------
 
