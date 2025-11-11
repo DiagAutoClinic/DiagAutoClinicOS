@@ -1,7 +1,7 @@
 
 <!-- HEADER -->
 <p align="center">
-  <img src="https://raw.githubusercontent.com/DiagAutoClinic/DiagAutoClinicOS/main/docs/logo.png" alt="DiagAutoClinicOS Logo" width="200"/>
+  <img src="https://diagautoclinic.co.za/assets/logo.png" alt="DiagAutoClinicOS Logo" width="200"/>
 </p>
 
 <h1 align="center">🚗 DiagAutoClinicOS</h1>
@@ -200,10 +200,6 @@ If you’re a hardware vendor or workshop interested in integration testing, rea
 
 Licensed under the **MIT License**.
  Feel free to use, modify, and distribute — attribution appreciated.
-
-------
-
-<p align="center">   <img  src="https://diagautoclinic.co.za/assets/logo.png"  width="80%"><br/>   <sub>Powered by <strong>DiagAutoClinic</strong> •  Where Mechanics Meet Future Intelligence</sub> </p>
 
 ------
 
