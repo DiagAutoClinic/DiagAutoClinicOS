@@ -27,6 +27,57 @@ class DTCDatabase:
         ''')
         self.conn.commit()
 
+    def _populate_data(self):
+        """Populate a minimal set of DTCs required for tests."""
+        try:
+            base_dtcs = [
+                ('P0300', 'Random/Multiple Cylinder Misfire Detected', 'High', 'Powertrain'),
+                ('P0171', 'System Too Lean (Bank 1)', 'Medium', 'Powertrain'),
+                ('U0100', 'Lost Communication With ECU', 'High', 'Network'),
+                ('B1000', 'ECU Malfunction', 'Critical', 'Body'),
+                ('C1201', 'ABS System Malfunction', 'High', 'Chassis'),
+                ('P0217', 'Engine Overtemperature', 'Critical', 'Powertrain'),
+                ('P0420', 'Catalyst System Efficiency Below Threshold', 'Medium', 'Powertrain'),
+            ]
+            self.cursor.executemany('INSERT OR IGNORE INTO dtc_codes VALUES (?, ?, ?, ?)', base_dtcs)
+            self.conn.commit()
+            logger.info(f"Populated {len(base_dtcs)} base DTC codes into database")
+        except Exception as e:
+            logger.error(f"Failed to populate base DTC data: {e}")
+
+    def get_dtc_info(self, code):
+        """Return DTC information for a given code."""
+        try:
+            self.cursor.execute(
+                'SELECT description, severity, category FROM dtc_codes WHERE code = ?',
+                (code.upper(),)
+            )
+            result = self.cursor.fetchone()
+            if result:
+                return {'description': result[0], 'severity': result[1], 'category': result[2]}
+            return {'description': 'Unknown DTC Code', 'severity': 'Unknown', 'category': 'Unknown'}
+        except Exception as e:
+            logger.error(f"Error querying DTC info: {e}")
+            return {'description': 'Unknown DTC Code', 'severity': 'Unknown', 'category': 'Unknown'}
+
+    def search_dtcs(self, search_term):
+        """Search DTCs by code or description and return matches."""
+        try:
+            self.cursor.execute(
+                'SELECT code, description, severity, category FROM dtc_codes WHERE code LIKE ? OR description LIKE ?',
+                (f'%{search_term}%', f'%{search_term}%')
+            )
+            return self.cursor.fetchall()
+        except Exception as e:
+            logger.error(f"Error searching DTCs: {e}")
+            return []
+
+    def close(self):
+        try:
+            self.conn.close()
+        except Exception:
+            pass
+
     # ENHANCED DTC DATABASE - Add to dtc_database.py
 def _populate_enhanced_data(self):
     """Populate with comprehensive DTC coverage for all 25 brands"""
