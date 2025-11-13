@@ -1,7 +1,47 @@
-PyQt6==6.6.1
-pyinstaller==6.2.0
-pyserial==3.5
-requests==2.31.0
-python-dateutil==2.8.2
-obd==0.7.1
-pybluez==0.23
+# DiagAutoClinicOS - Core Dependencies
+# Updated: 2025-01-12
+
+# === CRITICAL GUI FRAMEWORK ===
+PyQt6>=6.6.1,<6.10.0
+PyQt6-Qt6>=6.6.2
+PyQt6-sip>=13.6.0
+
+# === HARDWARE COMMUNICATION ===
+pyserial>=3.5,<4.0.0
+python-can>=4.2.2,<5.0.0
+pyusb>=1.2.1,<2.0.0
+
+# === AUTOMOTIVE PROTOCOLS ===
+obd>=0.7.1
+
+# === BLUETOOTH (Optional - Windows may require manual setup) ===
+# pybluez>=0.23  # Uncomment for Bluetooth support
+
+# === SYSTEM UTILITIES ===
+psutil>=5.9.6
+requests>=2.31.0,<3.0.0
+python-dateutil>=2.8.2,<3.0.0
+
+# === PACKAGING & DISTRIBUTION ===
+pyinstaller>=6.10.0
+
+# === LOGGING (Optional but Recommended) ===
+loguru>=0.7.2
+
+# ============================================================================
+# INSTALLATION INSTRUCTIONS
+# ============================================================================
+#
+# Basic installation:
+#   pip install -r requirements.txt
+#
+# Development installation (includes testing tools):
+#   pip install -r requirements.txt -r requirements-dev.txt
+#
+# Windows users: PyBluez may require manual compilation
+# Linux users: Install bluetooth libraries first
+#   sudo apt-get install libbluetooth-dev
+#   pip install pybluez
+#
+# For professional device support, see docs/HARDWARE_SETUP.md
+# ============================================================================
