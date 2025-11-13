@@ -179,39 +179,65 @@ class EnhancedStyleManager:
         app.setPalette(palette)
         app.setStyleSheet(self.get_professional_stylesheet())
 
-    def apply_neon_clinic_theme(self):
-        """Apply Neon Clinic theme with security tint"""
-        app = QApplication.instance()
-        app.setStyle(QStyleFactory.create("Fusion"))
-        
-        palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(10, 26, 46))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(224, 248, 255))
-        palette.setColor(QPalette.ColorRole.Base, QColor(15, 30, 55))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(20, 40, 70))
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(20, 50, 90))
-        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(255, 255, 255))
-        palette.setColor(QPalette.ColorRole.Text, QColor(224, 248, 255))
-        palette.setColor(QPalette.ColorRole.Button, QColor(20, 50, 90))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor(224, 248, 255))
-        palette.setColor(QPalette.ColorRole.BrightText, QColor(0, 255, 170))
-        palette.setColor(QPalette.ColorRole.Link, QColor(0, 212, 255))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 212, 255))
-        palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
-        
-        # Security tint
-        if self.security_level == "dealer":
-            palette.setColor(QPalette.ColorRole.Highlight, QColor(100, 180, 255))
-        
-        app.setPalette(palette)
-        
-        qss_path = os.path.join(os.path.dirname(__file__), "themes", "neon_clinic.qss")
-        try:
-            with open(qss_path, "r", encoding="utf-8") as f:
-                app.setStyleSheet(f.read())
-        except Exception as e:
-            logger.error(f"Failed to load neon_clinic.qss: {e}")
-            app.setStyleSheet(self.get_futuristic_stylesheet())
+def apply_neon_clinic_theme(self):
+    """Apply Neon Clinic theme with security tint"""
+    app = QApplication.instance()
+    app.setStyle(QStyleFactory.create("Fusion"))
+
+    # === Palette ===
+    palette = QPalette()
+    palette.setColor(QPalette.ColorRole.Window, QColor(10, 26, 46))
+    palette.setColor(QPalette.ColorRole.WindowText, QColor(224, 248, 255))
+    palette.setColor(QPalette.ColorRole.Base, QColor(15, 30, 55))
+    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(20, 40, 70))
+    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(20, 50, 90))
+    palette.setColor(QPalette.ColorRole.ToolTipText, QColor(255, 255, 255))
+    palette.setColor(QPalette.ColorRole.Text, QColor(224, 248, 255))
+    palette.setColor(QPalette.ColorRole.Button, QColor(20, 50, 90))
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor(224, 248, 255))
+    palette.setColor(QPalette.ColorRole.BrightText, QColor(0, 255, 170))
+    palette.setColor(QPalette.ColorRole.Link, QColor(0, 212, 255))
+    palette.setColor(QPalette.ColorRole.Highlight, QColor(0, 212, 255))
+    palette.setColor(QPalette.ColorRole.HighlightedText, Qt.GlobalColor.white)
+
+    if self.security_level == "dealer":
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(100, 180, 255))
+
+    app.setPalette(palette)
+
+    # === Load QSS with FIXED image path ===
+    qss_path = os.path.join(os.path.dirname(__file__), "themes", "neon_clinic.qss")
+    
+    if not os.path.exists(qss_path):
+        logger.warning(f"QSS not found: {qss_path}")
+        app.setStyleSheet(self.get_futuristic_stylesheet())
+        return
+
+    try:
+        with open(qss_path, "r", encoding="utf-8") as f:
+            qss = f.read()
+
+        # === CORRECT PROJECT ROOT (only go up once from shared/) ===
+        from pathlib import Path
+        shared_dir = Path(__file__).resolve().parent
+        project_root = shared_dir.parent  # This is DiagAutoClinicOS/
+        img_path = project_root / "resources" / "bg" / "neon_clinic_bg.jpg"
+        img_url = f"file:///{img_path.as_posix().replace('\\', '/')}"
+
+        logger.info(f"[NeonClinic] Using image: {img_path}")
+
+        # Replace ANY relative path with absolute
+        qss = qss.replace("../../resources/bg/neon_clinic_bg.jpg", img_url)
+        qss = qss.replace("../resources/bg/neon_clinic_bg.jpg", img_url)
+        qss = qss.replace("resources/bg/neon_clinic_bg.jpg", img_url)
+        qss = qss.replace("neon_clinic_bg.jpg", img_url)
+
+        app.setStyleSheet(qss)
+        logger.info("Neon Clinic theme applied successfully")
+
+    except Exception as e:
+        logger.error(f"Failed to apply theme: {e}")
+        app.setStyleSheet(self.get_futuristic_stylesheet())
 
     def get_futuristic_stylesheet(self):
         """Return Futuristic theme stylesheet"""

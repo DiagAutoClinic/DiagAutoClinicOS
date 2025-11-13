@@ -4,6 +4,7 @@ Circular Gauge Widget for DACOS
 Modern data visualization component
 """
 
+import re
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame
 from PyQt6.QtCore import Qt, QRectF
 from PyQt6.QtGui import QPainter, QPen, QColor, QFont
@@ -13,26 +14,26 @@ class CircularGauge(QWidget):
     
     def __init__(self, value=0, max_value=100, label="", unit="%", parent=None):
         super().__init__(parent)
-        self.value = value
-        self.max_value = 100 # Always 100 ---> percentage = value
+        self.value = 0
+        self.max_value = 100
         self.label_text = label
         self.unit = unit
         self.setMinimumSize(150, 150)
         self.setMaximumSize(200, 200)
-
+        
         # Initialize the value
         self.set_value(value)
         
     def set_value(self, value):
         """Update gauge value - accepts int, float, or str"""
         try:
-            v = float(value) # Accept "75", 75, 75.5
+            v = float(value)
         except (TypeError, ValueError):
             v = 0
-
+        
         # Clamp to 0-100
         self.value = max(0, min(100, v))
-        self.update() # Trigger repaint
+        self.update()
         
     def paintEvent(self, event):
         """Custom paint event for circular gauge"""
@@ -104,14 +105,47 @@ class StatCard(QFrame):
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setWordWrap(True)
         
+        # Parse value - handle strings like "97%" or numbers
+        clean_value = self._parse_value(value)
+        
         # Circular gauge
-        self.gauge = CircularGauge(value, max_value, "", unit)
+        self.gauge = CircularGauge(clean_value, max_value, "", unit)
         self.gauge.setProperty("class", "circular-gauge")
+        
+        # Value label (for compatibility)
+        self.value_label = QLabel(f"{int(clean_value)}{unit}")
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.value_label.setStyleSheet(
+            "font-size: 14pt; font-weight: bold; color: #14b8a6;"
+        )
         
         layout.addWidget(title_label)
         layout.addWidget(self.gauge, alignment=Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.value_label, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addStretch()
+    
+    def _parse_value(self, value):
+        """Parse value - handles strings like '97%' or numbers"""
+        if isinstance(value, str):
+            # Remove % and any other non-numeric characters
+            numeric = re.sub(r'[^0-9.]', '', value)
+            try:
+                return float(numeric) if numeric else 0
+            except ValueError:
+                return 0
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0
         
     def update_value(self, value):
         """Update the gauge value"""
-        self.gauge.set_value(value)
+        clean_value = self._parse_value(value)
+        self.gauge.set_value(clean_value)
+        # Update text label too
+        if hasattr(self, 'value_label') and hasattr(self.gauge, 'unit'):
+            try:
+                val = int(clean_value)
+                self.value_label.setText(f"{val}{self.gauge.unit}")
+            except (TypeError, ValueError):
+                self.value_label.setText(str(value))

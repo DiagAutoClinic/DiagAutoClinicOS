@@ -23,19 +23,19 @@ logger = logging.getLogger(__name__)
 
 # Import custom modules safely
 shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
-sys.path.append(shared_path)
-
+if shared_path not in sys.path:
+    sys.path.append(shared_path)
 try:
-    from style_manager import style_manager  # Use global instance
-    from brand_database import get_brand_info, get_brand_list
-    from circular_gauge import CircularGauge, StatCard
+    from /shared/style_manager import style_manager  # Use global instance
+    from /shared/brand_database import get_brand_info, get_brand_list
+    from /shared/circular_gauge import CircularGauge, StatCard
 except ImportError as e:
     logger.error(f"Failed to import custom modules: {e}")
     # Fallback classes
-    class DummyStyleManager:
+    class style_manager:
         def set_theme(self, theme): pass
         def get_theme_names(self): return ["futuristic", "neon_clinic", "security", "dark", "light", "professional"]
-    style_manager = DummyStyleManager()
+    style_manager = style_manager()
     
     def get_brand_list():
         return ["Toyota", "Honda", "Ford", "BMW", "Mercedes-Benz", "Audi", "Volkswagen"]

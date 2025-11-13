@@ -8,10 +8,10 @@
     font-size: 10pt;
 }
 
-QMainWindow {
-    background: #0a1a2e;
+/* shared/themes/neon_clinic.qss */
+QWidget#NeonBackground, QFrame#NeonBackground {
     background-image: url(../../resources/bg/neon_clinic_bg.jpg);
-    background-size: cover;
+    background-repeat: no-repeat;
     background-position: center;
 }
 

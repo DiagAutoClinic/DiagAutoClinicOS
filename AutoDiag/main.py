@@ -9,16 +9,20 @@ import os
 import logging
 from typing import Dict, List
 
+# ----------------------------------------------------------------------
 # Security: Import validation
+# ----------------------------------------------------------------------
 try:
     import serial
     SERIAL_AVAILABLE = True
 except ImportError:
     SERIAL_AVAILABLE = False
 
-# Security modules
+# ----------------------------------------------------------------------
+# Qt imports
+# ----------------------------------------------------------------------
 from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, 
+    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
     QPushButton, QLabel, QComboBox, QTabWidget, QFrame, QGroupBox,
     QTableWidget, QTableWidgetItem, QProgressBar, QTextEdit, QLineEdit,
     QHeaderView, QMessageBox, QSplitter, QScrollArea, QCheckBox,
@@ -28,13 +32,18 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QTimer, QSettings
 from PyQt6.QtGui import QFont, QPalette, QColor
 
-# Import shared modules - FIXED: Use global style_manager
+# ----------------------------------------------------------------------
+# Add shared/ to Python path (once)
+# ----------------------------------------------------------------------
 shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
-if os.path.exists(shared_path):
+if os.path.exists(shared_path) and shared_path not in sys.path:
     sys.path.append(shared_path)
 
+# ----------------------------------------------------------------------
+# Import shared modules - with fallbacks
+# ----------------------------------------------------------------------
 try:
-    from style_manager import style_manager  # FIXED: Use global instance
+    from style_manager import style_manager
     from brand_database import get_brand_list, get_brand_info, brand_database
     from dtc_database import DTCDatabase
     from vin_decoder import VINDecoder
@@ -45,22 +54,23 @@ try:
     from circular_gauge import CircularGauge, StatCard
 except ImportError as e:
     logging.error(f"Failed to import modules: {e}")
-    # Create comprehensive fallbacks
+
+    # ---------- FALLBACKS ----------
     class FallbackStyleManager:
         def set_theme(self, theme): pass
         def get_theme_names(self): return ["futuristic", "neon_clinic", "security", "dark", "light", "professional"]
         def set_security_level(self, level): pass
     style_manager = FallbackStyleManager()
-    
+
     def get_brand_list(): return ["Toyota", "Honda", "Ford"]
     def get_brand_info(brand): return {}
-    
+
     class CircularGauge(QWidget):
         def __init__(self, *args, **kwargs):
             super().__init__()
             self.setMinimumSize(120, 120)
         def set_value(self, val): pass
-    
+
     class StatCard(QFrame):
         def __init__(self, title, value, *args, **kwargs):
             super().__init__()
@@ -69,10 +79,9 @@ except ImportError as e:
             self.value_label = QLabel(str(value))
             layout.addWidget(self.title_label)
             layout.addWidget(self.value_label)
-        def update_value(self, val): 
+        def update_value(self, val):
             if hasattr(self, 'value_label'):
                 self.value_label.setText(str(val))
-
 
 logger = logging.getLogger(__name__)
 

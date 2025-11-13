@@ -20,9 +20,9 @@ shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sha
 sys.path.append(shared_path)
 
 try:
-    from style_manager import StyleManager
-    from brand_database import get_brand_info, get_brand_list
-    from circular_gauge import CircularGauge, StatCard
+    from /shared/style_manager import StyleMmanager
+    from /shared/brand_database import get_brand_info, get_brand_list
+    from /shared/circular_gauge import CircularGauge, StatCard
 except ImportError as e:
     print(f"Warning: Failed to import modules: {e}")
     # Fallback classes

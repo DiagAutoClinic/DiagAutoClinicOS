@@ -205,8 +205,17 @@ If you’re a hardware vendor or workshop interested in integration testing, rea
 
 ## 🧾 License
 
-Licensed under the **MIT License**.
- Feel free to use, modify, and distribute — attribution appreciated.
+This project is licensed under the **GNU General Public License v3.0**.
+
+**Key Points:**
+- ✅ Free to use, modify, and distribute
+- ✅ Source code must remain open
+- ✅ Derivative works must use GPL v3
+- ⚠️ No warranty provided
+
+See the [LICENSE](LICENSE) file for complete terms.
+
+For commercial licensing inquiries, contact: **dacos@diagautoclinic.co.za**
 
 ------
 
