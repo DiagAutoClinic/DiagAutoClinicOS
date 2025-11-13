@@ -11,12 +11,12 @@ import time
 import json
 import os
 from typing import Dict, List, Optional, Tuple
-from enum import Enum
+from enum import Enum, IntEnum
 import logging
 
 logger = logging.getLogger(__name__)
 
-class SecurityLevel(Enum):
+class SecurityLevel(IntEnum):
     BASIC = 1
     STANDARD = 2
     ADVANCED = 3

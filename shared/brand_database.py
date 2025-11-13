@@ -35,7 +35,7 @@ class EnhancedBrandDatabase:
                 "common_ecus": ["ECM", "TCM", "ABS", "SRS", "Body ECU", "Immobilizer", "Smart Key ECU"],
                 "key_systems": ["Smart Key", "G-Box", "ID4C", "ID4D", "Toyota Hybrid Key"],
                 "pin_codes": ["Smart Code System", "Nissan-ECU-Clone", "Dealer Security Code"],
-                "obd_protocol": "J1939, J1979",
+                "obd_protocol": "ISO 15765-4, J1939, J1979",
                 "security_level": 3,
                 "market_share": "10.5%",
                 "special_functions": ["Throttle Learning", "Steering Angle Calibration", "Immobilizer Registration", "Battery Reset"],
@@ -139,7 +139,7 @@ class EnhancedBrandDatabase:
                 "region": "Germany",
                 "diagnostic_protocols": ["ISTA", "UDS", "KWP2000", "EDIBAS"],
                 "common_ecus": ["DME", "EGS", "CAS", "DSC", "Airbag", "FRM", "FEM"],
-                "key_systems": ["CAS", "FEM", "BDC", "Comfort Access", "Display Key"],
+                "key_systems": ["CAS", "FEM", "BDC", "Comfort Access", "Display Key", "Smart Key"],
                 "pin_codes": ["ISN Code", "Dealer PIN", "CPO Code"],
                 "obd_protocol": "ISO 15765-4",
                 "security_level": 5,
@@ -438,8 +438,15 @@ class EnhancedBrandDatabase:
     
     def get_brands_by_protocol(self, protocol: str) -> List[str]:
         """Get brands that use a specific diagnostic protocol"""
-        return [brand for brand, info in self.brand_data.items()
-                if protocol in info.get('diagnostic_protocols', [])]
+        # Use case-insensitive substring matching so callers can pass 'CAN', 'UDS', etc.
+        protocol_lower = protocol.lower()
+        matched = []
+        for brand, info in self.brand_data.items():
+            for proto in info.get('diagnostic_protocols', []):
+                if protocol_lower in proto.lower():
+                    matched.append(brand)
+                    break
+        return matched
     
     def get_security_requirements(self, brand_name: str) -> Dict:
         """Get security requirements for a specific brand"""
