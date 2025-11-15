@@ -37,23 +37,27 @@ from PyQt6.QtGui import QFont, QPalette, QColor
 # ----------------------------------------------------------------------
 shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
 if os.path.exists(shared_path) and shared_path not in sys.path:
-    sys.path.append(shared_path)
+    sys.path.insert(0, shared_path)
 
 # ----------------------------------------------------------------------
 # Import shared modules - with fallbacks
 # ----------------------------------------------------------------------
+SECURITY_MANAGER_AVAILABLE = False
 try:
-    from style_manager import style_manager
-    from brand_database import get_brand_list, get_brand_info, brand_database
-    from dtc_database import DTCDatabase
-    from vin_decoder import VINDecoder
-    from device_handler import DeviceHandler, Protocol
-    from security_manager import security_manager, SecurityLevel, UserRole
-    from special_functions import special_functions_manager, FunctionCategory, SpecialFunction
-    from calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure
-    from circular_gauge import CircularGauge, StatCard
+    from shared.style_manager import style_manager
+    from shared.brand_database import get_brand_list, get_brand_info, brand_database
+    from shared.dtc_database import DTCDatabase
+    from shared.vin_decoder import VINDecoder
+    from shared.device_handler import DeviceHandler, Protocol
+    from shared.security_manager import security_manager, SecurityLevel, UserRole
+    from shared.special_functions import special_functions_manager, FunctionCategory, SpecialFunction
+    from shared.calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure
+    from shared.circular_gauge import CircularGauge, StatCard
+    from dialogs import LoginDialog
+    SECURITY_MANAGER_AVAILABLE = True
 except ImportError as e:
     logging.error(f"Failed to import modules: {e}")
+    SECURITY_MANAGER_AVAILABLE = False
 
     # ---------- FALLBACKS ----------
     class FallbackStyleManager:
@@ -85,102 +89,26 @@ except ImportError as e:
 
 logger = logging.getLogger(__name__)
 
-class LoginDialog(QDialog):
-    """Secure login dialog with futuristic styling"""
+
+
+def main():
+    """Main application entry point"""
+    app = QApplication(sys.argv)
     
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("AutoDiag Pro - Secure Login")
-        self.setModal(True)
-        self.setFixedSize(450, 350)
-        
-        layout = QVBoxLayout()
-        layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
-        
-        # Title with futuristic styling
-        title = QLabel("🔒 AutoDiag Pro Login")
-        title.setProperty("class", "hero-title")
-        title_font = QFont("Segoe UI", 20, QFont.Weight.Bold)
-        title.setFont(title_font)
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("color: #14b8a6; margin-bottom: 10px;")
-        
-        subtitle = QLabel("Secure Access Required")
-        subtitle.setStyleSheet("color: #5eead4; font-size: 11pt; margin-bottom: 20px;")
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # Form with glassmorphic styling
-        form_widget = QFrame()
-        form_widget.setProperty("class", "glass-card")
-        form_layout = QFormLayout(form_widget)
-        form_layout.setSpacing(15)
-        
-        self.username_input = QLineEdit()
-        self.username_input.setPlaceholderText("Enter username")
-        self.username_input.setMinimumHeight(20)
-        
-        self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("Enter password")
-        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.password_input.setMinimumHeight(20)
-        self.password_input.returnPressed.connect(self.attempt_login)
-        
-        form_layout.addRow("Username:", self.username_input)
-        form_layout.addRow("Password:", self.password_input)
-        
-        # Buttons
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
-        
-        login_btn = QPushButton("Login")
-        login_btn.setProperty("class", "primary")
-        login_btn.setMinimumHeight(45)
-        login_btn.clicked.connect(self.attempt_login)
-        
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.setProperty("class", "danger")
-        cancel_btn.setMinimumHeight(45)
-        cancel_btn.clicked.connect(self.reject)
-        
-        button_layout.addWidget(login_btn)
-        button_layout.addWidget(cancel_btn)
-        
-        # Status
-        self.status_label = QLabel("")
-        self.status_label.setStyleSheet("color: #ef4444; font-weight: bold;")
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
-        layout.addWidget(form_widget)
-        layout.addLayout(button_layout)
-        layout.addWidget(self.status_label)
-        
-        self.setLayout(layout)
+    app.setApplicationName("AutoDiag Pro Futuristic")
+    app.setApplicationVersion("2.1.0")
+    app.setOrganizationName("SecureAutoClinic")
     
-    def attempt_login(self):
-        """Attempt user login"""
-        username = self.username_input.text().strip()
-        password = self.password_input.text()
-        
-        if not username or not password:
-            self.status_label.setText("⚠️ Username and password required")
-            return
-        
-        try:
-            success, message = security_manager.authenticate_user(username, password)
-            
-            if success:
-                self.accept()
-            else:
-                self.status_label.setText(f"❌ {message}")
-        except:
-            # If security_manager not available, allow demo login
-            if username == "demo" and password == "demo":
-                self.accept()
-            else:
-                self.status_label.setText("❌ Invalid credentials")
+    try:
+        window = AutoDiagPro()
+        sys.exit(app.exec())
+    except Exception as e:
+        logger.critical(f"Application crashed: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+
 
 class AutoDiagPro(QMainWindow):
     """Enhanced AutoDiag Professional with FUTURISTIC DESIGN"""
@@ -199,24 +127,23 @@ class AutoDiagPro(QMainWindow):
             self.special_functions_manager = special_functions_manager
             self.calibrations_resets_manager = calibrations_resets_manager
             
-            # Inject security manager
-            self.special_functions_manager.security_manager = security_manager
-            self.calibrations_resets_manager.security_manager = security_manager
-            brand_database.security_manager = security_manager
-            
-            # Set security level
-            current_level = security_manager.get_security_level()
-            style_manager.set_security_level(current_level.name.lower())
-        except:
-            logger.warning("Security components not available, using demo mode")
+            # Safely inject security manager if available
+            if SECURITY_MANAGER_AVAILABLE:
+                self.special_functions_manager.security_manager = security_manager
+                self.calibrations_resets_manager.security_manager = security_manager
+                brand_database.security_manager = security_manager
+                
+                # Set security level
+                current_level = security_manager.get_security_level()
+                style_manager.set_security_level(current_level.name.lower())
+        except Exception as e:
+            logger.warning(f"Security components not available, using demo mode: {e}")
         
         # Selected brand
         self.selected_brand = "Toyota"
         
         # Initialize UI
         self.init_ui()
-        
-        # FIXED: Don't force theme - respect current setting
         
         # Start live updates
         self.start_live_updates()
@@ -237,6 +164,32 @@ class AutoDiagPro(QMainWindow):
         """Initialize FUTURISTIC user interface"""
         self.setWindowTitle("AutoDiag Pro - Futuristic Diagnostics")
         self.setGeometry(50, 50, 1600, 1000)
+        
+        # Set dark theme as default
+        self.setStyleSheet("""
+            QMainWindow {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #0f172a, stop:1 #1e293b);
+                color: #e2e8f0;
+            }
+            QTabWidget::pane {
+                border: 1px solid #334155;
+                background: rgba(30, 41, 59, 0.8);
+            }
+            QTabBar::tab {
+                background: rgba(71, 85, 105, 0.7);
+                color: #cbd5e1;
+                padding: 10px 20px;
+                margin-right: 2px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+            }
+            QTabBar::tab:selected {
+                background: rgba(14, 184, 166, 0.9);
+                color: #0f172a;
+                font-weight: bold;
+            }
+        """)
         
         # Create central widget
         central_widget = QWidget()
@@ -270,6 +223,15 @@ class AutoDiagPro(QMainWindow):
         """Create FUTURISTIC header with user information"""
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
+        header_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.9), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         header_frame.setMaximumHeight(100)
         header_layout = QHBoxLayout(header_frame)
         header_layout.setSpacing(20)
@@ -277,7 +239,10 @@ class AutoDiagPro(QMainWindow):
         
         # User info section
         try:
-            user_info = security_manager.get_user_info()
+            if SECURITY_MANAGER_AVAILABLE:
+                user_info = security_manager.get_user_info()
+            else:
+                user_info = {"full_name": "Demo User", "security_level": "BASIC", "role": "technician"}
         except:
             user_info = {"full_name": "Demo User", "security_level": "BASIC", "role": "technician"}
         
@@ -308,6 +273,25 @@ class AutoDiagPro(QMainWindow):
         
         self.brand_combo = QComboBox()
         self.brand_combo.setMinimumWidth(180)
+        self.brand_combo.setStyleSheet("""
+            QComboBox {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(148, 163, 184, 0.5);
+                border-radius: 8px;
+                padding: 8px;
+                color: white;
+                min-height: 20px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background: rgba(30, 41, 59, 0.95);
+                border: 1px solid #334155;
+                color: white;
+                selection-background-color: #14b8a6;
+            }
+        """)
         
         try:
             brands = get_brand_list()
@@ -316,11 +300,13 @@ class AutoDiagPro(QMainWindow):
             self.brand_combo.currentTextChanged.connect(self.on_brand_changed)
         except Exception as e:
             logger.error(f"Failed to load brands: {e}")
+            # Add default brands
+            self.brand_combo.addItems(["Toyota", "Honda", "Ford", "BMW", "Mercedes"])
         
         brand_layout.addWidget(brand_label)
         brand_layout.addWidget(self.brand_combo)
         
-        # FIXED: Theme selector with ALL themes
+        # Theme selector
         theme_layout = QVBoxLayout()
         theme_label = QLabel("Theme:")
         theme_label.setStyleSheet("color: #5eead4; font-size: 9pt;")
@@ -329,6 +315,25 @@ class AutoDiagPro(QMainWindow):
         self.theme_combo.addItems(style_manager.get_theme_names())
         self.theme_combo.currentTextChanged.connect(self.change_theme)
         self.theme_combo.setMinimumWidth(150)
+        self.theme_combo.setStyleSheet("""
+            QComboBox {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(148, 163, 184, 0.5);
+                border-radius: 8px;
+                padding: 8px;
+                color: white;
+                min-height: 20px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background: rgba(30, 41, 59, 0.95);
+                border: 1px solid #334155;
+                color: white;
+                selection-background-color: #14b8a6;
+            }
+        """)
         
         theme_layout.addWidget(theme_label)
         theme_layout.addWidget(self.theme_combo)
@@ -338,6 +343,21 @@ class AutoDiagPro(QMainWindow):
         logout_btn.setProperty("class", "danger")
         logout_btn.setMinimumHeight(45)
         logout_btn.setMaximumWidth(120)
+        logout_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #ef4444, stop:1 #dc2626);
+                border: none;
+                border-radius: 10px;
+                color: white;
+                font-weight: bold;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #dc2626, stop:1 #b91c1c);
+            }
+        """)
         logout_btn.clicked.connect(self.secure_logout)
         
         header_layout.addWidget(user_section)
@@ -362,20 +382,43 @@ class AutoDiagPro(QMainWindow):
         stats_layout.setSpacing(20)
         
         # System Health
-        self.system_health_card = StatCard("System Health", 98, 100, "%")
+        self.system_health_card = StatCard("System Health", 98)
         
         # Connection Status
-        self.connection_quality_card = StatCard("Connection", 85, 100, "%")
+        self.connection_quality_card = StatCard("Connection", 85)
         
         # DTCs Found
-        self.dtc_count_card = StatCard("Active DTCs", 0, 20, "")
+        self.dtc_count_card = StatCard("Active DTCs", 0)
         
         # Security Level
         try:
-            security_level = security_manager.get_security_level().value
+            if SECURITY_MANAGER_AVAILABLE:
+                security_level = security_manager.get_security_level().value
+            else:
+                security_level = 1
         except:
             security_level = 1
-        self.security_level_card = StatCard("Security Level", security_level, 5, "")
+        self.security_level_card = StatCard("Security Level", security_level)
+        
+        # Style the stat cards
+        for card in [self.system_health_card, self.connection_quality_card, 
+                    self.dtc_count_card, self.security_level_card]:
+            card.setStyleSheet("""
+                QFrame {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 rgba(30, 41, 59, 0.8), 
+                        stop:1 rgba(15, 23, 42, 0.9));
+                    border: 1px solid rgba(148, 163, 184, 0.3);
+                    border-radius: 12px;
+                    padding: 15px;
+                }
+                QLabel {
+                    color: #e2e8f0;
+                    background: transparent;
+                }
+            """)
+            card.title_label.setStyleSheet("color: #5eead4; font-size: 11pt; font-weight: bold;")
+            card.value_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
         
         stats_layout.addWidget(self.system_health_card)
         stats_layout.addWidget(self.connection_quality_card)
@@ -385,6 +428,15 @@ class AutoDiagPro(QMainWindow):
         # Quick Actions Section
         actions_frame = QFrame()
         actions_frame.setProperty("class", "glass-card")
+        actions_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         actions_layout = QVBoxLayout(actions_frame)
         actions_layout.setSpacing(15)
         actions_layout.setContentsMargins(20, 20, 20, 20)
@@ -397,32 +449,50 @@ class AutoDiagPro(QMainWindow):
         btn_layout = QGridLayout()
         btn_layout.setSpacing(15)
         
-        scan_btn = QPushButton("🔍 Quick Scan")
-        scan_btn.setProperty("class", "primary")
-        scan_btn.setMinimumHeight(50)
+        buttons = [
+            ("🔍 Quick Scan", "primary"),
+            ("📋 Read DTCs", "primary"), 
+            ("📈 Live Data", "success"),
+            ("⚙️ ECU Info", "success")
+        ]
         
-        dtc_btn = QPushButton("📋 Read DTCs")
-        dtc_btn.setProperty("class", "primary")
-        dtc_btn.setMinimumHeight(50)
-        
-        live_btn = QPushButton("📈 Live Data")
-        live_btn.setProperty("class", "success")
-        live_btn.setMinimumHeight(50)
-        
-        ecu_btn = QPushButton("⚙️ ECU Info")
-        ecu_btn.setProperty("class", "success")
-        ecu_btn.setMinimumHeight(50)
-        
-        btn_layout.addWidget(scan_btn, 0, 0)
-        btn_layout.addWidget(dtc_btn, 0, 1)
-        btn_layout.addWidget(live_btn, 1, 0)
-        btn_layout.addWidget(ecu_btn, 1, 1)
+        for i, (text, style) in enumerate(buttons):
+            btn = QPushButton(text)
+            btn.setProperty("class", style)
+            btn.setMinimumHeight(50)
+            color = "#14b8a6" if "primary" in style else "#10b981"
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 {color}, stop:1 #0d9488);
+                    border: none;
+                    border-radius: 10px;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 11pt;
+                }}
+                QPushButton:hover {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 #0d9488, stop:1 #0f766e);
+                }}
+            """)
+            row, col = i // 2, i % 2
+            btn_layout.addWidget(btn, row, col)
         
         actions_layout.addLayout(btn_layout)
         
         # Security Overview
         security_frame = QFrame()
         security_frame.setProperty("class", "glass-card")
+        security_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         security_layout = QVBoxLayout(security_frame)
         security_layout.setSpacing(10)
         security_layout.setContentsMargins(20, 20, 20, 20)
@@ -431,7 +501,10 @@ class AutoDiagPro(QMainWindow):
         security_title.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
         
         try:
-            user_info = security_manager.get_user_info()
+            if SECURITY_MANAGER_AVAILABLE:
+                user_info = security_manager.get_user_info()
+            else:
+                user_info = {"full_name": "Demo User", "security_level": "BASIC", "session_expiry": 0}
         except:
             user_info = {"full_name": "Demo User", "security_level": "BASIC", "session_expiry": 0}
         
@@ -472,6 +545,15 @@ class AutoDiagPro(QMainWindow):
         # Header
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
+        header_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         header_layout = QVBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
@@ -482,6 +564,15 @@ class AutoDiagPro(QMainWindow):
         # Content placeholder
         content_frame = QFrame()
         content_frame.setProperty("class", "glass-card")
+        content_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         content_layout = QVBoxLayout(content_frame)
         content_layout.setContentsMargins(20, 20, 20, 20)
         
@@ -511,6 +602,15 @@ class AutoDiagPro(QMainWindow):
         
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
+        header_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         header_layout = QVBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
@@ -520,6 +620,15 @@ class AutoDiagPro(QMainWindow):
         
         content_frame = QFrame()
         content_frame.setProperty("class", "glass-card")
+        content_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         content_layout = QVBoxLayout(content_frame)
         content_layout.setContentsMargins(20, 20, 20, 20)
         
@@ -544,6 +653,15 @@ class AutoDiagPro(QMainWindow):
         
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
+        header_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         header_layout = QVBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
@@ -553,6 +671,15 @@ class AutoDiagPro(QMainWindow):
         
         content_frame = QFrame()
         content_frame.setProperty("class", "glass-card")
+        content_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         content_layout = QVBoxLayout(content_frame)
         content_layout.setContentsMargins(20, 20, 20, 20)
         
@@ -577,6 +704,15 @@ class AutoDiagPro(QMainWindow):
         
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
+        header_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         header_layout = QVBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
@@ -586,6 +722,15 @@ class AutoDiagPro(QMainWindow):
         
         content_frame = QFrame()
         content_frame.setProperty("class", "glass-card")
+        content_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         content_layout = QVBoxLayout(content_frame)
         content_layout.setContentsMargins(20, 20, 20, 20)
         
@@ -610,6 +755,15 @@ class AutoDiagPro(QMainWindow):
         
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
+        header_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         header_layout = QVBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
@@ -619,6 +773,15 @@ class AutoDiagPro(QMainWindow):
         
         content_frame = QFrame()
         content_frame.setProperty("class", "glass-card")
+        content_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         content_layout = QVBoxLayout(content_frame)
         content_layout.setContentsMargins(20, 20, 20, 20)
         
@@ -643,6 +806,15 @@ class AutoDiagPro(QMainWindow):
         
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
+        header_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         header_layout = QVBoxLayout(header_frame)
         header_layout.setContentsMargins(20, 15, 20, 15)
         
@@ -652,6 +824,15 @@ class AutoDiagPro(QMainWindow):
         
         status_frame = QFrame()
         status_frame.setProperty("class", "glass-card")
+        status_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.8), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-radius: 15px;
+            }
+        """)
         status_layout = QVBoxLayout(status_frame)
         status_layout.setContentsMargins(20, 20, 20, 20)
         
@@ -659,8 +840,11 @@ class AutoDiagPro(QMainWindow):
         status_title.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
         
         try:
-            user_info = security_manager.get_user_info()
-            status_text = f"Current User: {user_info.get('full_name', 'Demo User')}\nSecurity Level: {user_info.get('security_level', 'BASIC')}"
+            if SECURITY_MANAGER_AVAILABLE:
+                user_info = security_manager.get_user_info()
+                status_text = f"Current User: {user_info.get('full_name', 'Demo User')}\nSecurity Level: {user_info.get('security_level', 'BASIC')}"
+            else:
+                status_text = "Current User: Demo User\nSecurity Level: BASIC"
         except:
             status_text = "Current User: Demo User\nSecurity Level: BASIC"
         
@@ -668,6 +852,16 @@ class AutoDiagPro(QMainWindow):
         self.security_status.setPlainText(status_text)
         self.security_status.setReadOnly(True)
         self.security_status.setMaximumHeight(150)
+        self.security_status.setStyleSheet("""
+            QTextEdit {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(148, 163, 184, 0.5);
+                border-radius: 8px;
+                color: #e2e8f0;
+                padding: 10px;
+                font-family: 'Consolas', monospace;
+            }
+        """)
         
         status_layout.addWidget(status_title)
         status_layout.addWidget(self.security_status)
@@ -682,6 +876,16 @@ class AutoDiagPro(QMainWindow):
         """Create status bar"""
         status_widget = QFrame()
         status_widget.setProperty("class", "glass-card")
+        status_widget.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 rgba(30, 41, 59, 0.9), 
+                    stop:1 rgba(15, 23, 42, 0.9));
+                border: 1px solid rgba(148, 163, 184, 0.3);
+                border-top-left-radius: 10px;
+                border-top-right-radius: 10px;
+            }
+        """)
         status_widget.setMaximumHeight(40)
         
         status_layout = QHBoxLayout()
@@ -714,9 +918,13 @@ class AutoDiagPro(QMainWindow):
         self.connection_quality_card.update_value(random.randint(75, 95))
     
     def change_theme(self, theme_name):
-        """FIXED: Change theme using global style_manager"""
-        style_manager.set_theme(theme_name)
-        self.status_label.setText(f"✨ Theme changed to: {theme_name}")
+        """Change theme using global style_manager"""
+        try:
+            style_manager.set_theme(theme_name)
+            self.status_label.setText(f"✨ Theme changed to: {theme_name}")
+        except Exception as e:
+            logger.error(f"Theme change error: {e}")
+            self.status_label.setText(f"⚠️ Theme change failed: {theme_name}")
     
     def on_brand_changed(self, brand):
         """Handle brand selection change"""
@@ -732,7 +940,8 @@ class AutoDiagPro(QMainWindow):
         
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                security_manager.logout()
+                if SECURITY_MANAGER_AVAILABLE:
+                    security_manager.logout()
             except:
                 pass
             self.close()
@@ -740,7 +949,8 @@ class AutoDiagPro(QMainWindow):
     def closeEvent(self, event):
         """Secure cleanup on close"""
         try:
-            security_manager.logout()
+            if SECURITY_MANAGER_AVAILABLE:
+                security_manager.logout()
         except:
             pass
         logger.info("AutoDiag Pro closed securely")
@@ -748,6 +958,16 @@ class AutoDiagPro(QMainWindow):
 
 def main():
     """Main application entry point"""
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler('autodiag.log', mode='w', encoding='utf-8')
+        ]
+    )
+    
     app = QApplication(sys.argv)
     
     app.setApplicationName("AutoDiag Pro Futuristic")
@@ -759,6 +979,7 @@ def main():
         sys.exit(app.exec())
     except Exception as e:
         logger.critical(f"Application crashed: {e}")
+        QMessageBox.critical(None, "Fatal Error", f"Application crashed: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

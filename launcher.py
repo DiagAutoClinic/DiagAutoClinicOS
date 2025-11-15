@@ -68,10 +68,29 @@ except ImportError as e:
     sys.exit(1)
 
 try:
+    # Force reload to bypass cache
+    import importlib
+    import style_manager
+    importlib.reload(style_manager)
+    
+    # Now safe to access
     from style_manager import style_manager
-    logger.info("✓ StyleManager imported successfully")
-except ImportError as e:
-    logger.warning(f"⚠ StyleManager not available: {e}")
+    logger.info("StyleManager imported and instantiated successfully")
+    
+    # Apply default theme immediately
+    app = QApplication.instance() or QApplication(sys.argv)
+    app.setStyleSheet(style_manager.set_theme("neon_clinic"))
+    
+except Exception as e:
+    logger.warning(f"StyleManager failed: {e}")
+    # Keep your existing MinimalStyleManager fallback
+    class MinimalStyleManager:
+        def set_theme(self, theme):
+            logger.info(f"Theme set to: {theme}")
+            return ""
+        def get_theme_names(self):
+            return ["neon_clinic"]
+    style_manager = MinimalStyleManager()
     # Create minimal fallback
     class MinimalStyleManager:
         def set_theme(self, theme): 
