@@ -126,6 +126,11 @@ class VINDecoder:
             'BMW': {
                 'WBA': '3 Series', 'WBS': 'M Series', 'default': 'Generic BMW Model'
             },
+            'Volkswagen': {
+                '1J': 'Golf IV', '1K': 'Golf V', '5K': 'Golf VI', '3V': 'Golf VII', '3G': 'Golf VIII',
+                '6R': 'Polo 6R', '6C': 'Polo Classic', '9N': 'Polo 9N', 'AW': 'Polo Vivo',
+                'default': 'Generic Volkswagen Model (e.g., Polo/Golf)'
+            },
             # Defaults for others
         }
         brand_patterns = patterns.get(brand, {})

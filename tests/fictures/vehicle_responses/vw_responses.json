@@ -1,1 +1,29 @@
-
+{
+  "polo_responses": {
+    "vin_read": "WVWZZZ6RZGY123456",
+    "dtc_scan": [
+      {"code": "P0300", "severity": "High", "description": "Random/Multiple Cylinder Misfire Detected"},
+      {"code": "P0171", "severity": "Medium", "description": "System Too Lean (Bank 1)"},
+      {"code": "U0100", "severity": "Critical", "description": "Lost Communication with ECM"}
+    ],
+    "dtc_clear": "success"
+  },
+  "golf_responses": {
+    "vin_read": "WVWZZZ1KZCW123456",
+    "dtc_scan": [
+      {"code": "P0301", "severity": "High", "description": "Cylinder 1 Misfire Detected"},
+      {"code": "P0420", "severity": "Medium", "description": "Catalyst Efficiency Below Threshold"},
+      {"code": "C1140", "severity": "Low", "description": "EBCM Module Malfunction"}
+    ],
+    "dtc_clear": "success"
+  },
+  "common_vw_dtcs": [
+    {"code": "P0100", "severity": "Medium", "description": "Mass or Volume Air Flow Circuit Malfunction"},
+    {"code": "P0200", "severity": "High", "description": "Injector Circuit Malfunction"},
+    {"code": "P0302", "severity": "High", "description": "Cylinder 2 Misfire Detected"},
+    {"code": "P0325", "severity": "Low", "description": "Knock Sensor 1 Circuit Malfunction"},
+    {"code": "P0400", "severity": "Medium", "description": "Exhaust Gas Recirculation Flow Malfunction"},
+    {"code": "P0500", "severity": "Low", "description": "Vehicle Speed Sensor Malfunction"},
+    {"code": "P0600", "severity": "High", "description": "Serial Communication Link Malfunction"}
+  ]
+}
