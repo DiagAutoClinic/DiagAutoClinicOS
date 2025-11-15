@@ -115,7 +115,7 @@ class AutoDiagPro(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        
+
         # Security first - require login
         if not self.secure_login():
             sys.exit(1)
@@ -150,15 +150,62 @@ class AutoDiagPro(QMainWindow):
     
     def secure_login(self) -> bool:
         """Handle secure user login"""
-        login_dialog = LoginDialog()
-        result = login_dialog.exec()
-        
-        if result == QDialog.DialogCode.Accepted:
-            logger.info("User logged in successfully")
-            return True
-        else:
-            logger.warning("Login cancelled or failed")
-            return False
+        try:
+            login_dialog = LoginDialog()
+            result = login_dialog.exec()
+
+            if result == QDialog.DialogCode.Accepted:
+                logger.info("User logged in successfully")
+                return True
+            else:
+                logger.warning("Login cancelled or failed")
+                return False
+        except ImportError as e:
+            logger.warning(f"GUI login failed, falling back to console: {e}")
+            return self.console_login()
+
+    def console_login(self) -> bool:
+        """Console-based login fallback"""
+        print("\n" + "="*50)
+        print("🔒 AutoDiag Pro - Console Login")
+        print("="*50)
+        print("Demo credentials: demo/demo")
+        print("Other valid: admin/admin123, technician/tech123, user/user123")
+        print("="*50)
+
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                username = input(f"Username (attempt {attempt + 1}/{max_attempts}): ").strip()
+                password = input("Password: ").strip()
+
+                # Simple validation
+                valid_credentials = [
+                    ("demo", "demo"),
+                    ("admin", "admin123"),
+                    ("technician", "tech123"),
+                    ("user", "user123")
+                ]
+
+                for user, pwd in valid_credentials:
+                    if username == user and password == pwd:
+                        print(f"✓ Welcome, {username}!")
+                        logger.info(f"User {username} logged in via console")
+                        return True
+
+                print("❌ Invalid credentials")
+                if attempt < max_attempts - 1:
+                    print("Please try again.\n")
+
+            except KeyboardInterrupt:
+                print("\nLogin cancelled")
+                return False
+            except EOFError:
+                print("\nLogin cancelled")
+                return False
+
+        print("❌ Maximum login attempts exceeded")
+        return False
     
     def init_ui(self):
         """Initialize FUTURISTIC user interface"""

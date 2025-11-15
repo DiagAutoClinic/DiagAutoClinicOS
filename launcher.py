@@ -26,11 +26,6 @@ logger = logging.getLogger(__name__)
 
 # Define project structure
 PROJECT_ROOT = Path(__file__).parent.absolute()
-SHARED_PATH = PROJECT_ROOT / 'shared'
-
-# Add shared path to sys.path
-if str(SHARED_PATH) not in sys.path:
-    sys.path.insert(0, str(SHARED_PATH))
 
 # Import PyQt6 first (critical dependency)
 try:
@@ -55,32 +50,31 @@ except ImportError as e:
 
 # Import shared modules (with proper error messages)
 try:
-    from device_handler import DeviceHandler
+    from shared.device_handler import DeviceHandler
     logger.info("✓ DeviceHandler imported successfully")
-                                                
-                                                      
+
+
 except ImportError as e:
     logger.error(f"❌ Failed to import DeviceHandler: {e}")
-    print(f"\n❌ ERROR: Cannot import device_handler.py")
-    print(f"   Location: {SHARED_PATH / 'device_handler.py'}")
+    print(f"\n❌ ERROR: Cannot import shared.device_handler")
     print(f"   Error: {e}")
     print("\nPlease ensure all shared modules are present.")
     sys.exit(1)
 
 try:
     # Force reload to bypass cache
+    import shared.style_manager as style_manager_module
     import importlib
-    import style_manager
-    importlib.reload(style_manager)
-    
+    importlib.reload(style_manager_module)
+
     # Now safe to access
-    from style_manager import style_manager
+    from shared.style_manager import style_manager
     logger.info("StyleManager imported and instantiated successfully")
-    
+
     # Apply default theme immediately
     app = QApplication.instance() or QApplication(sys.argv)
     app.setStyleSheet(style_manager.set_theme("neon_clinic"))
-    
+
 except Exception as e:
     logger.warning(f"StyleManager failed: {e}")
     # Keep your existing MinimalStyleManager fallback
@@ -93,23 +87,23 @@ except Exception as e:
     style_manager = MinimalStyleManager()
     # Create minimal fallback
     class MinimalStyleManager:
-        def set_theme(self, theme): 
+        def set_theme(self, theme):
             logger.info(f"Theme set to: {theme}")
-        def get_theme_names(self): 
+        def get_theme_names(self):
             return ["default"]
     style_manager = MinimalStyleManager()
 
 try:
-    from widgets.animated_bg import NeonClinicBG
+    from shared.widgets.animated_bg import NeonClinicBG
     logger.info("✓ NeonClinicBG imported successfully")
 except ImportError as e:
     logger.warning(f"⚠ Animated background not available: {e}")
     class NeonClinicBG(QWidget):
-        def __init__(self, parent=None): 
+        def __init__(self, parent=None):
             super().__init__(parent)
 
 try:
-    from circular_gauge import CircularGauge, StatCard
+    from shared.circular_gauge import CircularGauge, StatCard
     logger.info("✓ Gauges imported successfully")
 except ImportError as e:
     logger.warning(f"⚠ Circular gauges not available: {e}")
@@ -121,10 +115,10 @@ except ImportError as e:
             layout.addWidget(QLabel(title))
             self.value_label = QLabel(str(value))
             layout.addWidget(self.value_label)
-        def update_value(self, v): 
+        def update_value(self, v):
             if hasattr(self, 'value_label'):
                 self.value_label.setText(str(v))
-    
+
     CircularGauge = QWidget
 
 # === CONSTANTS - FIXED PATHS ===
@@ -155,7 +149,10 @@ class ModernLauncher(QMainWindow):
         except Exception as e:
             logger.warning(f"DeviceHandler initialization failed, using mock mode: {e}")
             self.device_handler = DeviceHandler(mock_mode=True)
-        
+
+        self.running_processes = {}  # Track running subprocesses
+        self.app_buttons = {}  # Track app buttons for state management
+
         self.setup_ui()
         self.start_live_updates()
 
@@ -299,23 +296,25 @@ class ModernLauncher(QMainWindow):
         icon = app_info.get('icon', '📱')
         name = app_info['name']
         path = app_info['path']
-        
+
         # Check if app exists
         exists = path.exists()
         status = "✓" if exists else "✗"
-        
+
         btn = QPushButton(f"{icon} {name}\n{status} Available")
         btn.setMinimumHeight(80)
-        
+
         if exists:
-            btn.setProperty("class", "primary" if app_key == 'diag' else 
-                          "success" if app_key == 'ecu' else "danger")
+            btn.setProperty("class", "primary" if app_key == 'diag' else
+                           "success" if app_key == 'ecu' else "danger")
             btn.clicked.connect(lambda: self._launch_app(app_key, name, path))
+            # Store button reference for state management
+            self.app_buttons[app_key] = btn
         else:
             btn.setEnabled(False)
             btn.setToolTip(f"Not found: {path}")
             logger.warning(f"Application not found: {path}")
-        
+
         return btn
 
     def create_info_cards(self):
@@ -428,6 +427,11 @@ class ModernLauncher(QMainWindow):
         timer.timeout.connect(self.update_live_data)
         timer.start(3000)
 
+        # Start process monitoring
+        self.process_timer = QTimer(self)
+        self.process_timer.timeout.connect(self.check_running_processes)
+        self.process_timer.start(1000)  # Check every second
+
     def update_live_data(self):
         """Update dashboard statistics"""
         try:
@@ -437,6 +441,19 @@ class ModernLauncher(QMainWindow):
             # Don't update sessions randomly - it should reflect actual state
         except Exception as e:
             logger.debug(f"Stats update error: {e}")
+
+    def check_running_processes(self):
+        """Check if running processes have ended and update button states"""
+        for app_key, process in list(self.running_processes.items()):
+            if process.poll() is not None:  # Process has ended
+                del self.running_processes[app_key]
+                if app_key in self.app_buttons:
+                    app_info = ALLOWED_APPS[app_key]
+                    icon = app_info.get('icon', '📱')
+                    name = app_info['name']
+                    self.app_buttons[app_key].setEnabled(True)
+                    self.app_buttons[app_key].setText(f"{icon} {name}\n✓ Available")
+                    self.log_message(f"✓ {name} process ended")
 
     def log_message(self, msg: str):
         """Add message to activity log with timestamp"""
@@ -469,46 +486,53 @@ class ModernLauncher(QMainWindow):
 
     def _launch_app(self, key: str, name: str, path: Path):
         """Launch application subprocess with proper error handling"""
+        # Check if app is already running
+        if key in self.running_processes and self.running_processes[key].poll() is None:
+            self.log_message(f"⚠ {name} is already running")
+            QMessageBox.information(self, "Already Running", f"{name} is already running.")
+            return
+
         self.log_message(f"🚀 Launching {name}...")
         logger.info(f"Launching {name} from {path}")
-        
+
         if not path.exists():
             error_msg = f"Application not found: {path}"
             self.log_message(f"✗ {error_msg}")
             logger.error(error_msg)
             QMessageBox.critical(self, "Launch Error", error_msg)
             return
-        
-                                    
+
         try:
             # Launch as subprocess
             working_dir = path.parent
             process = subprocess.Popen(
                 [sys.executable, str(path)],
-                cwd=str(working_dir),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                cwd=str(working_dir)
             )
-            
+
+            # Store process reference and disable button
+            self.running_processes[key] = process
+            if key in self.app_buttons:
+                app_info = ALLOWED_APPS[key]
+                icon = app_info.get('icon', '📱')
+                self.app_buttons[key].setEnabled(False)
+                self.app_buttons[key].setText(f"{icon} {name}\n✓ Running")
+
             self.log_message(f"✓ {name} launched (PID: {process.pid})")
             logger.info(f"{name} launched successfully with PID {process.pid}")
-            
+
             # Update session count
             current = int(self.sessions_card.value_label.text())
             self.sessions_card.update_value(str(current + 1))
-            
-                                        
-                    
-                                                                                               
-                                                                       
+
         except Exception as e:
             error_msg = f"Failed to launch {name}: {e}"
-                 
+
             self.log_message(f"✗ {error_msg}")
             logger.error(error_msg)
             QMessageBox.critical(
-                self, 
-                "Launch Error", 
+                self,
+                "Launch Error",
                 f"Failed to launch {name}:\n\n{e}\n\nPath: {path}"
             )
 

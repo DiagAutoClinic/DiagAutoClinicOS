@@ -176,6 +176,10 @@ class StyleManager:
         """Get list of available theme names"""
         return list(self.available_themes.keys())
 
+    def get_theme_info(self):
+        """Return theme metadata for UI display"""
+        return {theme: {"name": theme.replace('_', ' ').title()} for theme in self.available_themes}
+
 # Create global instance
 style_manager = StyleManager()
 # At the very end of style_manager.py, after style_manager = StyleManager()
