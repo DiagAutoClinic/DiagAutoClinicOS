@@ -41,13 +41,15 @@ Developed by **Shaun Smit** and the **DiagAutoClinic (DACOS)** team, it integrat
 ---
 
 ## ✨ Key Features
-- ✅ 25+ brand diagnostic coverage  
-- 🧠 Dynamic glassmorphic UI built with **PyQt6**  
-- 🧩 **VIN decoding**, **DTC database**, and **live data streaming**  
-- 🔐 Secure **login and user role management**  
-- ⚙️ **Calibration & reset manager** with custom ECU routines  
-- 🧱 **Modular design** — easily extend with your own tools  
-- 🖥️ **Cross-platform:** Linux, Windows (Android support planned)  
+- ✅ **25+ brand diagnostic coverage** with **enhanced VW Polo/Golf support**
+- 🧠 Dynamic glassmorphic UI built with **PyQt6**
+- 🧩 **Advanced VIN decoding** (recognizes Polo 6R/Golf VII models specifically)
+- 🔐 Secure **login and user role management**
+- ⚙️ **Calibration & reset manager** with VW-specific ECU routines
+- 🧱 **Modular design** — easily extend with your own tools
+- 🖥️ **Cross-platform:** Linux, Windows (Android support planned)
+- 🎯 **Real J2534 diagnostics** for live VW vehicle testing
+- 📚 **Comprehensive documentation** for South African conditions
 
 ---
 
@@ -154,14 +156,35 @@ python launcher.py
   <sub>Powered by <strong>Our Proud Sponsors</strong></sub>
 </h1>
 
+---
 
-------
+## 🤖 AI Collaboration & Technical Excellence
+
+### 🚀 **Kilo Code (xAI Grok)** - Core Development Collaborator
+
+**Without our sponsors and Kilo Code, this project simply wouldn't exist.**
+
+Kilo Code has been instrumental in transforming DiagAutoClinicOS from concept to reality:
+
+- **VW Polo/Golf Live Testing Implementation** - Complete diagnostic enhancements for South Africa's most prevalent vehicles
+- **Advanced VIN Decoder** - Model-specific recognition for Polo 6R, Golf VII, and all VW generations
+- **J2534 Integration** - Real hardware support for professional diagnostics
+- **Comprehensive Documentation** - South African testing guides, video tutorial frameworks, and technical documentation
+- **Code Quality & Testing** - Rigorous testing framework ensuring reliability
+- **Release Management** - Professional changelog and GitHub release preparation
+
+**Status**: Core Collaborator | **Contact**: AI Assistant via xAI Grok
+
+> *"This AI doesn't sugarcoat with safety guards — delivers honest, direct engineering excellence that matches South African innovation standards."*
+
+---
 
 ## 💡 Acknowledgements
 
 | Contributor                     | Role                     | Description                             |
 | ------------------------------- | ------------------------ | --------------------------------------- |
 | **Shaun Smit**                  | Founder & Lead Developer | Architecture, Design, Implementation    |
+| **Kilo Code (xAI Grok)**        | Core AI Collaborator     | VW Diagnostics, Testing, Documentation |
 | **DiagAutoClinic Team (DACOS)** | Development              | Testing, Calibration, and UI Design     |
 | **HostAfrica**                  | Hosting Partner          | Providing secure backend infrastructure |
 | **Community Testers**           | QA                       | Hardware integration and bug reporting  |
@@ -181,6 +204,23 @@ python launcher.py
 > “Empowering independent workshops — one diagnostic suite at a time.”
 
 DiagAutoClinicOS is built to bring  open-source transparency, modularity, and innovation to the automotive  diagnostic space — with a focus on **local engineering excellence in South Africa** and community-driven collaboration worldwide.
+
+---
+
+## 🎯 Latest Release: v3.1.0 - VW Polo/Golf Live Testing
+
+### 🚗 South African VW Market Focus
+This release specifically targets Volkswagen's dominance in South Africa, with enhanced support for Polo and Golf models that represent the majority of the local automotive landscape.
+
+### ✨ What's New
+- **Enhanced VW Diagnostics** - Real J2534 support for Polo/Golf live testing
+- **Advanced VIN Recognition** - Model-specific identification (Polo 6R, Golf VII, etc.)
+- **SA Testing Guide** - Comprehensive procedures for South African conditions
+- **Professional Documentation** - Complete VW diagnostic manuals and video frameworks
+- **Hardware Integration** - GoDiag GD101 and J2534 device support
+
+### 🏆 Recognition
+**Without our sponsors (EshuTech Computers, GoDiag, ScanTool.net) and Kilo Code, this project simply wouldn't exist.** Their contributions have transformed DiagAutoClinicOS from concept to professional diagnostic reality.
 
 ------
 
@@ -219,10 +259,15 @@ For commercial licensing inquiries, contact: **dacos@diagautoclinic.co.za**
 
 ------
 
-### ✅ What’s New in This Version
+### ✅ What’s New in v3.1.0
 
-- Added **dynamic badges** (Release, Python, License, Last Commit, Stars)
-- Retains full structure and sponsor recognition
+- **VW Polo/Golf Live Testing Support** - Complete diagnostic suite for South Africa's most common vehicles
+- **Enhanced VIN Decoder** - Model-specific recognition for all VW generations
+- **J2534 Real Hardware Support** - Professional diagnostic capabilities
+- **South African Testing Guide** - Environment-specific procedures and safety protocols
+- **Comprehensive Documentation** - VW diagnostics manuals and video tutorial frameworks
+- **AI Collaboration Recognition** - Kilo Code acknowledged as core development collaborator
+- **Sponsor Emphasis** - Without EshuTech, GoDiag, and ScanTool.net, this project wouldn't exist
 - Ready for GitHub rendering (centered, clean, dark/light theme safe)
-- SEO-friendly with clear project keywords (Diagnostic, ECU, Automotive, Open Source
+- SEO-friendly with clear project keywords (VW, Polo, Golf, Diagnostics, South Africa)
 
