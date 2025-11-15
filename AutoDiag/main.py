@@ -48,9 +48,9 @@ try:
     from shared.brand_database import get_brand_list, get_brand_info, brand_database
     from shared.dtc_database import DTCDatabase
     from shared.vin_decoder import VINDecoder
-    from shared.device_handler import DeviceHandler, Protocol
+    from shared.device_handler import DeviceHandler
     from shared.security_manager import security_manager, SecurityLevel, UserRole
-    from shared.special_functions import special_functions_manager, FunctionCategory, SpecialFunction
+    from shared.special_functions import special_functions_manager, FunctionCategory, EnhancedSpecialFunction
     from shared.calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure
     from shared.circular_gauge import CircularGauge, StatCard
     from dialogs import LoginDialog
