@@ -20,31 +20,31 @@ shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sha
 sys.path.append(shared_path)
 
 try:
-    from /shared/style_manager import StyleMmanager
-    from /shared/brand_database import get_brand_info, get_brand_list
-    from /shared/circular_gauge import CircularGauge, StatCard
+    from shared.style_manager import style_manager
+    from shared.brand_database import get_brand_info, get_brand_list
+    from shared.circular_gauge import CircularGauge, StatCard
+    from shared.mock_ecu_engine import MockECUEngine
 except ImportError as e:
     print(f"Warning: Failed to import modules: {e}")
     # Fallback classes
-    class StyleManager:
-        def __init__(self):
-            self.current_theme = "futuristic"
+    class Fallbackstyle_manager:
         def set_theme(self, theme): pass
-        def get_theme_info(self): 
-            return {"futuristic": {"name": "Futuristic"}}
-    
+        def get_theme_names(self): return ["futuristic", "neon_clinic", "security", "dark", "light", "professional"]
+        def set_security_level(self, level): pass
+    style_manager = Fallbackstyle_manager()
+
     def get_brand_list():
         return ["Toyota", "Honda", "Ford", "BMW", "Mercedes-Benz"]
-    
+
     def get_brand_info(brand):
         return {"name": brand}
-    
+
     class CircularGauge(QWidget):
         def __init__(self, *args, **kwargs):
             super().__init__()
             self.setMinimumSize(120, 120)
         def set_value(self, val): pass
-    
+
     class StatCard(QFrame):
         def __init__(self, title, value, *args, **kwargs):
             super().__init__()
@@ -52,11 +52,17 @@ except ImportError as e:
             layout.addWidget(QLabel(f"{title}\n{value}"))
         def update_value(self, val): pass
 
+    class MockECUEngine:
+        def __init__(self, *args, **kwargs): pass
+        def check_start_ready(self): return {"start_ready": False}
+        def simulate_immo_off(self): return {"success": False}
+        def simulate_egr_dpf_removal(self): return {"success": False}
+
 class AutoECUApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.style_manager = StyleManager()
         self.selected_brand = "Toyota"
+        self.mock_ecu = MockECUEngine(self.selected_brand, "Generic")
         self.init_ui()
         
     def init_ui(self):
@@ -90,7 +96,7 @@ class AutoECUApp(QMainWindow):
         self.create_status_bar()
         
         # Apply futuristic theme
-        self.style_manager.set_theme("futuristic")
+        style_manager.set_theme("futuristic")
         
         # Show the window
         self.show()
@@ -150,7 +156,7 @@ class AutoECUApp(QMainWindow):
         theme_label.setStyleSheet("color: #5eead4; font-size: 9pt;")
         
         self.theme_combo = QComboBox()
-        theme_info = self.style_manager.get_theme_info()
+        theme_info = style_manager.get_theme_info()
         for theme_id, info in theme_info.items():
             self.theme_combo.addItem(info['name'], theme_id)
         
@@ -210,32 +216,44 @@ class AutoECUApp(QMainWindow):
         
         # Quick action buttons in grid
         btn_layout = QGridLayout()
-        btn_layout.setSpacing(15)
-        
+        btn_layout.setSpacing(20)
+
         scan_btn = QPushButton("🔍 Scan ECUs")
         scan_btn.setProperty("class", "primary")
-        scan_btn.setMinimumHeight(50)
+        scan_btn.setMinimumHeight(60)
         scan_btn.clicked.connect(self.scan_ecus)
-        
-        read_btn = QPushButton("📖 Read ECU")
-        read_btn.setProperty("class", "success")
-        read_btn.setMinimumHeight(50)
-        read_btn.clicked.connect(self.read_ecu)
-        
-        write_btn = QPushButton("✍️ Write ECU")
-        write_btn.setProperty("class", "danger")
-        write_btn.setMinimumHeight(50)
-        write_btn.clicked.connect(self.write_ecu)
-        
-        identify_btn = QPushButton("🔎 Identify Modules")
-        identify_btn.setProperty("class", "primary")
-        identify_btn.setMinimumHeight(50)
-        identify_btn.clicked.connect(self.identify_modules)
-        
+
+        ready_btn = QPushButton("✅ Check Start Ready")
+        ready_btn.setProperty("class", "success")
+        ready_btn.setMinimumHeight(60)
+        ready_btn.clicked.connect(self.check_start_ready)
+
+        immo_btn = QPushButton("🔐 IMMO Off")
+        immo_btn.setProperty("class", "danger")
+        immo_btn.setMinimumHeight(60)
+        immo_btn.clicked.connect(self.perform_immo_off)
+
+        egr_btn = QPushButton("🔧 EGR-DPF Remove")
+        egr_btn.setProperty("class", "warning")
+        egr_btn.setMinimumHeight(60)
+        egr_btn.clicked.connect(self.perform_egr_dpf_removal)
+
+        file_btn = QPushButton("📥 Import File")
+        file_btn.setProperty("class", "info")
+        file_btn.setMinimumHeight(60)
+        file_btn.clicked.connect(self.import_start_ready_file)
+
+        dtc_btn = QPushButton("🔧 Add Start DTC")
+        dtc_btn.setProperty("class", "secondary")
+        dtc_btn.setMinimumHeight(60)
+        dtc_btn.clicked.connect(self.add_start_ready_dtc)
+
         btn_layout.addWidget(scan_btn, 0, 0)
-        btn_layout.addWidget(read_btn, 0, 1)
-        btn_layout.addWidget(write_btn, 1, 0)
-        btn_layout.addWidget(identify_btn, 1, 1)
+        btn_layout.addWidget(ready_btn, 0, 1)
+        btn_layout.addWidget(immo_btn, 1, 0)
+        btn_layout.addWidget(egr_btn, 1, 1)
+        btn_layout.addWidget(file_btn, 2, 0)
+        btn_layout.addWidget(dtc_btn, 2, 1)
         
         actions_layout.addLayout(btn_layout)
         
@@ -610,10 +628,10 @@ class AutoECUApp(QMainWindow):
     def on_theme_changed(self, theme_name):
         """Handle theme change"""
         try:
-            theme_info = self.style_manager.get_theme_info()
+            theme_info = style_manager.get_theme_info()
             for theme_id, info in theme_info.items():
                 if info.get('name') == theme_name:
-                    self.style_manager.set_theme(theme_id)
+                    style_manager.set_theme(theme_id)
                     self.status_label.setText(f"✨ Theme changed to: {theme_name}")
                     return
         except Exception as e:
@@ -624,6 +642,9 @@ class AutoECUApp(QMainWindow):
         self.selected_brand = brand
         self.brand_info_label.setText(brand)
         self.status_label.setText(f"✨ Brand changed to: {brand}")
+
+        # Update mock ECU engine with new brand
+        self.mock_ecu = MockECUEngine(brand, "Generic")
         
     def identify_modules(self):
         """Identify ECU modules"""
@@ -666,17 +687,20 @@ class AutoECUApp(QMainWindow):
             self.prog_progress.setValue(100)
                 
     def scan_ecus(self):
-        """Simulate ECU scanning"""
+        """Scan for ECU modules using mock engine"""
         try:
             self.connection_status.setText("🔄 Scanning...")
             self.connection_status.setStyleSheet("color: #f59e0b; font-size: 12pt; font-weight: bold;")
             self.scan_progress.setVisible(True)
             self.scan_progress.setValue(0)
-            
+
             self.status_label.setText("🔍 Scanning for ECU modules...")
             self.last_op_label.setText("ECU Scan")
             self.last_op_label.setStyleSheet("color: #10b981;")
-            
+
+            # Use mock ECU engine for scanning
+            self.mock_ecu.connect_to_ecu("0x7E0")
+
             # Simulate scan progress
             self.scan_timer = QTimer()
             self.scan_timer.timeout.connect(self.update_scan_progress)
@@ -726,13 +750,16 @@ class AutoECUApp(QMainWindow):
                 self.ecu_table.setItem(row, col, item)
                 
     def read_ecu(self):
-        """Simulate ECU reading"""
+        """Read ECU memory using mock engine"""
         try:
             self.status_label.setText("📖 Reading ECU memory...")
             self.last_op_label.setText("ECU Read")
             self.last_op_label.setStyleSheet("color: #10b981;")
             self.prog_progress.setValue(0)
-            
+
+            # Use mock ECU engine for memory reading
+            result = self.mock_ecu.read_ecu_memory(0x0000, 64)  # Read 64 bytes from address 0
+
             # Simulate reading progress
             self.read_timer = QTimer()
             self.read_timer.timeout.connect(self.update_read_progress)
@@ -758,13 +785,17 @@ class AutoECUApp(QMainWindow):
             self.prog_progress.setValue(100)
         
     def write_ecu(self):
-        """Simulate ECU writing"""
+        """Write to ECU memory using mock engine"""
         try:
             self.status_label.setText("✍️ Writing to ECU...")
             self.last_op_label.setText("ECU Write")
             self.last_op_label.setStyleSheet("color: #10b981;")
             self.prog_progress.setValue(0)
-            
+
+            # Use mock ECU engine for flash programming
+            test_data = bytes([i % 256 for i in range(64)])  # Test data
+            result = self.mock_ecu.flash_ecu_memory(test_data, 0x0000)
+
             # Simulate writing progress
             self.write_timer = QTimer()
             self.write_timer.timeout.connect(self.update_write_progress)
@@ -861,6 +892,128 @@ class AutoECUApp(QMainWindow):
             self.last_op_label.setStyleSheet("color: #10b981;")
         except Exception as e:
             self.status_label.setText(f"❌ Error clearing DTCs: {e}")
+
+    def check_start_ready(self):
+        """Check if ECU is start-ready"""
+        try:
+            self.status_label.setText("🔍 Checking start-ready status...")
+
+            # Use mock ECU engine
+            result = self.mock_ecu.check_start_ready()
+
+            if result["start_ready"]:
+                self.status_label.setText("✅ ECU is start-ready!")
+                self.last_op_label.setText("Start Ready: YES")
+                self.last_op_label.setStyleSheet("color: #10b981;")
+            else:
+                self.status_label.setText("❌ ECU not start-ready")
+                self.last_op_label.setText("Start Ready: NO")
+                self.last_op_label.setStyleSheet("color: #ef4444;")
+
+            # Update system info
+            self.conn_info_label.setText(f"Start Ready: {result['start_ready']}")
+            self.conn_info_label.setStyleSheet("color: #10b981;" if result["start_ready"] else "color: #ef4444;")
+
+        except Exception as e:
+            self.status_label.setText(f"❌ Error checking start-ready: {e}")
+
+    def perform_immo_off(self):
+        """Perform IMMO disable operation"""
+        try:
+            self.status_label.setText("🔐 Performing IMMO disable...")
+
+            result = self.mock_ecu.simulate_immo_off()
+
+            if result["success"]:
+                self.status_label.setText("✅ IMMO disabled successfully!")
+                self.last_op_label.setText("IMMO: DISABLED")
+                self.last_op_label.setStyleSheet("color: #10b981;")
+            else:
+                self.status_label.setText(f"❌ IMMO disable failed: {result.get('error', 'Unknown error')}")
+                self.last_op_label.setText("IMMO: FAILED")
+                self.last_op_label.setStyleSheet("color: #ef4444;")
+
+        except Exception as e:
+            self.status_label.setText(f"❌ Error performing IMMO off: {e}")
+
+    def perform_egr_dpf_removal(self):
+        """Perform EGR-DPF removal operation"""
+        try:
+            self.status_label.setText("🔧 Performing EGR-DPF removal...")
+
+            result = self.mock_ecu.simulate_egr_dpf_removal()
+
+            if result["success"]:
+                self.status_label.setText("✅ EGR-DPF removal completed!")
+                self.last_op_label.setText("EGR-DPF: REMOVED")
+                self.last_op_label.setStyleSheet("color: #10b981;")
+            else:
+                self.status_label.setText(f"❌ EGR-DPF removal failed: {result.get('error', 'Unknown error')}")
+                self.last_op_label.setText("EGR-DPF: FAILED")
+                self.last_op_label.setStyleSheet("color: #ef4444;")
+
+        except Exception as e:
+            self.status_label.setText(f"❌ Error performing EGR-DPF removal: {e}")
+
+    def import_start_ready_file(self):
+        """Import start-ready configuration file"""
+        try:
+            from PyQt6.QtWidgets import QFileDialog
+
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, "Select Start-Ready File", "", "All Files (*.*)"
+            )
+
+            if file_path:
+                self.status_label.setText("📥 Importing start-ready file...")
+
+                result = self.mock_ecu.import_start_ready_file(file_path)
+
+                if result["success"]:
+                    self.status_label.setText("✅ Start-ready file imported successfully!")
+                    self.last_op_label.setText("File Import: SUCCESS")
+                    self.last_op_label.setStyleSheet("color: #10b981;")
+
+                    # Update start-ready status
+                    self.conn_info_label.setText("Start Ready: YES (File Imported)")
+                    self.conn_info_label.setStyleSheet("color: #10b981;")
+                else:
+                    self.status_label.setText(f"❌ File import failed: {result.get('error', 'Unknown error')}")
+                    self.last_op_label.setText("File Import: FAILED")
+                    self.last_op_label.setStyleSheet("color: #ef4444;")
+
+        except Exception as e:
+            self.status_label.setText(f"❌ Error importing file: {e}")
+
+    def add_start_ready_dtc(self):
+        """Add DTC to enable start-ready mode"""
+        try:
+            from PyQt6.QtWidgets import QInputDialog
+
+            dtc_code, ok = QInputDialog.getText(
+                self, "Add Start-Ready DTC", "Enter DTC code (e.g., P0000):"
+            )
+
+            if ok and dtc_code:
+                self.status_label.setText(f"🔧 Adding start-ready DTC: {dtc_code}")
+
+                result = self.mock_ecu.add_start_ready_dtc(dtc_code)
+
+                if result["success"]:
+                    self.status_label.setText(f"✅ Start-ready DTC {dtc_code} added!")
+                    self.last_op_label.setText(f"DTC Added: {dtc_code}")
+                    self.last_op_label.setStyleSheet("color: #10b981;")
+
+                    # Update start-ready status
+                    self.conn_info_label.setText("Start Ready: YES (DTC Added)")
+                    self.conn_info_label.setStyleSheet("color: #10b981;")
+                else:
+                    self.status_label.setText("❌ Failed to add DTC")
+                    self.last_op_label.setText("DTC Add: FAILED")
+                    self.last_op_label.setStyleSheet("color: #ef4444;")
+
+        except Exception as e:
+            self.status_label.setText(f"❌ Error adding DTC: {e}")
 
 def main():
     app = QApplication(sys.argv)

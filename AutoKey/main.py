@@ -9,11 +9,11 @@ import os
 import re
 import logging
 import random
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
                             QWidget, QPushButton, QLabel, QComboBox, QTabWidget,
                             QGroupBox, QTableWidget, QTableWidgetItem, QProgressBar,
-                            QTextEdit, QLineEdit, QHeaderView, QRadioButton, 
-                            QInputDialog, QFrame, QGridLayout)
+                            QTextEdit, QLineEdit, QHeaderView, QRadioButton,
+                            QInputDialog, QFrame, QGridLayout, QScrollArea)
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
@@ -26,9 +26,9 @@ shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'sha
 if shared_path not in sys.path:
     sys.path.append(shared_path)
 try:
-    from /shared/style_manager import style_manager  # Use global instance
-    from /shared/brand_database import get_brand_info, get_brand_list
-    from /shared/circular_gauge import CircularGauge, StatCard
+    from shared.style_manager import style_manager  # Use global instance
+    from shared.brand_database import get_brand_info, get_brand_list
+    from shared.circular_gauge import CircularGauge, StatCard
 except ImportError as e:
     logger.error(f"Failed to import custom modules: {e}")
     # Fallback classes
@@ -74,10 +74,17 @@ class AutoKeyApp(QMainWindow):
         
         # Create central widget and main layout
         central_widget = QWidget()
-        self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(20, 20, 20, 20)
+
+        # Add scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setWidget(central_widget)
+        self.setCentralWidget(scroll)
         
         # Create header
         self.create_header(main_layout)
