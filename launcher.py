@@ -503,11 +503,14 @@ class ModernLauncher(QMainWindow):
             return
 
         try:
-            # Launch as subprocess
+            # Launch as subprocess with proper PYTHONPATH
             working_dir = path.parent
+            env = os.environ.copy()
+            env['PYTHONPATH'] = str(PROJECT_ROOT)
             process = subprocess.Popen(
                 [sys.executable, str(path)],
-                cwd=str(working_dir)
+                cwd=str(working_dir),
+                env=env
             )
 
             # Store process reference and disable button

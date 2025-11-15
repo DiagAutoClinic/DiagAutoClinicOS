@@ -35,6 +35,7 @@ except ImportError as e:
     class style_manager:
         def set_theme(self, theme): pass
         def get_theme_names(self): return ["futuristic", "neon_clinic", "security", "dark", "light", "professional"]
+        def get_theme_info(self): return {"futuristic": {"name": "Futuristic"}, "neon_clinic": {"name": "Neon Clinic"}, "security": {"name": "Security"}, "dark": {"name": "Dark"}, "light": {"name": "Light"}, "professional": {"name": "Professional"}}
     style_manager = style_manager()
     
     def get_brand_list():

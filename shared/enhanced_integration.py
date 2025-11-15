@@ -38,7 +38,7 @@ try:
     from brand_database import get_brand_list, get_brand_info
     from dtc_database import DTCDatabase
     from vin_decoder import VINDecoder
-    from device_handler import DeviceHandler, Protocol
+    from device_handler import DeviceHandler
     from security_manager import security_manager, SecurityLevel, UserRole
     from special_functions import special_functions_manager, FunctionCategory, SpecialFunction
     from calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure
