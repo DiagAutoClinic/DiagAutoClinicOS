@@ -69,7 +69,7 @@ class AutoECUApp(QMainWindow):
     def init_ui(self):
         """Initialize FUTURISTIC user interface"""
         self.setWindowTitle("AutoECU Pro - Futuristic ECU Programming")
-        self.setGeometry(50, 50, 1600, 1000)
+        self.setGeometry(50, 50, 1366, 768)
         
         # Create central widget and main layout
         central_widget = QWidget()
@@ -161,7 +161,7 @@ class AutoECUApp(QMainWindow):
         for theme_id, info in theme_info.items():
             self.theme_combo.addItem(info['name'], theme_id)
         
-        self.theme_combo.setCurrentText("Futuristic Teal")
+        self.theme_combo.setCurrentText("Futuristic")
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         self.theme_combo.setMinimumWidth(150)
         
@@ -633,6 +633,7 @@ class AutoECUApp(QMainWindow):
             for theme_id, info in theme_info.items():
                 if info.get('name') == theme_name:
                     style_manager.set_theme(theme_id)
+                    style_manager.apply_theme()
                     self.status_label.setText(f"✨ Theme changed to: {theme_name}")
                     return
         except Exception as e:
@@ -1018,14 +1019,16 @@ class AutoECUApp(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    
+
     # Set application properties
     app.setApplicationName("AutoECU Pro")
     app.setApplicationVersion("2.0.0")
     app.setOrganizationName("DiagAutoClinicOS")
-    
+
     try:
         window = AutoECUApp()
+        style_manager.set_app(app)
+        style_manager.apply_theme()
         sys.exit(app.exec())
     except Exception as e:
         print(f"Fatal error: {e}")
