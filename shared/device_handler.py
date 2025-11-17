@@ -53,3 +53,22 @@ class DeviceHandler:
             logger.info("✓ Bluetooth backend active")
         except ImportError:
             logger.warning("Bluetooth module not available - Bluetooth features disabled")
+
+    def detect_professional_devices(self):
+        """Return list of detected professional diagnostic devices"""
+        if self.mock_mode:
+            return []  # No devices in mock mode
+
+        devices = []
+        if self.j2534_available:
+            devices.append("J2534 Interface")
+        if self.usb_available:
+            devices.append("USB Device")
+        if self.bluetooth_available:
+            devices.append("Bluetooth Adapter")
+        if self.socketcan_available:
+            devices.append("SocketCAN")
+        return devices
+
+# Global device handler instance
+device_handler = DeviceHandler()
