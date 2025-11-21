@@ -382,7 +382,7 @@ class EnhancedBrandDatabase:
     def get_brand_list(self) -> List[str]:
         """Return list of all supported brands with security check"""
         try:
-            if self.security_manager and not self.security_manager.validate_session():
+            if self.security_manager and not self.security_manager.is_session_valid():
                 logger.warning("Security session invalid - returning basic brand list")
                 return ["Toyota", "Honda", "Ford", "Chevrolet", "Hyundai"]  # Basic brands only
             

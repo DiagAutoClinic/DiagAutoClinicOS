@@ -125,3 +125,7 @@ class NeonClinicBG(QWidget):
             painter.drawPixmap(rect.topLeft(), self.bg_pix)
 
         # 3. the glow is painted by its own widget
+
+
+# Alias for compatibility
+AnimatedBackground = NeonClinicBG

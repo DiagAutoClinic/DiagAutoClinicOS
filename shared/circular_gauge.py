@@ -100,10 +100,10 @@ class StatCard(QFrame):
         layout.setContentsMargins(15, 15, 15, 15)
         
         # Title
-        title_label = QLabel(title)
-        title_label.setProperty("class", "stat-label")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setWordWrap(True)
+        self.title_label = QLabel(title)
+        self.title_label.setProperty("class", "stat-label")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setWordWrap(True)
         
         # Parse value - handle strings like "97%" or numbers
         clean_value = self._parse_value(value)
@@ -119,7 +119,7 @@ class StatCard(QFrame):
             "font-size: 14pt; font-weight: bold; color: #14b8a6;"
         )
         
-        layout.addWidget(title_label)
+        layout.addWidget(self.title_label)
         layout.addWidget(self.gauge, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.value_label, alignment=Qt.AlignmentFlag.AlignCenter)
         layout.addStretch()

@@ -1,1 +1,30 @@
-
+{
+  "camry_responses": {
+    "vin_read": "JT1BK12F1F0123456",
+    "dtc_scan": [
+      {"code": "P0102", "severity": "Medium", "description": "Mass or Volume Air Flow Circuit Low Input"},
+      {"code": "P0128", "severity": "Low", "description": "Coolant Thermostat Below Regulating Temperature"},
+      {"code": "P0171", "severity": "Medium", "description": "System Too Lean (Bank 1)"}
+    ],
+    "dtc_clear": "success"
+  },
+  "corolla_responses": {
+    "vin_read": "1NXBU02E6MZ123456",
+    "dtc_scan": [
+      {"code": "P0300", "severity": "High", "description": "Random/Multiple Cylinder Misfire Detected"},
+      {"code": "P0420", "severity": "Medium", "description": "Catalyst Efficiency Below Threshold"},
+      {"code": "B1404", "severity": "Low", "description": "Open in Air Bag Front Left Passenger Circuit"}
+    ],
+    "dtc_clear": "success"
+  },
+  "common_toyota_dtcs": [
+    {"code": "P0100", "severity": "Medium", "description": "Mass or Volume Air Flow Circuit Malfunction"},
+    {"code": "P0110", "severity": "Low", "description": "Intake Air Temperature Circuit Malfunction"},
+    {"code": "P0120", "severity": "Medium", "description": "Throttle/Pedal Position Sensor/Switch 'A' Circuit Malfunction"},
+    {"code": "P0130", "severity": "Medium", "description": "O2 Sensor Circuit Malfunction (Bank 1 Sensor 1)"},
+    {"code": "P0171", "severity": "Medium", "description": "System Too Lean (Bank 1)"},
+    {"code": "P0300", "severity": "High", "description": "Random/Multiple Cylinder Misfire Detected"},
+    {"code": "P0420", "severity": "Medium", "description": "Catalyst Efficiency Below Threshold (Bank 1)"},
+    {"code": "P0500", "severity": "Low", "description": "Vehicle Speed Sensor Malfunction"}
+  ]
+}
