@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-AutoDiag Pro - Professional 25-Brand Diagnostic Suite v2.1
+AutoDiag Pro - Professional 25-Brand Diagnostic Suite v3.1
 FUTURISTIC GLASSMORPHIC DESIGN - FIXED: Global theme support
 """
 
@@ -67,54 +67,50 @@ except ImportError as e:
     SECURITY_MANAGER_AVAILABLE = False
 
     # ---------- FALLBACKS ----------
-    class FallbackStyleManager:
-        def set_theme(self, theme): pass
-        def get_theme_names(self): return ["futuristic", "neon_clinic", "security", "dark", "light", "professional"]
-        def set_security_level(self, level): pass
-    style_manager = FallbackStyleManager()
+class FallbackStyleManager:
+    def set_theme(self, theme): pass
+    def get_theme_names(self): return ["futuristic", "neon_clinic", "security", "dark", "light", "professional"]
+    def set_security_level(self, level): pass
+style_manager = FallbackStyleManager()
 
-    def get_brand_list(): return ["Toyota", "Honda", "Ford"]
-    def get_brand_info(brand): return {}
+def get_brand_list(): return ["Toyota", "Honda", "Ford"]
+def get_brand_info(brand): return {}
 
-    class CircularGauge(QWidget):
-        def __init__(self, *args, **kwargs):
-            super().__init__()
-            self.setMinimumSize(120, 120)
-        def set_value(self, val): pass
+class CircularGauge(QWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+        self.setMinimumSize(120, 120)
+    def set_value(self, val): pass
 
-    class StatCard(QFrame):
-        def __init__(self, title, value, *args, **kwargs):
-            super().__init__()
-            layout = QVBoxLayout(self)
-            self.title_label = QLabel(title)
-            self.value_label = QLabel(str(value))
-            layout.addWidget(self.title_label)
-            layout.addWidget(self.value_label)
-        def update_value(self, val):
-            if hasattr(self, 'value_label'):
-                self.value_label.setText(str(val))
+class StatCard(QFrame):
+    def __init__(self, title, value, *args, **kwargs):
+        super().__init__()
+        layout = QVBoxLayout(self)
+        self.title_label = QLabel(title)
+        self.value_label = QLabel(str(value))
+        layout.addWidget(self.title_label)
+        layout.addWidget(self.value_label)
+    def update_value(self, val):
+        if hasattr(self, 'value_label'):
+            self.value_label.setText(str(val))
 
 logger = logging.getLogger(__name__)
 
-
-
 class AutoDiagPro(QMainWindow):
-    """Enhanced AutoDiag Professional with FUTURISTIC DESIGN"""
-    
     def __init__(self):
-        super().__init__()
+        super(AutoDiagPro, self).__init__()  # Or super().__init__() in Python 3
 
         # Security first - require login
         if not self.secure_login():
             sys.exit(1)
-        
+            
         # Initialize managers
         try:
             self.dtc_database = DTCDatabase()
             self.vin_decoder = VINDecoder()
             self.special_functions_manager = special_functions_manager
             self.calibrations_resets_manager = calibrations_resets_manager
-            
+        
             # Safely inject security manager if available
             if SECURITY_MANAGER_AVAILABLE:
                 self.special_functions_manager.security_manager = security_manager
@@ -126,13 +122,13 @@ class AutoDiagPro(QMainWindow):
                 style_manager.set_security_level(current_level.name.lower())
         except Exception as e:
             logger.warning(f"Security components not available, using demo mode: {e}")
-        
+
         # Selected brand
         self.selected_brand = "Toyota"
-        
+
         # Initialize UI
         self.init_ui()
-        
+
         # Start live updates
         self.start_live_updates()
     
@@ -194,14 +190,14 @@ class AutoDiagPro(QMainWindow):
 
         print("❌ Maximum login attempts exceeded")
         return False
-    
+
     def init_ui(self):
         """Initialize FUTURISTIC user interface with responsive scrolling"""
         self.setWindowTitle("AutoDiag Pro - Futuristic Diagnostics")
         
         # Make window responsive with minimum size but allow growing
-        self.setMinimumSize(1000, 700)
-        self.resize(1200, 800)  # Start with a reasonable size
+        self.setMinimumSize(1280, 700)
+        self.resize(1366, 768)  # Start with a reasonable size
         
         # Set dark theme as default
         self.setStyleSheet("""
@@ -266,11 +262,12 @@ class AutoDiagPro(QMainWindow):
             }
         """)
         
-        # Create central widget
+        # Create central widget for QMainWindow
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
+        
+        # Main layout for central widget
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setSpacing(15)
         main_layout.setContentsMargins(20, 20, 20, 20)
         
         # Create header with user info
@@ -1183,31 +1180,38 @@ class AutoDiagPro(QMainWindow):
         logger.info("AutoDiag Pro closed securely")
         event.accept()
 
-def main():
-    """Main application entry point"""
-    # Configure logging
-    logging.basicConfig(
+    def main():
+        """Main application entry point"""
+        # Configure logging
+        logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(),
             logging.FileHandler('autodiag.log', mode='w', encoding='utf-8')
         ]
-    )
-    
-    app = QApplication(sys.argv)
-    
-    app.setApplicationName("AutoDiag Pro Futuristic")
-    app.setApplicationVersion("2.1.0")
-    app.setOrganizationName("SecureAutoClinic")
-    
-    try:
-        window = AutoDiagPro()
-        sys.exit(app.exec())
-    except Exception as e:
-        logger.critical(f"Application crashed: {e}")
-        QMessageBox.critical(None, "Fatal Error", f"Application crashed: {e}")
-        sys.exit(1)
+        )
 
-if __name__ == "__main__":
-    main()
+        app = QApplication(sys.argv)
+
+        app.setApplicationName("AutoDiag Pro Futuristic")
+        app.setApplicationVersion("2.1.0")
+        app.setOrganizationName("SecureAutoClinic")
+
+        # Set the app instance for the style manager
+        style_manager.set_app(app)
+    
+        try:
+            window = AutoDiagPro()
+            window.show()  # Explicitly show the window
+            sys.exit(app.exec())
+        except Exception as e:
+            logger.critical(f"Application crashed: {e}")
+            QMessageBox.critical(None, "Fatal Error", f"Application crashed: {e}")
+            sys.exit(1)
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    window = AutoDiagPro()
+    window.show()
+    sys.exit(app.exec())

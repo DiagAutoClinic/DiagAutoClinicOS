@@ -69,8 +69,23 @@ class AutoECUApp(QMainWindow):
     def init_ui(self):
         """Initialize FUTURISTIC user interface"""
         self.setWindowTitle("AutoECU Pro - Futuristic ECU Programming")
-        self.setGeometry(50, 50, 1366, 768)
+        self.setMinimumSize(1280, 700)
+        self.resize(1366, 768)
         
+        style_manager.set_app(app)  # Pass QApplication instance
+        style_manager.set_theme('dacos_unified')  # Use unified theme
+        style_manager.apply_theme()
+ 
+        # Create scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        # Content widget
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(20, 20, 20, 20)
+
         # Create central widget and main layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -1017,13 +1032,13 @@ class AutoECUApp(QMainWindow):
         except Exception as e:
             self.status_label.setText(f"❌ Error adding DTC: {e}")
 
-def main():
-    app = QApplication(sys.argv)
+    def main():
+        app = QApplication(sys.argv)
 
-    # Set application properties
-    app.setApplicationName("AutoECU Pro")
-    app.setApplicationVersion("2.0.0")
-    app.setOrganizationName("DiagAutoClinicOS")
+        # Set application properties
+        app.setApplicationName("AutoECU Pro")
+        app.setApplicationVersion("2.0.0")
+        app.setOrganizationName("DiagAutoClinicOS")
 
     try:
         window = AutoECUApp()
