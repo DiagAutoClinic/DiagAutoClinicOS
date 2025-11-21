@@ -71,7 +71,12 @@ class AutoKeyApp(QMainWindow):
     def init_ui(self):
         """Initialize FUTURISTIC user interface"""
         self.setWindowTitle("AutoKey Pro - Futuristic Key Programming")
-        self.setGeometry(50, 50, 1366, 768)
+        self.setMinimumSize(1280, 700)
+        self.resize(1366, 768)
+        
+        style_manager.set_app(app)  # Pass QApplication instance
+        style_manager.set_theme('dacos_unified')  # Use unified theme
+        style_manager.apply_theme()
         
         # Create central widget and main layout
         central_widget = QWidget()
@@ -79,13 +84,15 @@ class AutoKeyApp(QMainWindow):
         main_layout.setSpacing(15)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Add scroll area
+        # Create scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll.setWidget(central_widget)
-        self.setCentralWidget(scroll)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        # Content widget
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(20, 20, 20, 20)
         
         # Create header
         self.create_header(main_layout)
