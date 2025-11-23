@@ -70,7 +70,7 @@ except ImportError as e:
 
 class FallbackStyleManager:
     def set_theme(self, theme): pass
-    def get_theme_names(self): return ["futuristic"]
+    def get_theme_names(self): return ["dacos_unified", "futuristic"]
     def set_security_level(self, level): pass
 
 if not SECURITY_MANAGER_AVAILABLE:
@@ -122,6 +122,7 @@ class AutoDiagPro(QMainWindow):
 
         style_manager.set_app(QApplication.instance())
         style_manager.set_theme("dacos_unified")
+        style_manager.apply_theme()
 
     def create_header(self):
         self.header = QFrame()
@@ -144,7 +145,10 @@ class AutoDiagPro(QMainWindow):
         hbox.addWidget(vehicle)
 
         theme = QComboBox()
-        theme.addItems(["futuristic", "neon_clinic", "dark"])
+        theme_info = style_manager.get_theme_info() if SECURITY_MANAGER_AVAILABLE else {"dacos_unified": {"name": "DACOS Unified"}, "futuristic": {"name": "Futuristic"}}
+        for theme_id, info in theme_info.items():
+            theme.addItem(info['name'], theme_id)
+        theme.setCurrentText("DACOS Unified")
         hbox.addWidget(QLabel("Theme:"))
         hbox.addWidget(theme)
 

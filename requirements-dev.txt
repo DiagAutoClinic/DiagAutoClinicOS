@@ -1,149 +1,149 @@
 # Development and Testing Dependencies for DiagAutoClinicOS
+# Updated: 2025-11-23
 # Install: pip install -r requirements-dev.txt
 
 # ============================================================================
-# CORE TESTING FRAMEWORK
+# CORE TESTING FRAMEWORK (Updated versions for Python 3.10)
 # ============================================================================
 
 # pytest - Main testing framework
-pytest==7.4.3
-pytest-qt==4.2.0              # PyQt6 testing support
-pytest-cov==4.1.0             # Code coverage
-pytest-mock==3.12.0           # Mocking utilities
-pytest-timeout==2.2.0         # Test timeouts
-pytest-xdist==3.5.0           # Parallel test execution
-pytest-html==4.1.1            # HTML test reports
-pytest-benchmark==4.0.0       # Performance benchmarking
+pytest>=7.4.3,<8.0.0
+pytest-qt>=4.2.0,<5.0.0          # PyQt6 testing support
+pytest-cov>=4.1.0,<5.0.0         # Code coverage
+pytest-mock>=3.12.0,<4.0.0       # Mocking utilities
+pytest-timeout>=2.2.0,<3.0.0     # Test timeouts
+pytest-xdist>=3.5.0,<4.0.0       # Parallel test execution
+pytest-html>=4.1.1,<5.0.0        # HTML test reports
+pytest-benchmark>=4.0.0,<5.0.0   # Performance benchmarking
 
 # ============================================================================
-# CODE QUALITY & LINTING
+# CODE QUALITY & LINTING (Updated for compatibility)
 # ============================================================================
 
 # Code formatting
-black==23.12.1                # Code formatter
-isort==5.13.2                 # Import sorting
-autopep8==2.0.4              # PEP8 auto-formatting
+black>=23.12.0,<24.0.0           # Code formatter
+isort>=5.13.0,<6.0.0            # Import sorting
+autopep8>=2.0.4,<3.0.0          # PEP8 auto-formatting
 
-# Linting
-flake8==7.0.0                # Style guide enforcement
-pylint==3.0.3                # Code analysis
-mypy==1.8.0                  # Static type checking
-bandit==1.7.6                # Security linting
+# Linting (compatible with Python 3.10)
+flake8>=7.0.0,<8.0.0            # Style guide enforcement
+pylint>=3.0.0,<4.0.0            # Code analysis
+mypy>=1.8.0,<2.0.0             # Static type checking
+bandit>=1.7.6,<2.0.0           # Security linting
 
 # Code complexity
-radon==6.0.1                 # Cyclomatic complexity
-mccabe==0.7.0                # McCabe complexity checker
+radon>=6.0.0,<7.0.0             # Cyclomatic complexity
+mccabe>=0.7.0,<1.0.0           # McCabe complexity checker
 
 # ============================================================================
 # DOCUMENTATION
 # ============================================================================
 
 # Sphinx documentation
-sphinx==7.2.6
-sphinx-rtd-theme==2.0.0      # ReadTheDocs theme
-sphinx-autoapi==3.0.0        # Auto API documentation
-sphinx-autodoc-typehints==1.25.2
+sphinx>=7.2.0,<8.0.0
+sphinx-rtd-theme>=2.0.0,<3.0.0 # ReadTheDocs theme
+sphinx-autoapi>=3.0.0,<4.0.0   # Auto API documentation
+sphinx-autodoc-typehints>=1.25.0,<2.0.0
 
 # Markdown support
-myst-parser==2.0.0           # Markdown parser for Sphinx
-recommonmark==0.7.1
+myst-parser>=2.0.0,<3.0.0      # Markdown parser for Sphinx
+recommonmark>=0.7.1,<1.0.0
 
 # ============================================================================
 # DEBUGGING TOOLS
 # ============================================================================
 
 # Interactive debugging
-ipdb==0.13.13                # IPython debugger
-pdbpp==0.10.3                # Enhanced pdb
-debugpy==1.8.0               # VS Code debugging
+ipdb>=0.13.13,<1.0.0           # IPython debugger
+pdbpp>=0.10.3,<1.0.0           # Enhanced pdb
+debugpy>=1.8.0,<2.0.0          # VS Code debugging
 
 # Profiling
-memory-profiler==0.61.0      # Memory profiling
-line-profiler==4.1.1         # Line-by-line profiling
-py-spy==0.3.14               # Sampling profiler
+memory-profiler>=0.61.0,<1.0.0 # Memory profiling
+line-profiler>=4.1.1,<5.0.0    # Line-by-line profiling
+py-spy>=0.3.14,<1.0.0          # Sampling profiler
 
 # ============================================================================
 # MOCKING & FIXTURES
 # ============================================================================
 
 # Enhanced mocking
-responses==0.24.1            # HTTP request mocking
-freezegun==1.4.0             # Time/datetime mocking
-faker==22.0.0                # Fake data generation
-factory-boy==3.3.0           # Test fixtures
+responses>=0.24.1,<1.0.0       # HTTP request mocking
+freezegun>=1.4.0,<2.0.0        # Time/datetime mocking
+faker>=22.0.0,<23.0.0          # Fake data generation
+factory-boy>=3.3.0,<4.0.0      # Test fixtures
 
 # ============================================================================
 # COVERAGE & REPORTING
 # ============================================================================
 
 # Coverage tools
-coverage==7.4.0              # Core coverage
-coverage-badge==1.1.0        # Generate coverage badge
-pytest-cov==4.1.0            # Pytest coverage plugin
+coverage>=7.4.0,<8.0.0         # Core coverage
+coverage-badge>=1.1.0,<2.0.0   # Generate coverage badge
 
 # Test reporting
-pytest-html==4.1.1           # HTML reports
-pytest-json-report==1.5.0    # JSON reports
-allure-pytest==2.13.2        # Allure reporting
+pytest-json-report>=1.5.0,<2.0.0 # JSON reports
+allure-pytest>=2.13.2,<3.0.0   # Allure reporting
 
 # ============================================================================
 # CONTINUOUS INTEGRATION
 # ============================================================================
 
 # Pre-commit hooks
-pre-commit==3.6.0            # Git pre-commit hooks
-commitizen==3.13.0           # Conventional commits
+pre-commit>=3.6.0,<4.0.0       # Git pre-commit hooks
+commitizen>=3.13.0,<4.0.0      # Conventional commits
 
 # CI tools
-tox==4.11.4                  # Testing automation
-nox==2023.4.22               # Task automation
+tox>=4.11.4,<5.0.0             # Testing automation
+nox>=2023.4.22,<2024.0.0       # Task automation
 
 # ============================================================================
 # SECURITY TESTING
 # ============================================================================
 
 # Security scanning
-safety==3.0.1                # Dependency vulnerability scanner
-pip-audit==2.6.3             # Audit pip packages
+safety>=3.0.1,<4.0.0           # Dependency vulnerability scanner
+pip-audit>=2.6.3,<3.0.0        # Audit pip packages
 
 # ============================================================================
 # PERFORMANCE TESTING
 # ============================================================================
 
 # Load testing
-locust==2.20.0               # Load testing framework
-pytest-benchmark==4.0.0      # Benchmark testing
+locust>=2.20.0,<3.0.0          # Load testing framework
 
 # ============================================================================
 # UTILITIES
 # ============================================================================
 
 # Development utilities
-watchdog==3.0.0              # File system monitoring
-rich==13.7.0                 # Terminal formatting
-click==8.1.7                 # CLI creation
-colorama==0.4.6              # Cross-platform colored terminal
+watchdog>=3.0.0,<4.0.0         # File system monitoring
+rich>=13.7.0,<14.0.0           # Terminal formatting
+click>=8.1.7,<9.0.0            # CLI creation
+colorama>=0.4.6,<1.0.0         # Cross-platform colored terminal
 
 # Data validation
-pydantic==2.5.3              # Data validation
-jsonschema==4.20.0           # JSON schema validation
+pydantic>=2.5.3,<3.0.0         # Data validation
+jsonschema>=4.20.0,<5.0.0      # JSON schema validation
 
 # ============================================================================
 # HARDWARE TESTING (Optional)
 # ============================================================================
 
 # Virtual device emulation
-pyserial-asyncio==0.6        # Async serial
-can-utils==0.0.1             # CAN utilities (if available)
+pyserial-asyncio>=0.6,<1.0.0   # Async serial
+# Note: can-utils is a Linux system package, install via: sudo apt-get install can-utils
 
 # ============================================================================
-# VERSION PINNING
+# VERSION COMPATIBILITY WITH MAIN REQUIREMENTS
 # ============================================================================
 
-# Pin compatible versions with main requirements
+# Ensure compatibility with main requirements.txt
 PyQt6>=6.6.1,<7.0.0
 pyserial>=3.5,<4.0.0
 python-can>=4.2.2,<5.0.0
+pytest>=7.4.3,<8.0.0
+coverage>=7.4.0,<8.0.0
 
 # ============================================================================
 # INSTALLATION NOTES
@@ -171,3 +171,12 @@ python-can>=4.2.2,<5.0.0
 #   pytest -m unit          # Run only unit tests
 #   pytest -m integration   # Run only integration tests
 #   pytest -m "not slow"    # Skip slow tests
+
+# ============================================================================
+# PYTHON 3.10 COMPATIBILITY NOTES
+# ============================================================================
+
+# All packages in this file are compatible with Python 3.10
+# Updated versions ensure best compatibility and security
+# Regular testing performed on Python 3.10 Windows environment
+# ============================================================================
