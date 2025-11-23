@@ -29,9 +29,9 @@ except ImportError as e:
     # Fallback classes
     class Fallbackstyle_manager:
         def set_theme(self, theme): pass
-        def get_theme_names(self): return ["futuristic", "neon_clinic", "security", "dark", "light", "professional"]
+        def get_theme_names(self): return ["dacos_unified", "futuristic", "neon_clinic", "security", "dark", "light", "professional"]
         def set_security_level(self, level): pass
-        def get_theme_info(self): return {"futuristic": {"name": "Futuristic Teal"}, "neon_clinic": {"name": "Neon Clinic"}, "security": {"name": "Security"}, "dark": {"name": "Dark"}, "light": {"name": "Light"}, "professional": {"name": "Professional"}}
+        def get_theme_info(self): return {"dacos_unified": {"name": "DACOS Unified"}, "futuristic": {"name": "Futuristic Teal"}, "neon_clinic": {"name": "Neon Clinic"}, "security": {"name": "Security"}, "dark": {"name": "Dark"}, "light": {"name": "Light"}, "professional": {"name": "Professional"}}
     style_manager = Fallbackstyle_manager()
 
     def get_brand_list():
@@ -75,7 +75,7 @@ class AutoECUApp(QMainWindow):
         style_manager.set_app(app)  # Pass QApplication instance
         style_manager.set_theme('dacos_unified')  # Use unified theme
         style_manager.apply_theme()
- 
+
         # Create scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -111,8 +111,9 @@ class AutoECUApp(QMainWindow):
         # Create status bar
         self.create_status_bar()
         
-        # Apply futuristic theme
-        style_manager.set_theme("futuristic")
+        # Apply DACOS unified theme
+        style_manager.set_theme("dacos_unified")
+        style_manager.apply_theme()
         
         # Show the window
         self.show()
@@ -176,7 +177,7 @@ class AutoECUApp(QMainWindow):
         for theme_id, info in theme_info.items():
             self.theme_combo.addItem(info['name'], theme_id)
         
-        self.theme_combo.setCurrentText("Futuristic")
+        self.theme_combo.setCurrentText("DACOS Unified")
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         self.theme_combo.setMinimumWidth(150)
         

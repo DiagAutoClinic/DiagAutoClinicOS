@@ -34,8 +34,8 @@ except ImportError as e:
     # Fallback classes
     class style_manager:
         def set_theme(self, theme): pass
-        def get_theme_names(self): return ["futuristic", "neon_clinic", "security", "dark", "light", "professional"]
-        def get_theme_info(self): return {"futuristic": {"name": "Futuristic"}, "neon_clinic": {"name": "Neon Clinic"}, "security": {"name": "Security"}, "dark": {"name": "Dark"}, "light": {"name": "Light"}, "professional": {"name": "Professional"}}
+        def get_theme_names(self): return ["dacos_unified", "futuristic", "neon_clinic", "security", "dark", "light", "professional"]
+        def get_theme_info(self): return {"dacos_unified": {"name": "DACOS Unified"}, "futuristic": {"name": "Futuristic"}, "neon_clinic": {"name": "Neon Clinic"}, "security": {"name": "Security"}, "dark": {"name": "Dark"}, "light": {"name": "Light"}, "professional": {"name": "Professional"}}
     style_manager = style_manager()
     
     def get_brand_list():
@@ -73,11 +73,7 @@ class AutoKeyApp(QMainWindow):
         self.setWindowTitle("AutoKey Pro - Futuristic Key Programming")
         self.setMinimumSize(1280, 700)
         self.resize(1366, 768)
-        
-        style_manager.set_app(app)  # Pass QApplication instance
-        style_manager.set_theme('dacos_unified')  # Use unified theme
-        style_manager.apply_theme()
-        
+
         # Create central widget and main layout
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
@@ -166,7 +162,10 @@ class AutoKeyApp(QMainWindow):
         theme_label.setProperty("class", "section-label")
         
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(style_manager.get_theme_names())
+        theme_info = style_manager.get_theme_info()
+        for theme_id, info in theme_info.items():
+            self.theme_combo.addItem(info['name'], theme_id)
+        self.theme_combo.setCurrentText("DACOS Unified")
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         self.theme_combo.setMinimumWidth(150)
         
@@ -794,6 +793,10 @@ def main():
     
     try:
         window = AutoKeyApp()
+        style_manager.set_app(app)
+        style_manager.set_theme('dacos_unified')
+        style_manager.apply_theme()
+        window.show()
         sys.exit(app.exec())
     except Exception as e:
         logger.error(f"Application failed: {e}")
