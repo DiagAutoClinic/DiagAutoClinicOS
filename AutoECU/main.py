@@ -1032,13 +1032,13 @@ class AutoECUApp(QMainWindow):
         except Exception as e:
             self.status_label.setText(f"❌ Error adding DTC: {e}")
 
-    def main():
-        app = QApplication(sys.argv)
+def main():
+    app = QApplication(sys.argv)
 
-        # Set application properties
-        app.setApplicationName("AutoECU Pro")
-        app.setApplicationVersion("2.0.0")
-        app.setOrganizationName("DiagAutoClinicOS")
+    # Set application properties
+    app.setApplicationName("AutoECU Pro")
+    app.setApplicationVersion("2.0.0")
+    app.setOrganizationName("DiagAutoClinicOS")
 
     try:
         window = AutoECUApp()

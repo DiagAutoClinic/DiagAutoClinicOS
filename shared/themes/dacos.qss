@@ -30,11 +30,6 @@ QFrame.glass-card, QGroupBox, QWidget#CentralWidget {
     background: rgba(20, 20, 50, 0.75);
     border: 1.5px solid rgba(0, 255, 255, 0.5);
     border-radius: 18px;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5),
-                0 0 25px rgba(0, 255, 255, 0.7),
-                0 0 50px rgba(255, 0, 255, 0.4);
     padding: 16px;
     margin: 8px;
 }
@@ -61,15 +56,12 @@ QPushButton {
 QPushButton:hover {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 #00ffff, stop:1 #0080ff);
-    box-shadow: 0 0 25px rgba(0, 255, 255, 0.7),
-                0 0 50px rgba(255, 0, 255, 0.4);
-    transform: translateY(-3px);
     border: 1.5px solid #ff00ff;
 }
 
 QPushButton:pressed {
-    transform: translateY(2px);
-    box-shadow: 0 0 35px rgba(255, 0, 255, 0.9);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #004080, stop:1 #002040);
 }
 
 /* Status */
@@ -106,12 +98,10 @@ QScrollBar::handle:vertical {
     background: #0080ff;
     border-radius: 6px;
     min-height: 40px;
-    box-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
 }
 
 QScrollBar::handle:vertical:hover {
     background: #00ffff;
-    box-shadow: 0 0 25px rgba(0, 255, 255, 0.9);
 }
 
 /* Progress Bars */
@@ -151,7 +141,6 @@ QCheckBox::indicator:checked {
 
 QCheckBox::indicator:hover {
     border: 2px solid #00ffff;
-    box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
 }
 
 /* Radio Buttons */
@@ -176,7 +165,6 @@ QRadioButton::indicator:checked {
 
 QRadioButton::indicator:hover {
     border: 2px solid #00ffff;
-    box-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
 }
 
 /* Group Boxes */

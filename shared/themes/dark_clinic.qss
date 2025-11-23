@@ -22,9 +22,6 @@ QFrame.glass-card, QGroupBox, QWidget#CentralWidget {
         stop:1 rgba(20, 20, 20, 0.9));
     border: 1px solid rgba(100, 100, 100, 0.3);
     border-radius: 12px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
     padding: 16px;
     margin: 8px;
 }
@@ -50,7 +47,6 @@ QPushButton[class="primary"] {
 QPushButton[class="primary"]:hover {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
         stop:0 #357abd, stop:1 #2c5aa0);
-    box-shadow: 0 0 15px rgba(74, 144, 226, 0.3);
 }
 
 /* Success Buttons */
@@ -68,7 +64,6 @@ QPushButton[class="success"] {
 QPushButton[class="success"]:hover {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
         stop:0 #229954, stop:1 #1e8449);
-    box-shadow: 0 0 15px rgba(39, 174, 96, 0.3);
 }
 
 /* Danger Buttons */
@@ -86,7 +81,6 @@ QPushButton[class="danger"] {
 QPushButton[class="danger"]:hover {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
         stop:0 #c0392b, stop:1 #a93226);
-    box-shadow: 0 0 15px rgba(231, 76, 60, 0.3);
 }
 
 /* Hero Title */
@@ -162,7 +156,6 @@ QTextEdit, QLineEdit {
 
 QTextEdit:focus, QLineEdit:focus {
     border: 1px solid #4a90e2;
-    box-shadow: 0 0 8px rgba(74, 144, 226, 0.2);
 }
 
 /* Scrollbars */
@@ -177,12 +170,10 @@ QScrollBar::handle:vertical {
     background: #4a90e2;
     border-radius: 6px;
     min-height: 40px;
-    box-shadow: 0 0 12px rgba(74, 144, 226, 0.5);
 }
 
 QScrollBar::handle:vertical:hover {
     background: #357abd;
-    box-shadow: 0 0 20px rgba(74, 144, 226, 0.8);
 }
 
 /* Progress Bars */
@@ -222,7 +213,6 @@ QCheckBox::indicator:checked {
 
 QCheckBox::indicator:hover {
     border: 2px solid #4a90e2;
-    box-shadow: 0 0 8px rgba(74, 144, 226, 0.5);
 }
 
 /* Radio Buttons */
@@ -247,7 +237,6 @@ QRadioButton::indicator:checked {
 
 QRadioButton::indicator:hover {
     border: 2px solid #4a90e2;
-    box-shadow: 0 0 8px rgba(74, 144, 226, 0.5);
 }
 
 /* Group Boxes */

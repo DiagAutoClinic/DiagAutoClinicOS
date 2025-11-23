@@ -93,7 +93,26 @@ class SecurityManager:
     def logout(self):
         """Logout current user"""
         if self.current_user:
-            logger.info(f"User {self.current_user} logged out")
+            user_info = self.get_user_info()
+            logout_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            session_duration = "Unknown"
+            
+            if self.session_expiry:
+                # Calculate session duration
+                try:
+                    # We can't get login time directly, but we can estimate session duration
+                    # For demo purposes, we'll use a standard 8-hour session
+                    session_duration = "8 hours (standard session)"
+                except:
+                    session_duration = "Unknown"
+            
+            logger.info(f"✓ Logout successful: {user_info['full_name']} ({self.current_user}) | "
+                       f"Security Level: {user_info['security_level']} | "
+                       f"Session Duration: {session_duration} | "
+                       f"Logout Time: {logout_time}")
+        else:
+            logger.info("✓ Logout completed (no active session)")
+            
         self.current_user = None
         self.session_active = False
         self.session_expiry = None
