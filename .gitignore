@@ -48,3 +48,6 @@ build/
 *.sqlite3
 dacos_ai.sh
 dacos_ai.sh
+
+# Auto-approve configuration (should never be committed)
+auto_approve_config/

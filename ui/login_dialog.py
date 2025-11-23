@@ -66,12 +66,12 @@ class LoginDialog(QDialog):
 
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Enter username")
-        self.username_input.setMinimumHeight(45)
+        self.username_input.setMinimumHeight(30)
 
         self.password_input = QLineEdit()
         self.password_input.setPlaceholderText("Enter password")
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        self.password_input.setMinimumHeight(45)
+        self.password_input.setMinimumHeight(30)
         self.password_input.returnPressed.connect(self.attempt_login)
 
         # Add rows with proper spacing

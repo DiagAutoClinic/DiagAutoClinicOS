@@ -1269,8 +1269,15 @@ class AutoDiagPro(QMainWindow):
 
     def secure_logout(self):
         """Handle secure logout"""
-        reply = QMessageBox.question(self, "Logout",
-                                   "Are you sure you want to logout?",
+        user_info = security_manager.get_user_info()
+        user_name = user_info.get('full_name', 'User')
+        security_level = user_info.get('security_level', 'BASIC')
+        
+        reply = QMessageBox.question(self, "Secure Logout",
+                                   f"Terminate secure session for:\n"
+                                   f"👤 {user_name}\n"
+                                   f"🔐 Security Level: {security_level}\n\n"
+                                   f"Are you sure you want to logout?",
                                    QMessageBox.StandardButton.Yes |
                                    QMessageBox.StandardButton.No)
 

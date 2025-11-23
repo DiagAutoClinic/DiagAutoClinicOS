@@ -4,6 +4,11 @@ DiagAutoClinicOS Launcher - Futuristic Teal Glassmorphic Theme
 Inspired by "Where Mechanics Meet Future Intelligence"
 """
 
+import sys
+from pathlib import Path
+# Always add the project root to Python path
+PROJECT_ROOT = Path(__file__).resolve().parents[1]   # two levels up from current file
+sys.path.insert(0, str(PROJECT_ROOT))
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
@@ -48,6 +53,10 @@ class DiagLauncher(tk.Tk):
         self.build_top()
         self.build_dashboard()
         self.build_bottom()
+        
+        # Start health monitoring after UI is built
+        self.after(1000, self.start_health_monitoring)
+        
         self.start_animations()
 
     def build_background(self):
@@ -160,17 +169,32 @@ class DiagLauncher(tk.Tk):
 
         row1 = tk.Frame(mid, bg=BG_MAIN)
         row1.pack(pady=10)
-
-        self.card(row1, "Vehicle Diagnostics", "Scan faults & live data").pack(side="left", padx=15)
-        self.card(row1, "ECU Programming", "Flash & coding tools").pack(side="left", padx=15)
-        self.card(row1, "Service Reset", "Oil / DPF / EPB resets").pack(side="left", padx=15)
-
+        
+        # Suite cards for diagnostic functions
+        self.autodiag_card = self.card(row1, "Vehicle Diagnostics", "Scan faults & live data")
+        self.autodiag_card.pack(side="left", padx=15)
+        self.autodiag_card.bind("<Button-1>", lambda e: self.launch_suite("AutoDiag"))
+        self.autodiag_card.bind("<Enter>", lambda e: self.on_card_hover("autodiag", True))
+        self.autodiag_card.bind("<Leave>", lambda e: self.on_card_hover("autodiag", False))
+        
+        self.autoecu_card = self.card(row1, "ECU Programming", "Flash & coding tools")
+        self.autoecu_card.pack(side="left", padx=15)
+        self.autoecu_card.bind("<Button-1>", lambda e: self.launch_suite("AutoECU"))
+        self.autoecu_card.bind("<Enter>", lambda e: self.on_card_hover("autoecu", True))
+        self.autoecu_card.bind("<Leave>", lambda e: self.on_card_hover("autoecu", False))
+        
+        self.autokey_card = self.card(row1, "Security & IMMO", "Key programming & sync")
+        self.autokey_card.pack(side="left", padx=15)
+        self.autokey_card.bind("<Button-1>", lambda e: self.launch_suite("AutoKey"))
+        self.autokey_card.bind("<Enter>", lambda e: self.on_card_hover("autokey", True))
+        self.autokey_card.bind("<Leave>", lambda e: self.on_card_hover("autokey", False))
+        
         row2 = tk.Frame(mid, bg=BG_MAIN)
         row2.pack(pady=10)
-
-        self.card(row2, "Security & IMMO", "Key programming & sync").pack(side="left", padx=15)
+        
         self.card(row2, "Sensor Monitor", "Live sensor graphing").pack(side="left", padx=15)
         self.card(row2, "System Health", "Suite diagnostics status").pack(side="left", padx=15)
+        self.card(row2, "Service Reset", "Oil / DPF / EPB resets").pack(side="left", padx=15)
 
     def build_bottom(self):
         bottom = tk.Frame(self, bg=BG_MAIN, height=80)
@@ -215,6 +239,13 @@ class DiagLauncher(tk.Tk):
         # Status indicator
         self.status_label = tk.Label(bottom, text="● SYSTEM READY", fg=GLOW, bg=BG_MAIN, font=FONT_SMALL)
         self.status_label.pack(side="bottom", pady=5)
+        
+        # Suite status tracking
+        self.suite_status = {
+            "AutoDiag": "Ready",
+            "AutoECU": "Ready",
+            "AutoKey": "Ready"
+        }
 
     def launch_main(self):
         # Animate launch sequence
@@ -230,25 +261,155 @@ class DiagLauncher(tk.Tk):
 
         self.status_label.config(text="● LAUNCH COMPLETE", fg=TEXT_MAIN)
 
-        # Close the launcher
-        self.destroy()
-
         # Launch the actual AutoDiag application
+        self.launch_suite("AutoDiag")
+        
+    def launch_suite(self, suite_name):
+        """Launch a specific diagnostic suite"""
+        self.status_label.config(text=f"● LAUNCHING {suite_name.upper()}...", fg=ACCENT)
+        
+        # Update suite status
+        if suite_name in self.suite_status:
+            self.suite_status[suite_name] = "Launching..."
+            self.update()
+        
         try:
             import subprocess
             import sys
             import os
+            from pathlib import Path
 
-            # Get the path to AutoDiag/main.py
-            autodiag_path = os.path.join(os.path.dirname(__file__), 'AutoDiag', 'main.py')
+            # Get the path to the specific suite main.py
+            project_root = Path(__file__).resolve().parent
+            suite_path = project_root / suite_name / 'main.py'
 
-            # Launch the PyQt6 application
-            subprocess.Popen([sys.executable, autodiag_path])
+            # Try multiple Python executables in order of preference
+            python_executables = [
+                sys.executable,
+                r"C:\Python310\python.exe",
+                r"C:\Users\DACOS\AppData\Local\Programs\Python\Python312\python.exe",
+                r"C:\Users\DACOS\AppData\Local\Microsoft\WindowsApps\python.exe",
+                "python"
+            ]
+
+            launched = False
+            last_error = None
+            
+            for python_exe in python_executables:
+                try:
+                    if python_exe == "python" or Path(python_exe).exists():
+                        if suite_path.exists():
+                            process = subprocess.Popen(
+                                [python_exe, str(suite_path)],
+                                cwd=str(project_root),
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True
+                            )
+                            messagebox.showinfo("Success", f"{suite_name} launched successfully using {python_exe}")
+                            launched = True
+                            if suite_name in self.suite_status:
+                                self.suite_status[suite_name] = "Running"
+                            break
+                        else:
+                            last_error = f"{suite_name} main.py not found at: {suite_path}"
+                    else:
+                        last_error = f"Python executable not found: {python_exe}"
+                except Exception as e:
+                    last_error = f"Failed to launch {suite_name} with {python_exe}: {str(e)}"
+                    continue
+
+            if not launched:
+                raise Exception(last_error or "No suitable Python executable found")
+                
+            self.status_label.config(text=f"● {suite_name} LAUNCHED SUCCESSFULLY", fg=TEXT_MAIN)
 
         except Exception as e:
-            messagebox.showerror("Launch Error", f"Failed to launch AutoDiag: {e}")
-            # Re-open launcher if launch failed
-            DiagLauncher().mainloop()
+            error_msg = f"Failed to launch {suite_name}:\n\n{str(e)}\n\nPlease check:\n1. Python 3.12 is installed\n2. All dependencies are installed (pip install -r requirements.txt)\n3. {suite_name}/main.py exists"
+            messagebox.showerror("Launch Error", error_msg)
+            if suite_name in self.suite_status:
+                self.suite_status[suite_name] = "Error"
+            self.status_label.config(text=f"● {suite_name} LAUNCH FAILED", fg=ERROR)
+            
+    def on_card_hover(self, card_type, entering):
+        """Handle hover effects for suite cards"""
+        card_map = {
+            "autodiag": self.autodiag_card,
+            "autoecu": self.autoecu_card,
+            "autokey": self.autokey_card
+        }
+        
+        if card_type in card_map:
+            card = card_map[card_type]
+            if entering:
+                # Card is a shadow frame, get the inner card
+                inner_card = card.winfo_children()[0]  # shadow frame
+                status = self.suite_status.get(card_type.replace("auto", "Auto"), "Ready")
+                inner_card.config(bg=BG_MAIN if status == "Running" else ACCENT if status == "Ready" else ERROR)
+                self.status_label.config(text=f"● Hovering {card_type.replace('auto', 'Auto')} - Status: {status}", fg=GLOW if status == "Ready" else TEXT_MAIN if status == "Running" else ERROR)
+            else:
+                inner_card = card.winfo_children()[0]
+                inner_card.config(bg=BG_CARD)
+                self.status_label.config(text="● SYSTEM READY", fg=GLOW)
+
+    def start_health_monitoring(self):
+        """Start monitoring system health for all suites"""
+        import threading
+        import time
+        
+        def monitor_health():
+            while True:
+                # Check each suite's status
+                for suite in ["AutoDiag", "AutoECU", "AutoKey"]:
+                    suite_path = Path(__file__).resolve().parent / suite / 'main.py'
+                    if suite_path.exists():
+                        if self.suite_status[suite] not in ["Running", "Launching..."]:
+                            self.suite_status[suite] = "Ready"
+                    else:
+                        if self.suite_status[suite] not in ["Missing", "Error"]:
+                            self.suite_status[suite] = "Missing"
+                
+                # Update visual indicators every 5 seconds
+                self.after(5000, self.update_health_indicators)
+                time.sleep(5)
+        
+        monitor_thread = threading.Thread(target=monitor_health, daemon=True)
+        monitor_thread.start()
+
+    def update_health_indicators(self):
+        """Update visual health indicators for suites"""
+        try:
+            # Update card colors based on status
+            status_colors = {
+                "Ready": BG_CARD,
+                "Running": ACCENT,
+                "Launching...": GLOW,
+                "Error": ERROR,
+                "Missing": TEXT_MUTED
+            }
+            
+            cards = {
+                "AutoDiag": getattr(self, 'autodiag_card', None),
+                "AutoECU": getattr(self, 'autoecu_card', None),
+                "AutoKey": getattr(self, 'autokey_card', None)
+            }
+            
+            for suite, card in cards.items():
+                if card and hasattr(card, 'winfo_children'):
+                    status = self.suite_status.get(suite, "Ready")
+                    color = status_colors.get(status, BG_CARD)
+                    
+                    # Update inner card color
+                    try:
+                        inner_card = card.winfo_children()[0].winfo_children()[0]
+                        if hasattr(inner_card, 'config'):
+                            inner_card.config(bg=color)
+                    except:
+                        pass  # Ignore if structure is different
+                        
+        except Exception as e:
+            # Silently handle monitoring errors
+            pass
 
 
 if __name__ == "__main__":
