@@ -165,7 +165,8 @@ class AutoKeyApp(QMainWindow):
         theme_info = style_manager.get_theme_info()
         for theme_id, info in theme_info.items():
             self.theme_combo.addItem(info['name'], theme_id)
-        self.theme_combo.setCurrentText("DACOS Unified")
+        # Set default theme to dacos_unified
+        self.theme_combo.setCurrentIndex(self.theme_combo.findData('dacos_unified'))
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         self.theme_combo.setMinimumWidth(150)
         
