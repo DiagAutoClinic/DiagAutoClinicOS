@@ -108,9 +108,10 @@ class LoginDialog(QDialog):
 
         self.setLayout(layout)
 
-        # Apply launcher theme
-        launcher_stylesheet = self.get_launcher_theme()
-        self.setStyleSheet(launcher_stylesheet)
+        # Apply centralized theme
+        style_manager.set_app(QApplication.instance())
+        style_manager.set_theme("dacos_unified")
+        style_manager.apply_theme()
 
     def attempt_login(self):
         """Attempt user login"""

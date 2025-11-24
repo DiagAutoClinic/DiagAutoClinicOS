@@ -57,15 +57,22 @@ Developed by **Shaun Smit** and the **DiagAutoClinic (DACOS)** team, it integrat
 
 ```plaintext
 DiagAutoClinicOS/
-│
 ├── AutoDiag/               # Main diagnostic dashboard
 │   └── main.py
 │
 ├── AutoECU/                # ECU programming and firmware management
-│   └── main.py
+│   ├── main.py
+│   └── shared/
 │
 ├── AutoKey/                # Key programming and immobilizer functions
 │   └── main.py
+│
+├── core/                   # Core diagnostic engine
+│   ├── calibrations.py
+│   ├── device_manager.py
+│   ├── diagnostics.py
+│   ├── security.py
+│   └── special_functions.py
 │
 ├── shared/                 # Core modules and libraries
 │   ├── brand_database.py
@@ -76,21 +83,43 @@ DiagAutoClinicOS/
 │   ├── security_manager.py
 │   ├── special_functions.py
 │   ├── style_manager.py
-│   └── vin_decoder.py
+│   ├── theme_constants.py
+│   ├── vin_decoder.py
+│   ├── themes/             # UI themes (glassmorphic, professional, etc.)
+│   └── widgets/            # Custom UI components
+│
+├── ui/                     # User interface components
+│   ├── login_dialog.py
+│   └── main_window.py
+│
+├── tests/                  # Comprehensive test suite
+│   ├── AutoDiag/           # AutoDiag specific tests
+│   ├── integration_tests/  # Cross-module integration tests
+│   ├── mock/              # Mock testing utilities
+│   ├── performance/       # Performance benchmarks
+│   ├── security/          # Security testing
+│   └── shared/            # Shared module tests
 │
 ├── scripts/                # Utility scripts and setup tools
-│   ├── setup_bluetooth.py
-│   ├── release_bluetooth.py
-│   └── update_dependencies.py
+│   ├── build-iso.sh
+│   ├── demo_ecu_emulation.py
+│   ├── quick_connect.sh
+│   └── validate_install.py
 │
-├── tests/                  # Unit and integration tests
-│   ├── AutoDiag/
-│   ├── shared/
-│   └── integration_tests/https://diagautoclinic.co.za/assets/logo.png
+├── docs/                   # Documentation
+│   ├── testing/           # Testing guides and procedures
+│   ├── VIDEO_TUTORIALS_GUIDE.md
+│   └── VW_POLO_GOLF_DIAGNOSTICS.md
 │
+├── assets/                 # Images and resources
+├── resources/              # Additional resources
+├── utils/                  # Utility functions
 ├── launcher.py             # Main startup script
 ├── requirements.txt        # Python dependencies
-└── README.md               # You are here ✨
+├── CHANGELOG.md            # Version history
+├── QUICKSTART.md           # Quick start guide
+├── SECURITY.md             # Security policies
+└── README.md               # This file ✨
 ```
 
 ------
@@ -201,7 +230,7 @@ Kilo Code has been instrumental in transforming DiagAutoClinicOS from concept to
 
 ## 🌍 Project Vision
 
-> “Empowering independent workshops — one diagnostic suite at a time.”
+> "Empowering independent workshops — one diagnostic suite at a time."
 
 DiagAutoClinicOS is built to bring  open-source transparency, modularity, and innovation to the automotive  diagnostic space — with a focus on **local engineering excellence in South Africa** and community-driven collaboration worldwide.
 
@@ -236,7 +265,7 @@ git commit -am "Add new module"
 git push origin feature/new-module
 ```
 
-If you’re a hardware vendor or workshop interested in integration testing, reach out at:<br>
+If you're a hardware vendor or workshop interested in integration testing, reach out at:<br>
 
  📧 **shaun@diagautoclinic.co.za**
  | **dacos@diagautoclinic.co.za**
@@ -259,7 +288,7 @@ For commercial licensing inquiries, contact: **dacos@diagautoclinic.co.za**
 
 ------
 
-### ✅ What’s New in v3.1.0
+### ✅ What's New in v3.1.0
 
 - **VW Polo/Golf Live Testing Support** - Complete diagnostic suite for South Africa's most common vehicles
 - **Enhanced VIN Decoder** - Model-specific recognition for all VW generations
@@ -270,4 +299,3 @@ For commercial licensing inquiries, contact: **dacos@diagautoclinic.co.za**
 - **Sponsor Emphasis** - Without EshuTech, GoDiag, and ScanTool.net, this project wouldn't exist
 - Ready for GitHub rendering (centered, clean, dark/light theme safe)
 - SEO-friendly with clear project keywords (VW, Polo, Golf, Diagnostics, South Africa)
-
