@@ -12,7 +12,7 @@ import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
 
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFormLayout, QWidget
+from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QFormLayout, QWidget, QApplication
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
@@ -133,18 +133,3 @@ class LoginDialog(QDialog):
             self.accept()
         else:
             self.status_label.setText(f"❌ {message}")
-
-    def get_launcher_theme(self):
-        from shared.theme_constants import THEME
-        t = THEME
-        return f"""
-        QDialog {{ background-color: {t['bg_main']}; border: 2px solid {t['glow']}; border-radius: 15px; }}
-        QLabel {{ color: {t['text_main']}; background: transparent; }}
-        QLabel[objectName="hero-title"] {{ color: {t['glow']}; font-size: 26pt; font-weight: bold; }}
-        .subtitle {{ color: {t['text_muted']}; font-size: 16px; }}
-        QWidget[class="glass-card"] {{ background-color: {t['bg_card']}; border: 1px solid {t['glow']}; border-radius: 12px; }}
-        QLineEdit {{ background-color: {t['bg_panel']}; border: 2px solid {t['glow']}; color: {t['text_main']}; }}
-        QLineEdit:focus {{ border: 2px solid {t['accent']}; background-color: {t['bg_card']}; }}
-        QPushButton[class="primary"] {{ background-color: {t['accent']}; color: #002F2C; }}
-        QPushButton[class="primary"]:hover {{ background-color: #1AE5B1; }}
-        """

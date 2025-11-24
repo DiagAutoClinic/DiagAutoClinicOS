@@ -8,10 +8,10 @@ import sys
 import os
 import re
 import random
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
                             QWidget, QPushButton, QLabel, QComboBox, QTabWidget,
                             QGroupBox, QTableWidget, QTableWidgetItem, QProgressBar,
-                            QTextEdit, QLineEdit, QHeaderView, QFrame, QGridLayout)
+                            QTextEdit, QLineEdit, QHeaderView, QFrame, QGridLayout, QScrollArea)
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
@@ -28,6 +28,8 @@ except ImportError as e:
     print(f"Warning: Failed to import modules: {e}")
     # Fallback classes
     class Fallbackstyle_manager:
+        def set_app(self, app): pass
+        def apply_theme(self): pass
         def set_theme(self, theme): pass
         def get_theme_names(self): return ["dacos_unified", "futuristic", "neon_clinic", "security", "dark", "light", "professional"]
         def set_security_level(self, level): pass
@@ -67,24 +69,14 @@ class AutoECUApp(QMainWindow):
         self.init_ui()
         
     def init_ui(self):
-        """Initialize FUTURISTIC user interface"""
-        self.setWindowTitle("AutoECU Pro - Futuristic ECU Programming")
+        """Initialize DACOS Unified Theme user interface"""
+        self.setWindowTitle("AutoECU Pro - DACOS Unified Theme")
         self.setMinimumSize(1280, 700)
         self.resize(1366, 768)
-        
-        style_manager.set_app(app)  # Pass QApplication instance
-        style_manager.set_theme('dacos_unified')  # Use unified theme
+
+        # Apply the dacos_unified theme immediately
+        style_manager.set_theme("dacos_unified")
         style_manager.apply_theme()
-
-        # Create scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-
-        # Content widget
-        content = QWidget()
-        layout = QVBoxLayout(content)
-        layout.setContentsMargins(20, 20, 20, 20)
 
         # Create central widget and main layout
         central_widget = QWidget()
@@ -111,10 +103,6 @@ class AutoECUApp(QMainWindow):
         # Create status bar
         self.create_status_bar()
         
-        # Apply DACOS unified theme
-        style_manager.set_theme("dacos_unified")
-        style_manager.apply_theme()
-        
         # Show the window
         self.show()
         
@@ -122,7 +110,7 @@ class AutoECUApp(QMainWindow):
         self.start_live_updates()
         
     def create_header(self, layout):
-        """Create FUTURISTIC header with theme selector"""
+        """Create DACOS Unified Theme header with theme selector"""
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
         header_frame.setMaximumHeight(100)
@@ -139,10 +127,9 @@ class AutoECUApp(QMainWindow):
         title_label.setProperty("class", "hero-title")
         title_font = QFont("Segoe UI", 22, QFont.Weight.Bold)
         title_label.setFont(title_font)
-        title_label.setStyleSheet("color: #14b8a6;")
         
         subtitle_label = QLabel("⚙️ Professional ECU Programming")
-        subtitle_label.setStyleSheet("color: #5eead4; font-size: 11pt;")
+        subtitle_label.setProperty("class", "section-title")
         
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
@@ -153,7 +140,7 @@ class AutoECUApp(QMainWindow):
         brand_layout.setSpacing(5)
         
         brand_label = QLabel("Vehicle Brand:")
-        brand_label.setStyleSheet("color: #5eead4; font-size: 9pt;")
+        brand_label.setProperty("class", "section-title")
         
         self.brand_combo = QComboBox()
         self.brand_combo.addItems(get_brand_list())
@@ -170,14 +157,19 @@ class AutoECUApp(QMainWindow):
         theme_layout.setSpacing(5)
         
         theme_label = QLabel("Theme:")
-        theme_label.setStyleSheet("color: #5eead4; font-size: 9pt;")
+        theme_label.setProperty("class", "section-title")
         
         self.theme_combo = QComboBox()
         theme_info = style_manager.get_theme_info()
         for theme_id, info in theme_info.items():
             self.theme_combo.addItem(info['name'], theme_id)
         
-        self.theme_combo.setCurrentText("DACOS Unified")
+        # Find and set dacos_unified
+        for i in range(self.theme_combo.count()):
+            if self.theme_combo.itemData(i) == "dacos_unified":
+                self.theme_combo.setCurrentIndex(i)
+                break
+        
         self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
         self.theme_combo.setMinimumWidth(150)
         
@@ -1042,9 +1034,19 @@ def main():
     app.setOrganizationName("DiagAutoClinicOS")
 
     try:
-        window = AutoECUApp()
+        # Initialize style manager with app instance first
         style_manager.set_app(app)
+        
+        # Set and apply dacos_unified theme immediately
+        style_manager.set_theme("dacos_unified")
         style_manager.apply_theme()
+        
+        # Create and show main window
+        window = AutoECUApp()
+        
+        # Apply theme again to ensure it's set
+        style_manager.apply_theme()
+        
         sys.exit(app.exec())
     except Exception as e:
         print(f"Fatal error: {e}")
