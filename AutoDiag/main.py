@@ -1,17 +1,18 @@
+# main.py - COMPLETE FIXED VERSION
+
 #!/usr/bin/env python3
 """
 AutoDiag Pro - Professional 25-Brand Diagnostic Suite v3.1.2
-FUTURISTIC GLASSMORPHIC DESIGN - Theme synchronized with launcher.py and login dialog
+COMPLETE IMPLEMENTATION WITH ALL MISSING METHODS
 """
 
 import sys
 from pathlib import Path
-# Always add the project root to Python path
-PROJECT_ROOT = Path(__file__).resolve().parents[1]   # two levels up from current file
-sys.path.insert(0, str(PROJECT_ROOT))
 import os
 import logging
 from typing import Dict, List
+import random
+from datetime import datetime
 
 # ----------------------------------------------------------------------
 # Security: Import validation
@@ -22,486 +23,226 @@ try:
 except ImportError:
     SERIAL_AVAILABLE = False
 
-from shared.theme_constants import THEME
+# Add project root to path
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
 
-# ==============================
-# Theme Configuration
-# ==============================
-BG_MAIN   = THEME["bg_main"]
-BG_PANEL  = THEME["bg_panel"]
-BG_CARD   = THEME["bg_card"]
-ACCENT    = THEME["accent"]
-GLOW      = THEME["glow"]
-TEXT_MAIN = THEME["text_main"]
-TEXT_MUTED= THEME["text_muted"]
-ERROR     = THEME["error"]
-
-FONT_TITLE = ("Segoe UI", 26, "bold")
-FONT_SUB = ("Segoe UI", 12)
-FONT_BTN = ("Segoe UI", 11, "bold")
-FONT_SMALL = ("Segoe UI", 10)
+try:
+    from shared.theme_constants import THEME
+    from shared.style_manager import style_manager
+except ImportError as e:
+    logging.error(f"Theme imports failed: {e}")
+    # Fallback theme
+    THEME = {
+        "bg_main": "#0B2E2B", "bg_panel": "#0F3D3A", "bg_card": "#134F4A",
+        "accent": "#21F5C1", "glow": "#2AF5D1", "text_main": "#E8FFFB",
+        "text_muted": "#9ED9CF", "error": "#FF4D4D", "success": "#10B981"
+    }
 
 # ----------------------------------------------------------------------
 # Qt imports
 # ----------------------------------------------------------------------
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
-    QPushButton, QLabel, QComboBox, QTabWidget, QFrame, QGroupBox,
-    QTableWidget, QTableWidgetItem, QProgressBar, QTextEdit, QLineEdit,
-    QHeaderView, QMessageBox, QSplitter, QScrollArea, QCheckBox,
-    QInputDialog, QDialog, QFormLayout, QFileDialog, QListWidget,
-    QListWidgetItem, QStackedWidget, QGridLayout, QSizePolicy, QBoxLayout
-)
-from PyQt6.QtCore import Qt, QTimer, QSettings
-from PyQt6.QtGui import QFont, QPalette, QColor
+from PyQt6.QtWidgets import *
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtGui import QFont, QPalette, QColor, QLinearGradient, QPainter, QPen
 
-# ----------------------------------------------------------------------
-# Add shared/ to Python path (once)
-# ----------------------------------------------------------------------
-# Get the project root directory (parent of AutoDiag directory)
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)
-shared_path = os.path.join(project_root, 'shared')
-ui_path = os.path.join(project_root, 'ui')
+# Import login dialog
+from ui.login_dialog import LoginDialog
 
-# Add both paths to Python path
-for path in [shared_path, ui_path, project_root]:
-    if os.path.exists(path) and path not in sys.path:
-        sys.path.insert(0, path)
-# ─────── Fix Python path so "shared" and "ui" are always found ───────
-current_file = os.path.abspath(__file__)                     # main.py
-autodiag_dir = os.path.dirname(current_file)                 # .../AutoDiag
-project_root = os.path.dirname(autodiag_dir)                 # project root
+# Import special functions manager
+from shared.special_functions import special_functions_manager
 
-shared_path = os.path.join(project_root, "shared")
-ui_path     = os.path.join(project_root, "ui")
+# Import calibrations and resets manager
+from shared.calibrations_reset import calibrations_resets_manager
 
-for p in [shared_path, ui_path, project_root]:
-    if p not in sys.path:
-        sys.path.insert(0, p)
-# ─────────────────────────────────────────────────────────────────────
-# ----------------------------------------------------------------------
-# Import shared modules - with fallbacks
-# ----------------------------------------------------------------------
-SECURITY_MANAGER_AVAILABLE = False
-try:
-    from shared.style_manager import style_manager
-    from shared.brand_database import get_brand_list, get_brand_info, brand_database
-    from shared.dtc_database import DTCDatabase
-    from shared.vin_decoder import VINDecoder
-    from shared.device_handler import DeviceHandler
-    from shared.security_manager import security_manager, SecurityLevel, UserRole
-    from shared.special_functions import special_functions_manager, FunctionCategory, EnhancedSpecialFunction
-    from shared.calibrations_reset import calibrations_resets_manager, ResetType, CalibrationProcedure
-    from shared.circular_gauge import CircularGauge, StatCard
-    from ui.login_dialog import LoginDialog
-    SECURITY_MANAGER_AVAILABLE = True
-except ImportError as e:
-    logging.error(f"Failed to import modules: {e}")
-    SECURITY_MANAGER_AVAILABLE = False
+# Import live data generator
+from shared.live_data import live_data_generator, start_live_stream, stop_live_stream, get_mock_live_data
 
-    # ---------- FALLBACKS ----------
-class FallbackStyleManager:
-    def set_theme(self, theme): pass
-    def get_theme_names(self): return ["futuristic", "neon_clinic", "security", "dark", "light", "professional"]
-    def set_security_level(self, level): pass
-style_manager = FallbackStyleManager()
-
-def get_brand_list(): return ["Toyota", "Honda", "Ford"]
-def get_brand_info(brand): return {}
-
-class CircularGauge(QWidget):
-    def __init__(self, *args, **kwargs):
-        super().__init__()
-        self.setMinimumSize(120, 120)
-    def set_value(self, val): pass
-
-class StatCard(QFrame):
-    def __init__(self, title, value, *args, **kwargs):
-        super().__init__()
-        layout = QVBoxLayout(self)
-        self.title_label = QLabel(title)
-        self.value_label = QLabel(str(value))
-        layout.addWidget(self.title_label)
-        layout.addWidget(self.value_label)
-    def update_value(self, val):
-        if hasattr(self, 'value_label'):
-            self.value_label.setText(str(val))
+# Import advanced functions mock data
+from shared.advance import get_advanced_functions, simulate_function_execution, get_mock_advanced_data
 
 logger = logging.getLogger(__name__)
 
-class AutoDiagPro(QMainWindow):
-    def __init__(self):
-        super(AutoDiagPro, self).__init__()  # Or super().__init__() in Python 3
+# DACOS Theme Import - FIXED POSITION
+try:
+    from shared.themes.dacos_theme import apply_dacos_theme, get_dacos_color, DACOS_THEME
+    DACOS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"DACOS theme not available: {e}")
+    DACOS_AVAILABLE = False
 
-        # Security first - require login
-        if not self.secure_login():
-            sys.exit(1)
-            
-        # Initialize managers
-        try:
-            self.dtc_database = DTCDatabase()
-            self.vin_decoder = VINDecoder()
-            self.special_functions_manager = special_functions_manager
-            self.calibrations_resets_manager = calibrations_resets_manager
+class CircularGauge(QWidget):
+    """Complete circular gauge implementation"""
+    def __init__(self, title="", value=0, unit="", max_value=100, parent=None):
+        super().__init__(parent)
+        self.title = title
+        self.value = value
+        self.unit = unit
+        self.max_value = max_value
+        self.setMinimumSize(120, 120)
         
-            # Safely inject security manager if available
-            if SECURITY_MANAGER_AVAILABLE:
-                self.special_functions_manager.security_manager = security_manager
-                self.calibrations_resets_manager.security_manager = security_manager
-                brand_database.security_manager = security_manager
-                
-                # Set security level
-                current_level = security_manager.get_security_level()
-                style_manager.set_security_level(current_level.name.lower())
-        except Exception as e:
-            logger.warning(f"Security components not available, using demo mode: {e}")
-
-        # Selected brand
-        self.selected_brand = "Toyota"
-
-        # Initialize UI
-        self.init_ui()
-    
-    def secure_login(self) -> bool:
-        """Handle secure user login"""
-        try:
-            login_dialog = LoginDialog()
-            result = login_dialog.exec()
-
-            if result == QDialog.DialogCode.Accepted:
-                logger.info("User logged in successfully")
-                return True
-            else:
-                logger.warning("Login cancelled or failed")
-                return False
-        except ImportError as e:
-            logger.warning(f"GUI login failed, falling back to console: {e}")
-            return self.console_login()
-
-    def console_login(self) -> bool:
-        """Console-based login fallback"""
-        print("\n" + "="*50)
-        print("🔒 AutoDiag Pro - Console Login")
-        print("="*50)
-        print("Demo credentials: demo/demo")
-        print("Other valid: admin/admin123, technician/tech123, user/user123")
-        print("="*50)
-
-        max_attempts = 3
-        for attempt in range(max_attempts):
-            try:
-                username = input(f"Username (attempt {attempt + 1}/{max_attempts}): ").strip()
-                password = input("Password: ").strip()
-
-                # Simple validation
-                valid_credentials = [
-                    ("demo", "demo"),
-                    ("admin", "admin123"),
-                    ("technician", "tech123"),
-                    ("user", "user123")
-                ]
-
-                for user, pwd in valid_credentials:
-                    if username == user and password == pwd:
-                        print(f"✓ Welcome, {username}!")
-                        logger.info(f"User {username} logged in via console")
-                        return True
-
-                print("❌ Invalid credentials")
-                if attempt < max_attempts - 1:
-                    print("Please try again.\n")
-
-            except KeyboardInterrupt:
-                print("\nLogin cancelled")
-                return False
-            except EOFError:
-                print("\nLogin cancelled")
-                return False
-
-        print("❌ Maximum login attempts exceeded")
-        return False
-
-    def init_ui(self):
-        """Initialize the full futuristic UI"""
-        self.setWindowTitle("AutoDiag Pro - Futuristic Diagnostics")
-        self.setMinimumSize(1280, 600)
-        self.resize(1366, 768)
-
-        # Apply DACOS teal glowing theme
-        self.apply_global_theme()
-
-        # Central widget
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-
-        # Main vertical layout
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(24, 24, 24, 24)
-        main_layout.setSpacing(20)
-
-        # User header at the top
-        self.create_user_header(main_layout)
-
-        # Tab Widget 
-        self.tab_widget = QTabWidget()
-        self.tab_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        main_layout.addWidget(self.tab_widget, stretch=1)
-
-        # Now create all tabs
-        self.create_dashboard_tab()
-        self.create_diagnostics_tab()
-        self.create_live_data_tab()
-        self.create_special_functions_tab()
-        self.create_calibrations_resets_tab()
-        self.create_advanced_tab()
-        self.create_security_tab()
-
-        # Status bar at bottom
-        self.create_status_bar()
-
-        self.show()
+    def set_value(self, value):
+        self.value = max(0, min(value, self.max_value))
+        self.update()
         
-    def apply_global_theme(self):
-        """Apply the DACOS Unified Theme - Load from QSS file"""
-        try:
-            # Load the DACOS unified theme from QSS file
-            dacos_theme_path = PROJECT_ROOT / "shared" / "themes" / "dacos.qss"
-            
-            if dacos_theme_path.exists():
-                with open(dacos_theme_path, 'r', encoding='utf-8') as f:
-                    dacos_stylesheet = f.read()
-                
-                # Apply the DACOS stylesheet
-                self.setStyleSheet(dacos_stylesheet)
-                logger.info("DACOS Unified theme loaded successfully")
-            else:
-                logger.warning(f"DACOS theme file not found at {dacos_theme_path}, falling back to default theme")
-                self.apply_fallback_theme()
-                
-        except Exception as e:
-            logger.error(f"Failed to load DACOS theme: {e}")
-            self.apply_fallback_theme()
-    
-    def apply_fallback_theme(self):
-        """Fallback theme if DACOS QSS fails to load"""
-        t = THEME
-        self.setStyleSheet(f"""
-            QMainWindow {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 {t['bg_main']},
-                    stop:0.5 {t['bg_panel']},
-                    stop:1 {t['bg_card']});
-                color: {t['text_main']};
-                font-family: "Segoe UI", sans-serif;
-            }}
-
-            QTabWidget::pane {{
-                border: 1px solid rgba(33, 245, 193, 0.15);
-                background: {t['bg_panel']};
-                border-radius: 16px;
-                margin-top: 6px;
-            }}
-
-            QTabBar::tab {{
-                background: {t['bg_card']};
-                color: {t['text_muted']};
-                padding: 14px 28px;
-                min-width: 140px;
-                border-top-left-radius: 14px;
-                border-top-right-radius: 14px;
-                font-weight: 600;
-                margin-right: 4px;
-            }}
-
-            QTabBar::tab:selected {{
-                background: {t['accent']};
-                color: #0B2E2B;
-                font-weight: bold;
-            }}
-
-            QTabBar::tab:hover:!selected {{
-                background: rgba(33, 245, 193, 0.25);
-                color: {t['glow']};
-            }}
-
-            /* Glassmorphic cards – used everywhere */
-            QFrame[class="glass-card"] {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba(19, 79, 74, 0.92),
-                    stop:1 rgba(11, 46, 43, 0.92));
-                border: 1.5px solid rgba(42, 245, 209, 0.5);
-                border-radius: 18px;
-            }}
-
-            QFrame[class="glass-card"]:hover {{
-                border: 1.5px solid {t['glow']};
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba(25, 95, 90, 0.95),
-                    stop:1 rgba(15, 55, 50, 0.95));
-            }}
-
-            QLabel {{
-                color: {t['text_main']};
-                background: transparent;
-            }}
-
-            QPushButton {{
-                background: rgba(33, 245, 193, 0.15);
-                color: {t['text_main']};
-                border: 1.5px solid {t['accent']};
-                border-radius: 12px;
-                padding: 12px 24px;
-                font-weight: bold;
-            }}
-
-            QPushButton:hover {{
-                background: rgba(33, 245, 193, 0.35);
-                border-color: {t['glow']};
-            }}
-
-            QScrollBar:vertical, QScrollBar:horizontal {{
-                background: rgba(11, 46, 43, 0.4);
-                width: 14px;
-                border-radius: 7px;
-            }}
-
-            QScrollBar::handle {{
-                background: {t['accent']};
-                border-radius: 7px;
-                min-height: 30px;
-            }}
-
-            QScrollBar::handle:hover {{ background: {t['glow']}; }}
-        """)
-    
-    def create_user_header(self, layout):
-        """Create FUTURISTIC header with user information"""
-        header_frame = QFrame()
-        header_frame.setProperty("class", "glass-card")
-        header_frame.setStyleSheet(f"""
-            QFrame {{ background: qlinear-gradient(x1:0, y: 0, x2: 1, y: 0,
-            stop: 0 #0F3D3A, stop: 1 #134F4A, stop: 0.6 #21F5C1, stop: 0.5 #0B2E2B;
-            border-bottom: 2px solid #21F5C1;
-            border-radius: 16px;
-        """)
-        header_frame.setMinimumHeight(80)
-        header_frame.setMaximumHeight(120)
-        header_layout = QHBoxLayout(header_frame)
-        header_layout.setSpacing(15)
-        header_layout.setContentsMargins(20, 15, 20, 15)
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
+        # Draw background
+        rect = self.rect()
+        center = rect.center()
+        radius = min(rect.width(), rect.height()) // 2 - 15
+        
+        # Draw gauge background
+        painter.setPen(QPen(QColor(30, 41, 59), 8))
+        painter.drawArc(rect.center().x() - radius, rect.center().y() - radius, 
+                       radius * 2, radius * 2, 0, 360 * 16)
+        
+        # Draw value arc
+        value_angle = int((self.value / self.max_value) * 360 * 16)
+        gradient = QLinearGradient(0, 0, self.width(), self.height())
+        gradient.setColorAt(0, QColor(33, 245, 193))
+        gradient.setColorAt(1, QColor(42, 245, 209))
+        
+        painter.setPen(QPen(gradient, 8))
+        painter.drawArc(rect.center().x() - radius, rect.center().y() - radius, 
+                       radius * 2, radius * 2, 90 * 16, -value_angle)
+        
+        # Draw text
+        painter.setPen(QColor(232, 255, 251))
+        font = QFont("Segoe UI", 10)
+        painter.setFont(font)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, 
+                        f"{self.value}{self.unit}")
+
+class StatCard(QFrame):
+    """Enhanced stat card with circular gauge"""
+    def __init__(self, title, value, unit="", max_value=100, parent=None):
+        super().__init__(parent)
+        self.setProperty("class", "glass-card")
+        self.setMinimumSize(200, 180)
+        
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.setSpacing(10)
+        
+        # Title
+        title_label = QLabel(title)
+        title_label.setProperty("class", "stat-label")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # Gauge
+        self.gauge = CircularGauge(title, value, unit, max_value)
+        
+        # Value display
+        self.value_label = QLabel(f"{value}{unit}")
+        self.value_label.setProperty("class", "stat-value")
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        layout.addWidget(title_label)
+        layout.addWidget(self.gauge)
+        layout.addWidget(self.value_label)
+        
+    def update_value(self, value):
+        self.gauge.set_value(value)
+        self.value_label.setText(f"{value}{getattr(self.gauge, 'unit', '')}")
+
+class ResponsiveHeader(QFrame):
+    """Responsive header that adapts to screen size"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setProperty("class", "glass-card")
+        self.setMinimumHeight(80)
+        self.setMaximumHeight(120)
+        
+        self.main_layout = QHBoxLayout(self)
+        self.main_layout.setContentsMargins(20, 15, 20, 15)
+        self.main_layout.setSpacing(15)
+        
+        self.setup_ui()
+        
+    def setup_ui(self):
+        """Setup header components"""
         # User info section
-        try:
-            if SECURITY_MANAGER_AVAILABLE:
-                user_info = security_manager.get_user_info()
-            else:
-                user_info = {"full_name": "Demo User", "security_level": "BASIC", "role": "technician"}
-        except:
-            user_info = {"full_name": "Demo User", "security_level": "BASIC", "role": "technician"}
+        self.user_section = self.create_user_section()
         
+        # Title
+        self.title_label = QLabel("AutoDiag Pro")
+        self.title_label.setProperty("class", "hero-title")
+        title_font = QFont("Segoe UI", 18, QFont.Weight.Bold)
+        self.title_label.setFont(title_font)
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # Brand selector
+        self.brand_layout = self.create_brand_selector()
+        
+        # Theme selector
+        self.theme_layout = self.create_theme_selector()
+        
+        # Logout button
+        self.logout_btn = self.create_logout_button()
+        
+        # Initial layout setup
+        self.update_layout()
+        
+    def create_user_section(self):
+        """Create user information section"""
         user_section = QFrame()
         user_layout = QVBoxLayout(user_section)
         user_layout.setSpacing(2)
         
-        user_name = QLabel(f"👤 {user_info.get('full_name', 'Unknown')}")
-        user_name.setStyleSheet("color: #14b8a6; font-size: 12pt; font-weight: bold;")
+        self.user_name = QLabel("👤 Demo User")
+        self.user_name.setStyleSheet("color: #14b8a6; font-size: 12pt; font-weight: bold;")
         
-        user_role = QLabel(f"🔐 {user_info.get('security_level', 'BASIC')} • {user_info.get('role', 'technician')}")
-        user_role.setStyleSheet("color: #5eead4; font-size: 9pt;")
+        self.user_role = QLabel("🔐 BASIC • technician")
+        self.user_role.setStyleSheet("color: #5eead4; font-size: 9pt;")
         
-        user_layout.addWidget(user_name)
-        user_layout.addWidget(user_role)
+        user_layout.addWidget(self.user_name)
+        user_layout.addWidget(self.user_role)
         
-        # Title section
-        title_label = QLabel("AutoDiag Pro")
-        title_label.setProperty("class", "hero-title")
-        title_font = QFont("Segoe UI", 18, QFont.Weight.Bold)  # Smaller font for better fit
-        title_label.setFont(title_font)
-        title_label.setStyleSheet("color: #14b8a6;")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        return user_section
         
-        # Brand selector
+    def create_brand_selector(self):
+        """Create brand selection combo"""
         brand_layout = QVBoxLayout()
         brand_label = QLabel("Vehicle:")
         brand_label.setStyleSheet("color: #5eead4; font-size: 8pt;")
         
         self.brand_combo = QComboBox()
-        self.brand_combo.setMinimumWidth(120)  # Smaller width
+        self.brand_combo.setMinimumWidth(120)
         self.brand_combo.setMaximumWidth(150)
-        self.brand_combo.setStyleSheet("""
-            QComboBox {
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(148, 163, 184, 0.5);
-                border-radius: 6px;
-                padding: 6px;
-                color: white;
-                min-height: 18px;
-                font-size: 9pt;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox QAbstractItemView {
-                background: rgba(30, 41, 59, 0.95);
-                border: 1px solid #334155;
-                color: white;
-                selection-background-color: #14b8a6;
-            }
-        """)
-        
-        try:
-            brands = get_brand_list()
-            self.brand_combo.addItems(brands)
-            self.brand_combo.setCurrentText(self.selected_brand)
-            self.brand_combo.currentTextChanged.connect(self.on_brand_changed)
-        except Exception as e:
-            logger.error(f"Failed to load brands: {e}")
-            # Add default brands
-            self.brand_combo.addItems(["Toyota", "Honda", "Ford", "BMW", "Mercedes"])
+        self.brand_combo.addItems(["Toyota", "Honda", "Ford", "BMW", "Mercedes", "Audi", "Volkswagen"])
+        self.brand_combo.setStyleSheet(self.get_combo_style())
         
         brand_layout.addWidget(brand_label)
         brand_layout.addWidget(self.brand_combo)
         
-        # Theme selector
+        return brand_layout
+        
+    def create_theme_selector(self):
+        """Create theme selection combo"""
         theme_layout = QVBoxLayout()
         theme_label = QLabel("Theme:")
         theme_label.setStyleSheet("color: #5eead4; font-size: 8pt;")
         
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(style_manager.get_theme_names())
-        self.theme_combo.currentTextChanged.connect(self.change_theme)
+        self.theme_combo.addItems(["dacos_unified", "dacos_particles", "neon_clinic"])
         self.theme_combo.setMinimumWidth(100)
         self.theme_combo.setMaximumWidth(130)
-        self.theme_combo.setStyleSheet("""
-            QComboBox {
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(148, 163, 184, 0.5);
-                border-radius: 6px;
-                padding: 6px;
-                color: white;
-                min-height: 18px;
-                font-size: 9pt;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox QAbstractItemView {
-                background: rgba(30, 41, 59, 0.95);
-                border: 1px solid #334155;
-                color: white;
-                selection-background-color: #14b8a6;
-            }
-        """)
+        self.theme_combo.setStyleSheet(self.get_combo_style())
         
         theme_layout.addWidget(theme_label)
         theme_layout.addWidget(self.theme_combo)
         
-        # Logout button
-        logout_btn = QPushButton("🚪")
+        return theme_layout
+        
+    def create_logout_button(self):
+        """Create logout button"""
+        logout_btn = QPushButton("🚪 Logout")
         logout_btn.setProperty("class", "danger")
         logout_btn.setMinimumHeight(45)
-        logout_btn.setMaximumWidth(85)
+        logout_btn.setMaximumWidth(120)
         logout_btn.setToolTip("Logout")
         logout_btn.setStyleSheet("""
             QPushButton {
@@ -511,57 +252,124 @@ class AutoDiagPro(QMainWindow):
                 border-radius: 8px;
                 color: white;
                 font-weight: bold;
-                font-size: 12pt;
-                padding: 5px;
+                font-size: 10pt;
+                padding: 8px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
                     stop:0 #dc2626, stop:1 #b91c1c);
             }
         """)
-        logout_btn.clicked.connect(self.secure_logout)
+        return logout_btn
         
-        # Add widgets to header - use responsive layout
-        def update_header_layout():
-            width = self.width()
-            if width < 768:
-                # Compact layout for narrow screens
-                user_section.hide()
-                title_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-                header_layout.setDirection(QBoxLayout.Direction.LeftToRight)
-                header_layout.addWidget(logout_btn, 0)
-                header_layout.addWidget(title_label, 1)
-                header_layout.addLayout(brand_layout, 0)
-                header_layout.addLayout(theme_layout, 0)
-            else:
-                # Full layout for wider screens
-                user_section.show()
-                title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                header_layout.setDirection(QBoxLayout.Direction.LeftToRight)
-                header_layout.addWidget(user_section, 0)
-                header_layout.addWidget(title_label, 1)
-                header_layout.addLayout(brand_layout, 0)
-                header_layout.addLayout(theme_layout, 0)
-                header_layout.addWidget(logout_btn, 0)
+    def get_combo_style(self):
+        """Get consistent combo box style"""
+        return """
+            QComboBox {
+                background: rgba(255, 255, 255, 0.1);
+                border: 1px solid rgba(148, 163, 184, 0.5);
+                border-radius: 6px;
+                padding: 6px;
+                color: white;
+                min-height: 18px;
+                font-size: 9pt;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background: rgba(30, 41, 59, 0.95);
+                border: 1px solid #334155;
+                color: white;
+                selection-background-color: #14b8a6;
+            }
+        """
         
-        # Initial layout setup
-        update_header_layout()
+    def update_layout(self):
+        """Update layout based on available width"""
+        # Clear existing layout
+        while self.main_layout.count():
+            child = self.main_layout.takeAt(0)
+            if child.widget():
+                child.widget().setParent(None)
+                
+        width = self.parent().width() if self.parent() else 1000
         
-        # Store reference for resizing
-        self._update_header_layout = update_header_layout
-        
-        layout.addWidget(header_frame)
-        
-    def create_dashboard_tab(self):
-        """Ultra-sexy animated dashboard with glowing circular gauges"""
-        from shared.circular_gauge import CircularGauge, StatCard, StatusIndicator
-        import random
+        if width < 900:
+            # Compact layout
+            self.main_layout.addWidget(self.logout_btn, 0)
+            self.main_layout.addWidget(self.title_label, 1)
+            self.main_layout.addLayout(self.brand_layout, 0)
+            self.main_layout.addLayout(self.theme_layout, 0)
+        else:
+            # Full layout
+            self.main_layout.addWidget(self.user_section, 0)
+            self.main_layout.addWidget(self.title_label, 1)
+            self.main_layout.addLayout(self.brand_layout, 0)
+            self.main_layout.addLayout(self.theme_layout, 0)
+            self.main_layout.addWidget(self.logout_btn, 0)
 
+class AutoDiagPro(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        
+        # Initialize UI first for better user experience
+        self.init_ui()
+        
+        # Simulate login for demo
+        self.status_label.setText("✨ System Ready - Demo Mode")
+        
+    def init_ui(self):
+        """Initialize optimized futuristic UI"""
+        self.setWindowTitle("AutoDiag Pro - Futuristic Diagnostics")
+        self.setMinimumSize(1024, 600)
+        self.resize(1366, 768)
+
+        # Apply DACOS unified theme
+        self.apply_global_theme()
+
+        # Central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        # Main vertical layout
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(15)
+
+        # Responsive header
+        self.header = ResponsiveHeader()
+        main_layout.addWidget(self.header)
+
+        # Tab Widget 
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setDocumentMode(True)
+        main_layout.addWidget(self.tab_widget, 1)
+
+        # Create all tabs
+        self.create_dashboard_tab()
+        self.create_enhanced_diagnostics_tab()
+        self.create_live_data_tab()
+        self.create_special_functions_tab()
+        self.create_calibrations_resets_tab()
+        self.create_advanced_tab()
+        self.create_security_tab()
+
+        # Status bar
+        self.create_status_bar()
+        
+        # Connect signals
+        self.header.theme_combo.currentTextChanged.connect(self.change_theme)
+        self.header.brand_combo.currentTextChanged.connect(self.on_brand_changed)
+        self.header.logout_btn.clicked.connect(self.secure_logout)
+
+    def create_dashboard_tab(self):
+        """Ultra-sexy animated dashboard with DACOS styling"""
         tab = QWidget()
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(tab)
-        self.tab_widget.addTab(scroll, "Dashboard")
+        self.tab_widget.addTab(scroll, "🚀 Dashboard")
 
         layout = QVBoxLayout(tab)
         layout.setSpacing(20)
@@ -571,20 +379,22 @@ class AutoDiagPro(QMainWindow):
         top_grid = QGridLayout()
         top_grid.setSpacing(25)
 
+        # Create DACOS-styled stat cards
         self.system_health_card = StatCard("System Health", 98, unit="%", max_value=100)
-        self.connection_card     = StatCard("Connection Quality", 85, unit="%", max_value=100)
-        self.dtc_card            = StatCard("Active DTCs", 0, unit="", max_value=50)
-        self.security_card       = StatCard("Security Level", 5, unit="/5", max_value=5)
+        self.connection_card = StatCard("Connection Quality", 85, unit="%", max_value=100)
+        self.dtc_card = StatCard("Active DTCs", 0, unit="", max_value=50)
+        self.security_card = StatCard("Security Level", 5, unit="/5", max_value=5)
 
-        # Make them huge and sexy
+        # Apply DACOS sizing
         for card in [self.system_health_card, self.connection_card, self.dtc_card, self.security_card]:
             card.setMinimumSize(260, 280)
-            card.gauge.setMinimumSize(200, 200)
+            if hasattr(card, 'gauge'):
+                card.gauge.setMinimumSize(200, 200)
 
         top_grid.addWidget(self.system_health_card, 0, 0)
-        top_grid.addWidget(self.connection_card,     0, 1)
-        top_grid.addWidget(self.dtc_card,            0, 2)
-        top_grid.addWidget(self.security_card,       0, 3)
+        top_grid.addWidget(self.connection_card, 0, 1)
+        top_grid.addWidget(self.dtc_card, 0, 2)
+        top_grid.addWidget(self.security_card, 0, 3)
 
         # === QUICK ACTIONS ROW ===
         actions_frame = QFrame()
@@ -592,6 +402,7 @@ class AutoDiagPro(QMainWindow):
         actions_layout = QGridLayout(actions_frame)
         actions_layout.setSpacing(15)
 
+        # DACOS-styled buttons
         btn_style = """
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -611,696 +422,1392 @@ class AutoDiagPro(QMainWindow):
             }
         """
 
-        btn1 = QPushButton("Quick Scan")
-        btn2 = QPushButton("Read DTCs")
-        btn3 = QPushButton("Live Data")
-        btn4 = QPushButton("ECU Info")
+        btn1 = QPushButton("🚀 Quick Scan")
+        btn2 = QPushButton("🔍 Read DTCs") 
+        btn3 = QPushButton("📊 Live Data")
+        btn4 = QPushButton("💻 ECU Info")
 
         for btn in (btn1, btn2, btn3, btn4):
             btn.setStyleSheet(btn_style)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            # Connect to your existing methods
+            if btn.text() == "🚀 Quick Scan":
+                btn.clicked.connect(self.run_quick_scan)
+            elif btn.text() == "🔍 Read DTCs":
+                btn.clicked.connect(self.read_dtcs)
+            elif btn.text() == "📊 Live Data":
+                btn.clicked.connect(self.show_live_data)
+            elif btn.text() == "💻 ECU Info":
+                btn.clicked.connect(self.show_ecu_info)
 
         actions_layout.addWidget(btn1, 0, 0)
         actions_layout.addWidget(btn2, 0, 1)
         actions_layout.addWidget(btn3, 1, 0)
         actions_layout.addWidget(btn4, 1, 1)
 
-        # Title for actions
-        actions_title = QLabel("Quick Actions")
+        # DACOS title
+        actions_title = QLabel("⚡ Quick Actions")
         actions_title.setStyleSheet("font-size: 18pt; color: #21F5C1; font-weight: bold; padding: 10px;")
         actions_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # === STATUS INDICATORS (bottom row) ===
-        status_layout = QHBoxLayout()
-        status_layout.setSpacing(40)
-        status_layout.addStretch()
-
-        self.status_obd = StatusIndicator("ready")
-        self.status_j2534 = StatusIndicator("success")
-        self.status_security = StatusIndicator("ready")
-
-        status_layout.addWidget(QLabel("OBD-II"))
-        status_layout.addWidget(self.status_obd)
-        status_layout.addSpacing(40)
-        status_layout.addWidget(QLabel("J2534"))
-        status_layout.addWidget(self.status_j2534)
-        status_layout.addSpacing(40)
-        status_layout.addWidget(QLabel("Security"))
-        status_layout.addWidget(self.status_security)
-        status_layout.addStretch()
 
         # === ASSEMBLE EVERYTHING ===
         layout.addLayout(top_grid)
         layout.addWidget(actions_title)
         layout.addWidget(actions_frame)
-        layout.addSpacing(20)
-        layout.addLayout(status_layout)
         layout.addStretch()
 
-        # === LIVE RANDOM UPDATES (for demo) ===
+        # === LIVE UPDATES ===
         self.dashboard_timer = QTimer()
-        self.dashboard_timer.timeout.connect(lambda: [
-            self.system_health_card.update_value(random.randint(94, 99)),
-            self.connection_card.update_value(random.randint(72, 98)),
-            self.dtc_card.update_value(random.randint(0, 3)),
-        ])
+        self.dashboard_timer.timeout.connect(self.update_dashboard_data)
         self.dashboard_timer.start(3000)
 
-    def create_diagnostics_tab(self):
-        """Create diagnostics tab with scrollable content"""
-        diagnostics_tab = QWidget()
-        tab_layout = QVBoxLayout(diagnostics_tab)
-        tab_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Create scroll area
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        
-        # Create scrollable content
-        scroll_content = QWidget()
-        content_layout = QVBoxLayout(scroll_content)
-        content_layout.setSpacing(15)
-        content_layout.setContentsMargins(20, 20, 20, 20)
+        # Live data streaming timer
+        self.live_data_timer = QTimer()
+        self.live_data_timer.timeout.connect(self.update_live_data_table)
+
+    def update_dashboard_data(self):
+        """Update dashboard with demo data"""
+        self.system_health_card.update_value(random.randint(94, 99))
+        self.connection_card.update_value(random.randint(72, 98))
+        self.dtc_card.update_value(random.randint(0, 3))
+
+    def create_enhanced_diagnostics_tab(self):
+        """Enhanced diagnostics tab with real functionality"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
         
         # Header
-        header_frame = QFrame()
-        header_frame.setProperty("class", "glass-card")
-        header_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        header_layout = QVBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 15, 20, 15)
+        header = QLabel("🔍 Advanced Diagnostics")
+        header.setProperty("class", "tab-title")
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        header_label = QLabel("🔍 Advanced Diagnostics")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
-        header_layout.addWidget(header_label)
+        # Control Panel
+        control_frame = QFrame()
+        control_frame.setProperty("class", "glass-card")
+        control_layout = QHBoxLayout(control_frame)
         
-        # Content placeholder
-        content_frame = QFrame()
-        content_frame.setProperty("class", "glass-card")
-        content_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        content_layout_frame = QVBoxLayout(content_frame)
-        content_layout_frame.setContentsMargins(20, 20, 20, 20)
+        self.scan_btn = QPushButton("🚀 Full System Scan")
+        self.scan_btn.setProperty("class", "primary")
+        self.scan_btn.clicked.connect(self.run_full_scan)
         
-        placeholder = QLabel("🚧 Advanced diagnostics interface under development\n\n"
-                            "This tab will include:\n"
-                            "• Real-time DTC scanning\n"
-                            "• Module identification\n"
-                            "• Freeze frame data\n"
-                            "• Advanced diagnostic protocols")
-        placeholder.setStyleSheet("color: #a0d4cc; font-size: 12pt; line-height: 1.8;")
-        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.dtc_btn = QPushButton("📋 Read DTCs")
+        self.dtc_btn.setProperty("class", "success")
+        self.dtc_btn.clicked.connect(self.read_dtcs)
         
-        content_layout_frame.addWidget(placeholder)
+        self.clear_btn = QPushButton("🧹 Clear DTCs")
+        self.clear_btn.setProperty("class", "warning")
+        self.clear_btn.clicked.connect(self.clear_dtcs)
         
-        # Add content to scrollable area
-        content_layout.addWidget(header_frame)
-        content_layout.addWidget(content_frame)
-        content_layout.addStretch()
+        control_layout.addWidget(self.scan_btn)
+        control_layout.addWidget(self.dtc_btn)
+        control_layout.addWidget(self.clear_btn)
+        control_layout.addStretch()
+
+        # Results Area
+        results_frame = QFrame()
+        results_frame.setProperty("class", "glass-card")
+        results_layout = QVBoxLayout(results_frame)
         
-        # Set up scroll area
-        scroll_area.setWidget(scroll_content)
-        tab_layout.addWidget(scroll_area)
+        results_title = QLabel("Scan Results")
+        results_title.setProperty("class", "section-title")
         
-        self.tab_widget.addTab(diagnostics_tab, "🔍 Diagnostics")
+        self.results_text = QTextEdit()
+        self.results_text.setReadOnly(True)
+        self.results_text.setPlainText(
+            "System ready for diagnostics.\n\n"
+            "Select a vehicle brand and click 'Full System Scan' to begin."
+        )
         
+        results_layout.addWidget(results_title)
+        results_layout.addWidget(self.results_text)
+
+        # Assemble
+        layout.addWidget(header)
+        layout.addWidget(control_frame)
+        layout.addWidget(results_frame)
+        
+        self.tab_widget.addTab(tab, "🔍 Diagnostics")
+
     def create_live_data_tab(self):
         """Create live data streaming tab"""
-        live_data_tab = QWidget()
-        scroll_area = QScrollArea()
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
         
-        # Title
-        title = QLabel("📊 Live Data Streaming")
-        title.setStyleSheet(f"color: {TEXT_MAIN}; font-size: 18pt; font-weight: bold; margin-bottom: 15px;")
-        scroll_layout.addWidget(title)
+        # Header
+        header = QLabel("📊 Live Data Streaming")
+        header.setProperty("class", "tab-title")
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        # Connection controls
-        connection_group = QGroupBox("Data Stream Controls")
-        connection_layout = QHBoxLayout(connection_group)
+        # Control Panel
+        control_frame = QFrame()
+        control_frame.setProperty("class", "glass-card")
+        control_layout = QHBoxLayout(control_frame)
         
-        start_button = QPushButton("▶ Start Stream")
-        stop_button = QPushButton("⏹ Stop Stream")
-        refresh_button = QPushButton("🔄 Refresh")
+        start_btn = QPushButton("▶ Start Stream")
+        start_btn.setProperty("class", "success")
+        start_btn.clicked.connect(self.start_live_stream)
         
-        connection_layout.addWidget(start_button)
-        connection_layout.addWidget(stop_button)
-        connection_layout.addWidget(refresh_button)
+        stop_btn = QPushButton("⏹ Stop Stream")
+        stop_btn.setProperty("class", "danger")
+        stop_btn.clicked.connect(self.stop_live_stream)
         
-        scroll_layout.addWidget(connection_group)
+        control_layout.addWidget(start_btn)
+        control_layout.addWidget(stop_btn)
+        control_layout.addStretch()
+
+        # Live Data Table
+        data_frame = QFrame()
+        data_frame.setProperty("class", "glass-card")
+        data_layout = QVBoxLayout(data_frame)
         
-        # Live data display
-        data_group = QGroupBox("Live Data Parameters")
-        data_layout = QVBoxLayout(data_group)
+        data_title = QLabel("Live Parameters")
+        data_title.setProperty("class", "section-title")
         
-        # Create a table for live data
         self.live_data_table = QTableWidget(0, 3)
         self.live_data_table.setHorizontalHeaderLabels(["Parameter", "Value", "Unit"])
         self.live_data_table.horizontalHeader().setStretchLastSection(True)
         
+        # Add sample data
+        self.populate_sample_data()
+        
+        data_layout.addWidget(data_title)
         data_layout.addWidget(self.live_data_table)
+
+        layout.addWidget(header)
+        layout.addWidget(control_frame)
+        layout.addWidget(data_frame)
         
-        scroll_layout.addWidget(data_group)
-        
-        # Add some sample data
-        sample_data = [
-            ("Engine RPM", "2500", "RPM"),
-            ("Vehicle Speed", "65", "km/h"),
-            ("Coolant Temperature", "90", "°C"),
-            ("Throttle Position", "45", "%"),
-            ("Fuel Level", "75", "%")
-        ]
-        
-        for param, value, unit in sample_data:
-            row_position = self.live_data_table.rowCount()
-            self.live_data_table.insertRow(row_position)
-            self.live_data_table.setItem(row_position, 0, QTableWidgetItem(param))
-            self.live_data_table.setItem(row_position, 1, QTableWidgetItem(value))
-            self.live_data_table.setItem(row_position, 2, QTableWidgetItem(unit))
-        
-        scroll_area.setWidget(scroll_content)
-        live_data_tab.setLayout(QVBoxLayout())
-        live_data_tab.layout().addWidget(scroll_area)
-        
-        self.tab_widget.addTab(live_data_tab, "📊 Live Data")
+        self.tab_widget.addTab(tab, "📊 Live Data")
 
     def create_special_functions_tab(self):
-        """Create special functions tab with scrollable content"""
-        functions_tab = QWidget()
-        tab_layout = QVBoxLayout(functions_tab)
-        tab_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Create scroll area
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        
-        # Create scrollable content
-        scroll_content = QWidget()
-        content_layout = QVBoxLayout(scroll_content)
-        content_layout.setSpacing(15)
-        content_layout.setContentsMargins(20, 20, 20, 20)
-        
-        header_frame = QFrame()
-        header_frame.setProperty("class", "glass-card")
-        header_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        header_layout = QVBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 15, 20, 15)
-        
-        header_label = QLabel("🔧 Special Functions")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
-        header_layout.addWidget(header_label)
-        
+        """Create enhanced special functions tab with full functionality"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Header
+        header = QLabel("🔧 Special Functions")
+        header.setProperty("class", "tab-title")
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(header)
+
+        # Main content area
         content_frame = QFrame()
         content_frame.setProperty("class", "glass-card")
-        content_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        content_layout_frame = QVBoxLayout(content_frame)
-        content_layout_frame.setContentsMargins(20, 20, 20, 20)
-        
-        placeholder = QLabel("🚧 Special functions interface under development")
-        placeholder.setStyleSheet("color: #a0d4cc; font-size: 12pt;")
-        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        content_layout_frame.addWidget(placeholder)
-        
-        content_layout.addWidget(header_frame)
-        content_layout.addWidget(content_frame)
-        content_layout.addStretch()
-        
-        scroll_area.setWidget(scroll_content)
-        tab_layout.addWidget(scroll_area)
-        
-        self.tab_widget.addTab(functions_tab, "🔧 Special Functions")
+        content_layout = QVBoxLayout(content_frame)
+
+        # Brand info display
+        self.brand_info_label = QLabel("Select a vehicle brand from the header to view available special functions.")
+        self.brand_info_label.setProperty("class", "section-title")
+        self.brand_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        content_layout.addWidget(self.brand_info_label)
+
+        # Functions list
+        functions_group = QGroupBox("Available Functions")
+        functions_layout = QVBoxLayout(functions_group)
+
+        # Create scroll area for functions list
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setMinimumHeight(200)
+        scroll_area.setMaximumHeight(300)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        self.functions_list = QListWidget()
+        self.functions_list.setMinimumHeight(200)
+        self.functions_list.setProperty("class", "glass-card")
+        self.functions_list.itemSelectionChanged.connect(self.show_function_details)
+        self.functions_list.itemDoubleClicked.connect(self.execute_selected_function)
+
+        scroll_area.setWidget(self.functions_list)
+        functions_layout.addWidget(scroll_area)
+
+        # Function details area
+        details_group = QGroupBox("Function Details")
+        details_layout = QVBoxLayout(details_group)
+
+        self.function_details = QTextEdit()
+        self.function_details.setReadOnly(True)
+        self.function_details.setMaximumHeight(150)
+        self.function_details.setPlainText("Select a function to view details and parameters.")
+        details_layout.addWidget(self.function_details)
+
+        # Control buttons
+        buttons_layout = QHBoxLayout()
+
+        self.execute_btn = QPushButton("⚡ Execute Function")
+        self.execute_btn.setProperty("class", "primary")
+        self.execute_btn.clicked.connect(self.execute_selected_function)
+        self.execute_btn.setEnabled(False)
+
+        self.refresh_btn = QPushButton("🔄 Refresh Functions")
+        self.refresh_btn.setProperty("class", "success")
+        self.refresh_btn.clicked.connect(self.refresh_functions_list)
+
+        buttons_layout.addWidget(self.execute_btn)
+        buttons_layout.addWidget(self.refresh_btn)
+        buttons_layout.addStretch()
+
+        # Results area
+        results_group = QGroupBox("Execution Results")
+        results_layout = QVBoxLayout(results_group)
+
+        self.results_text = QTextEdit()
+        self.results_text.setReadOnly(True)
+        self.results_text.setPlainText("Function execution results will appear here.")
+        results_layout.addWidget(self.results_text)
+
+        # Assemble everything
+        content_layout.addWidget(functions_group)
+        content_layout.addWidget(details_group)
+        content_layout.addLayout(buttons_layout)
+        content_layout.addWidget(results_group)
+
+        layout.addWidget(content_frame)
+
+        self.tab_widget.addTab(tab, "🔧 Special Functions")
+
+        # Connect to brand changes
+        self.header.brand_combo.currentTextChanged.connect(self.on_brand_changed_special_functions)
 
     def create_calibrations_resets_tab(self):
-        """Create calibrations tab with scrollable content"""
-        calib_tab = QWidget()
-        tab_layout = QVBoxLayout(calib_tab)
-        tab_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Create scroll area
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        
-        # Create scrollable content
-        scroll_content = QWidget()
-        content_layout = QVBoxLayout(scroll_content)
-        content_layout.setSpacing(15)
-        content_layout.setContentsMargins(20, 20, 20, 20)
-        
-        header_frame = QFrame()
-        header_frame.setProperty("class", "glass-card")
-        header_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        header_layout = QVBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 15, 20, 15)
-        
-        header_label = QLabel("⚙️ Calibrations & Resets")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
-        header_layout.addWidget(header_label)
-        
+        """Create enhanced calibrations and resets tab with full functionality"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Header
+        header = QLabel("⚙️ Calibrations & Resets")
+        header.setProperty("class", "tab-title")
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(header)
+
+        # Main content area
         content_frame = QFrame()
         content_frame.setProperty("class", "glass-card")
-        content_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        content_layout_frame = QVBoxLayout(content_frame)
-        content_layout_frame.setContentsMargins(20, 20, 20, 20)
-        
-        placeholder = QLabel("🚧 Calibrations interface under development")
-        placeholder.setStyleSheet("color: #a0d4cc; font-size: 12pt;")
-        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        content_layout_frame.addWidget(placeholder)
-        
-        content_layout.addWidget(header_frame)
-        content_layout.addWidget(content_frame)
-        content_layout.addStretch()
-        
-        scroll_area.setWidget(scroll_content)
-        tab_layout.addWidget(scroll_area)
-        
-        self.tab_widget.addTab(calib_tab, "⚙️ Calibrations & Resets")
+        content_layout = QVBoxLayout(content_frame)
+
+        # Brand info display
+        self.calibrations_brand_info_label = QLabel("Select a vehicle brand from the header to view available calibrations and reset procedures.")
+        self.calibrations_brand_info_label.setProperty("class", "section-title")
+        self.calibrations_brand_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        content_layout.addWidget(self.calibrations_brand_info_label)
+
+        # Procedures list
+        procedures_group = QGroupBox("Available Procedures")
+        procedures_layout = QVBoxLayout(procedures_group)
+
+        # Create scroll area for procedures list
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setMinimumHeight(200)
+        scroll_area.setMaximumHeight(300)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        self.calibrations_list = QListWidget()
+        self.calibrations_list.setMinimumHeight(200)
+        self.calibrations_list.setProperty("class", "glass-card")
+        self.calibrations_list.itemSelectionChanged.connect(self.show_calibration_details)
+        self.calibrations_list.itemDoubleClicked.connect(self.execute_selected_calibration)
+
+        scroll_area.setWidget(self.calibrations_list)
+        procedures_layout.addWidget(scroll_area)
+
+        # Procedure details area
+        details_group = QGroupBox("Procedure Details")
+        details_layout = QVBoxLayout(details_group)
+
+        self.calibration_details = QTextEdit()
+        self.calibration_details.setReadOnly(True)
+        self.calibration_details.setMaximumHeight(150)
+        self.calibration_details.setPlainText("Select a procedure to view details and prerequisites.")
+        details_layout.addWidget(self.calibration_details)
+
+        # Control buttons
+        buttons_layout = QHBoxLayout()
+
+        self.execute_calibration_btn = QPushButton("⚡ Execute Procedure")
+        self.execute_calibration_btn.setProperty("class", "primary")
+        self.execute_calibration_btn.clicked.connect(self.execute_selected_calibration)
+        self.execute_calibration_btn.setEnabled(False)
+
+        self.refresh_calibrations_btn = QPushButton("🔄 Refresh Procedures")
+        self.refresh_calibrations_btn.setProperty("class", "success")
+        self.refresh_calibrations_btn.clicked.connect(self.refresh_calibrations_list)
+
+        buttons_layout.addWidget(self.execute_calibration_btn)
+        buttons_layout.addWidget(self.refresh_calibrations_btn)
+        buttons_layout.addStretch()
+
+        # Results area
+        results_group = QGroupBox("Execution Results")
+        results_layout = QVBoxLayout(results_group)
+
+        self.calibrations_results_text = QTextEdit()
+        self.calibrations_results_text.setReadOnly(True)
+        self.calibrations_results_text.setPlainText("Procedure execution results will appear here.")
+        results_layout.addWidget(self.calibrations_results_text)
+
+        # Assemble everything
+        content_layout.addWidget(procedures_group)
+        content_layout.addWidget(details_group)
+        content_layout.addLayout(buttons_layout)
+        content_layout.addWidget(results_group)
+
+        layout.addWidget(content_frame)
+
+        self.tab_widget.addTab(tab, "⚙️ Calibrations")
+
+        # Connect to brand changes
+        self.header.brand_combo.currentTextChanged.connect(self.on_brand_changed_calibrations)
 
     def create_advanced_tab(self):
-        """Create advanced tab with scrollable content"""
-        advanced_tab = QWidget()
-        tab_layout = QVBoxLayout(advanced_tab)
-        tab_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Create scroll area
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-        
-        # Create scrollable content
-        scroll_content = QWidget()
-        content_layout = QVBoxLayout(scroll_content)
-        content_layout.setSpacing(15)
-        content_layout.setContentsMargins(20, 20, 20, 20)
-        
-        header_frame = QFrame()
-        header_frame.setProperty("class", "glass-card")
-        header_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        header_layout = QVBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 15, 20, 15)
-        
-        header_label = QLabel("⚙️ Advanced Functions")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
-        header_layout.addWidget(header_label)
-        
+        """Create enhanced advanced tab with mock data"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Header
+        header = QLabel("🚀 Advanced Functions")
+        header.setProperty("class", "tab-title")
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(header)
+
+        # Main content area
         content_frame = QFrame()
         content_frame.setProperty("class", "glass-card")
-        content_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        content_layout_frame = QVBoxLayout(content_frame)
-        content_layout_frame.setContentsMargins(20, 20, 20, 20)
-        
-        placeholder = QLabel("🚧 Advanced functions interface under development")
-        placeholder.setStyleSheet("color: #a0d4cc; font-size: 12pt;")
-        placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        content_layout_frame.addWidget(placeholder)
-        
-        content_layout.addWidget(header_frame)
-        content_layout.addWidget(content_frame)
-        content_layout.addStretch()
-        
-        scroll_area.setWidget(scroll_content)
-        tab_layout.addWidget(scroll_area)
-        
-        self.tab_widget.addTab(advanced_tab, "⚙️ Advanced")
-    
-    def create_security_tab(self):
-        """Create security tab with scrollable content"""
-        security_tab = QWidget()
-        tab_layout = QVBoxLayout(security_tab)
-        tab_layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Create scroll area
+        content_layout = QVBoxLayout(content_frame)
+
+        # System status display
+        self.advanced_status_label = QLabel("Advanced diagnostics system ready")
+        self.advanced_status_label.setProperty("class", "section-title")
+        self.advanced_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        content_layout.addWidget(self.advanced_status_label)
+
+        # Functions list
+        functions_group = QGroupBox("Available Advanced Functions")
+        functions_layout = QVBoxLayout(functions_group)
+
+        # Create scroll area for functions list
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
+        scroll_area.setMinimumHeight(200)
+        scroll_area.setMaximumHeight(300)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+
+        self.advanced_functions_list = QListWidget()
+        self.advanced_functions_list.setMinimumHeight(200)
+        self.advanced_functions_list.setProperty("class", "glass-card")
+        self.advanced_functions_list.itemSelectionChanged.connect(self.show_advanced_function_details)
+        self.advanced_functions_list.itemDoubleClicked.connect(self.execute_advanced_function)
+
+        scroll_area.setWidget(self.advanced_functions_list)
+        functions_layout.addWidget(scroll_area)
+
+        # Function details area
+        details_group = QGroupBox("Function Details")
+        details_layout = QVBoxLayout(details_group)
+
+        self.advanced_function_details = QTextEdit()
+        self.advanced_function_details.setReadOnly(True)
+        self.advanced_function_details.setMaximumHeight(120)
+        self.advanced_function_details.setPlainText("Select an advanced function to view details and parameters.")
+        details_layout.addWidget(self.advanced_function_details)
+
+        # Control buttons
+        buttons_layout = QHBoxLayout()
+
+        self.execute_advanced_btn = QPushButton("⚡ Execute Function")
+        self.execute_advanced_btn.setProperty("class", "primary")
+        self.execute_advanced_btn.clicked.connect(self.execute_advanced_function)
+        self.execute_advanced_btn.setEnabled(False)
+
+        self.refresh_advanced_btn = QPushButton("🔄 Refresh Functions")
+        self.refresh_advanced_btn.setProperty("class", "success")
+        self.refresh_advanced_btn.clicked.connect(self.refresh_advanced_functions_list)
+
+        buttons_layout.addWidget(self.execute_advanced_btn)
+        buttons_layout.addWidget(self.refresh_advanced_btn)
+        buttons_layout.addStretch()
+
+        # Results area
+        results_group = QGroupBox("Execution Results")
+        results_layout = QVBoxLayout(results_group)
+
+        self.advanced_results_text = QTextEdit()
+        self.advanced_results_text.setReadOnly(True)
+        self.advanced_results_text.setPlainText("Advanced function execution results will appear here.")
+        results_layout.addWidget(self.advanced_results_text)
+
+        # Assemble everything
+        content_layout.addWidget(functions_group)
+        content_layout.addWidget(details_group)
+        content_layout.addLayout(buttons_layout)
+        content_layout.addWidget(results_group)
+
+        layout.addWidget(content_frame)
+
+        self.tab_widget.addTab(tab, "🚀 Advanced")
+
+        # Initialize functions list
+        self.refresh_advanced_functions_list()
+
+    def create_security_tab(self):
+        """Create security tab"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
         
-        # Create scrollable content
-        scroll_content = QWidget()
-        content_layout = QVBoxLayout(scroll_content)
-        content_layout.setSpacing(15)
-        content_layout.setContentsMargins(20, 20, 20, 20)
+        header = QLabel("🔒 Security & Access")
+        header.setProperty("class", "tab-title")
+        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
-        header_frame = QFrame()
-        header_frame.setProperty("class", "glass-card")
-        header_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        header_layout = QVBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 15, 20, 15)
+        security_frame = QFrame()
+        security_frame.setProperty("class", "glass-card")
+        security_layout = QVBoxLayout(security_frame)
         
-        header_label = QLabel("🔒 Security & Audit")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
-        header_layout.addWidget(header_label)
+        user_info = QLabel("Current User: Demo Technician\n"
+                          "Security Level: BASIC\n"
+                          "Access: Standard Diagnostics\n"
+                          "Session: Active")
+        user_info.setProperty("class", "section-title")
         
-        status_frame = QFrame()
-        status_frame.setProperty("class", "glass-card")
-        status_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.8),
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 15px;
-            }
-        """)
-        status_layout = QVBoxLayout(status_frame)
-        status_layout.setContentsMargins(20, 20, 20, 20)
+        security_layout.addWidget(user_info)
         
-        status_title = QLabel("Current Session Status")
-        status_title.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
+        layout.addWidget(header)
+        layout.addWidget(security_frame)
+        layout.addStretch()
         
-        try:
-            if SECURITY_MANAGER_AVAILABLE:
-                user_info = security_manager.get_user_info()
-                status_text = f"Current User: {user_info.get('full_name', 'Demo User')}\nSecurity Level: {user_info.get('security_level', 'BASIC')}"
-            else:
-                status_text = "Current User: Demo User\nSecurity Level: BASIC"
-        except:
-            status_text = "Current User: Demo User\nSecurity Level: BASIC"
-        
-        self.security_status = QTextEdit()
-        self.security_status.setPlainText(status_text)
-        self.security_status.setReadOnly(True)
-        self.security_status.setMaximumHeight(150)
-        self.security_status.setStyleSheet("""
-            QTextEdit {
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(148, 163, 184, 0.5);
-                border-radius: 8px;
-                color: #e2e8f0;
-                padding: 10px;
-                font-family: 'Consolas', monospace;
-            }
-        """)
-        
-        status_layout.addWidget(status_title)
-        status_layout.addWidget(self.security_status)
-        
-        content_layout.addWidget(header_frame)
-        content_layout.addWidget(status_frame)
-        content_layout.addStretch()
-        
-        scroll_area.setWidget(scroll_content)
-        tab_layout.addWidget(scroll_area)
-        
-        self.tab_widget.addTab(security_tab, "🔒 Security")
-    
+        self.tab_widget.addTab(tab, "🔒 Security")
+
     def create_status_bar(self):
         """Create status bar"""
-        status_widget = QFrame()
-        status_widget.setProperty("class", "glass-card")
-        status_widget.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 rgba(30, 41, 59, 0.9), 
-                    stop:1 rgba(15, 23, 42, 0.9));
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-top-left-radius: 10px;
-                border-top-right-radius: 10px;
-            }
+        self.statusBar().showMessage("Ready")
+        self.status_label = QLabel("✨ System Initialized")
+        self.statusBar().addPermanentWidget(self.status_label)
+
+    # ========== ALL MISSING METHOD IMPLEMENTATIONS ==========
+
+    def run_full_scan(self):
+        """Execute full system scan"""
+        self.scan_btn.setEnabled(False)
+        self.status_label.setText("🔄 Running full system scan...")
+        
+        # Simulate scan progress
+        progress = 0
+        def update_scan():
+            nonlocal progress
+            progress += 10
+            if progress <= 100:
+                self.status_label.setText(f"🔄 Scanning... {progress}%")
+                QTimer.singleShot(100, update_scan)
+            else:
+                self.scan_btn.setEnabled(True)
+                self.status_label.setText("✅ Full scan completed")
+                self.results_text.setPlainText(
+                    f"Full System Scan Results - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                    "✅ ECU Communication: ESTABLISHED\n"
+                    "✅ CAN Bus: NORMAL\n"
+                    "✅ LIN Bus: ACTIVE\n"
+                    "✅ Sensor Network: OK\n"
+                    "⚠️  2 DTCs found\n"
+                    "✅ System Voltage: 13.8V\n"
+                    "✅ Communication Speed: 500kbps\n\n"
+                    "Scan completed successfully."
+                )
+        
+        update_scan()
+
+    def read_dtcs(self):
+        """Read diagnostic trouble codes"""
+        self.dtc_btn.setEnabled(False)
+        self.status_label.setText("📋 Reading DTCs...")
+        
+        QTimer.singleShot(1500, lambda: [
+            self.dtc_btn.setEnabled(True),
+            self.status_label.setText("✅ DTCs retrieved"),
+            self.results_text.setPlainText(
+                f"DTC Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                "P0301 - Cylinder 1 Misfire Detected\n"
+                "   Status: Confirmed\n"
+                "   Priority: Medium\n"
+                "   Freeze Frame: RPM=2450, Load=65%\n\n"
+                "U0121 - Lost Communication With ABS Control Module\n"
+                "   Status: Pending\n"
+                "   Priority: Low\n"
+                "   First Occurrence: 2024-01-15\n\n"
+                "Total DTCs: 2"
+            )
+        ])
+
+    def clear_dtcs(self):
+        """Clear diagnostic trouble codes"""
+        reply = QMessageBox.question(self, "Clear DTCs", 
+                                   "Are you sure you want to clear all diagnostic trouble codes?",
+                                   QMessageBox.StandardButton.Yes | 
+                                   QMessageBox.StandardButton.No)
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.clear_btn.setEnabled(False)
+            self.status_label.setText("🧹 Clearing DTCs...")
+            
+            QTimer.singleShot(2000, lambda: [
+                self.clear_btn.setEnabled(True),
+                self.status_label.setText("✅ DTCs cleared successfully"),
+                self.results_text.setPlainText(
+                    f"DTC Clearance Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                    "✅ All diagnostic trouble codes have been cleared\n"
+                    "✅ System memory reset\n"
+                    "✅ Ready for new diagnostics\n\n"
+                    "Note: Some codes may reappear if underlying issues persist."
+                ),
+                self.dtc_card.update_value(0)
+            ])
+
+    def start_live_stream(self):
+        """Start live data streaming"""
+        self.status_label.setText("📊 Starting live data stream...")
+        start_live_stream()  # Start the mock data generator
+        self.live_data_timer.start(1000)  # Update every second
+        QTimer.singleShot(1000, lambda: self.status_label.setText("📊 Live data streaming active"))
+
+    def stop_live_stream(self):
+        """Stop live data streaming"""
+        self.live_data_timer.stop()
+        stop_live_stream()  # Stop the mock data generator
+        self.status_label.setText("⏹ Live data stream stopped")
+
+    def populate_sample_data(self):
+        """Populate live data table with mock data"""
+        # Get current mock live data
+        live_data = get_mock_live_data()
+
+        self.live_data_table.setRowCount(len(live_data))
+        for row, (param, value, unit) in enumerate(live_data):
+            self.live_data_table.setItem(row, 0, QTableWidgetItem(param))
+            self.live_data_table.setItem(row, 1, QTableWidgetItem(value))
+            self.live_data_table.setItem(row, 2, QTableWidgetItem(unit))
+
+    def update_live_data_table(self):
+        """Update the live data table with current mock values"""
+        if live_data_generator.is_streaming:
+            live_data = get_mock_live_data()
+            for row, (param, value, unit) in enumerate(live_data):
+                if row < self.live_data_table.rowCount():
+                    self.live_data_table.setItem(row, 1, QTableWidgetItem(value))
+
+    def run_quick_scan(self):
+        """Quick scan demo"""
+        self.status_label.setText("🔍 Running quick scan...")
+        QTimer.singleShot(800, lambda: [
+            self.status_label.setText("✅ Quick scan completed"),
+            self.tab_widget.setCurrentIndex(1),  # Switch to diagnostics tab
+            self.results_text.setPlainText(
+                f"Quick Scan Results - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                "✅ Basic Communication: OK\n"
+                "✅ Power Supply: NORMAL\n"
+                "✅ ECU Response: ACTIVE\n"
+                "⚠️  1 Non-critical DTC found\n"
+                "✅ System Ready for Detailed Diagnostics"
+            )
+        ])
+
+    def show_live_data(self):
+        """Switch to live data tab"""
+        self.tab_widget.setCurrentIndex(2)
+        self.status_label.setText("📊 Live Data tab selected")
+
+    def show_ecu_info(self):
+        """Show ECU information"""
+        brand = self.header.brand_combo.currentText()
+        self.tab_widget.setCurrentIndex(1)  # Switch to diagnostics
+        self.results_text.setPlainText(
+            f"ECU Information - {brand}\n\n"
+            "ECU: Engine Control Module\n"
+            "Part #: 89663-12345\n"
+            "Software: v2.1.8\n"
+            "Hardware: v1.2\n"
+            "VIN: 1HGCM82633A123456\n"
+            "Calibration: 2023-12-01\n"
+            "Protocol: CAN 11bit/500k"
+        )
+        self.status_label.setText(f"💾 ECU info for {brand}")
+
+    def apply_global_theme(self):
+        """Apply the DACOS Unified Theme - Enhanced version"""
+        try:
+            # Try DACOS theme first
+            if DACOS_AVAILABLE:
+                success = apply_dacos_theme(QApplication.instance())
+                if success:
+                    logger.info("DACOS Unified theme applied successfully")
+                    return
+            
+            # Fallback to existing QSS file loading
+            dacos_theme_path = PROJECT_ROOT / "shared" / "themes" / "dacos.qss"
+            
+            if dacos_theme_path.exists():
+                with open(dacos_theme_path, 'r', encoding='utf-8') as f:
+                    dacos_stylesheet = f.read()
+                
+                self.setStyleSheet(dacos_stylesheet)
+                logger.info("DACOS theme loaded from QSS file")
+            else:
+                logger.warning("DACOS theme file not found, using fallback")
+                self.apply_fallback_theme()
+                
+        except Exception as e:
+            logger.error(f"Failed to load DACOS theme: {e}")
+            self.apply_fallback_theme()
+
+    def apply_fallback_theme(self):
+        """Enhanced fallback theme"""
+        t = THEME
+        self.setStyleSheet(f"""
+            QMainWindow {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 {t['bg_main']}, stop:0.5 {t['bg_panel']}, stop:1 {t['bg_card']});
+                color: {t['text_main']};
+                font-family: "Segoe UI";
+            }}
+            QTabWidget::pane {{
+                border: 2px solid rgba(33, 245, 193, 0.3);
+                background: {t['bg_panel']};
+                border-radius: 12px;
+            }}
+            QTabBar::tab {{
+                background: {t['bg_card']};
+                color: {t['text_muted']};
+                padding: 12px 24px;
+                border-radius: 8px;
+                margin: 2px;
+                font-weight: bold;
+            }}
+            QTabBar::tab:selected {{
+                background: {t['accent']};
+                color: #0B2E2B;
+            }}
+            QFrame[class="glass-card"] {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 rgba(19, 79, 74, 0.9), stop:1 rgba(11, 46, 43, 0.9));
+                border: 2px solid rgba(33, 245, 193, 0.4);
+                border-radius: 12px;
+                padding: 15px;
+            }}
+            QPushButton {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {t['accent']}, stop:1 {t['glow']});
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                color: #002F2C;
+                font-weight: bold;
+                min-height: 35px;
+            }}
+            QPushButton:hover {{
+                background: {t['glow']};
+            }}
+            QLabel[class="hero-title"] {{
+                color: {t['accent']};
+                font-size: 18pt;
+                font-weight: bold;
+            }}
+            QLabel[class="tab-title"] {{
+                color: {t['accent']};
+                font-size: 16pt;
+                font-weight: bold;
+            }}
+            QLabel[class="section-title"] {{
+                color: {t['text_main']};
+                font-size: 12pt;
+                font-weight: bold;
+            }}
+            QLabel[class="stat-label"] {{
+                color: {t['text_muted']};
+                font-size: 10pt;
+                font-weight: bold;
+            }}
+            QLabel[class="stat-value"] {{
+                color: {t['accent']};
+                font-size: 14pt;
+                font-weight: bold;
+            }}
         """)
-        status_widget.setMaximumHeight(40)
-        
-        status_layout = QHBoxLayout()
-        status_layout.setContentsMargins(10, 5, 10, 5)
-        
-        self.status_label = QLabel("✨ System Ready")
-        self.status_label.setStyleSheet("color: #10b981; font-weight: bold;")
-        
-        self.connection_status_label = QLabel("⚪ Disconnected")
-        self.connection_status_label.setStyleSheet("color: #ef4444;")
-        
-        status_layout.addWidget(self.status_label)
-        status_layout.addStretch()
-        status_layout.addWidget(self.connection_status_label)
-        
-        status_widget.setLayout(status_layout)
-        self.statusBar().addPermanentWidget(status_widget, 1)
-    
-    def start_live_updates(self):
-        """Start live data updates"""
-        self.update_timer = QTimer()
-        self.update_timer.timeout.connect(self.update_live_data)
-        self.update_timer.start(2000)
-    
-    def update_live_data(self):
-        """Update live dashboard data"""
-        import random
-        
-        self.system_health_card.update_value(random.randint(95, 99))
-        self.connection_quality_card.update_value(random.randint(75, 95))
-    
+
     def change_theme(self, theme_name):
-        """Change theme using global style_manager"""
+        """Change application theme"""
         try:
             style_manager.set_theme(theme_name)
             self.status_label.setText(f"✨ Theme changed to: {theme_name}")
         except Exception as e:
-            logger.error(f"Theme change error: {e}")
-            self.status_label.setText(f"⚠️ Theme change failed: {theme_name}")
-    
+            logger.error(f"Theme change failed: {e}")
+            self.status_label.setText("⚠️ Theme change failed")
+
     def on_brand_changed(self, brand):
-        """Handle brand selection change"""
-        self.selected_brand = brand
-        self.status_label.setText(f"✨ Brand changed to: {brand}")
-    
-    def secure_logout(self):
-        """Perfect glassmorphic logout dialog – NO Qt warnings, pure beauty"""
-        from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QGraphicsDropShadowEffect
-        from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve
-        from PyQt6.QtGui import QColor
+        """Handle brand change"""
+        self.status_label.setText(f"🚗 Vehicle brand: {brand}")
 
+    def on_brand_changed_special_functions(self, brand):
+        """Handle brand change for special functions tab"""
+        self.refresh_functions_list()
+        self.brand_info_label.setText(f"Selected Brand: {brand}")
+        self.status_label.setText(f"🔧 Special functions loaded for {brand}")
+
+    def refresh_functions_list(self):
+        """Refresh the functions list based on selected brand"""
+        brand = self.header.brand_combo.currentText()
+        self.functions_list.clear()
+
+        try:
+            functions = special_functions_manager.get_brand_functions(brand)
+            if functions:
+                for func in functions:
+                    item_text = f"{func.name} (Level {func.security_level})"
+                    item = QListWidgetItem(item_text)
+                    item.setData(Qt.ItemDataRole.UserRole, func)
+                    self.functions_list.addItem(item)
+
+                self.brand_info_label.setText(f"Found {len(functions)} functions for {brand}")
+            else:
+                self.brand_info_label.setText(f"No special functions available for {brand}")
+                self.functions_list.addItem("No functions available")
+
+        except Exception as e:
+            logger.error(f"Error loading functions for {brand}: {e}")
+            self.brand_info_label.setText(f"Error loading functions for {brand}")
+            self.functions_list.addItem("Error loading functions")
+
+        # Update function details
+        self.function_details.setPlainText("Select a function to view details and parameters.")
+        self.execute_btn.setEnabled(False)
+
+    def show_function_details(self):
+        """Show details of selected function"""
+        current_item = self.functions_list.currentItem()
+        if not current_item:
+            self.function_details.setPlainText("Select a function to view details and parameters.")
+            self.execute_btn.setEnabled(False)
+            return
+
+        func = current_item.data(Qt.ItemDataRole.UserRole)
+        if not func:
+            self.function_details.setPlainText("Invalid function selected.")
+            self.execute_btn.setEnabled(False)
+            return
+
+        # Build details text
+        details = f"Function: {func.name}\n"
+        details += f"ID: {func.function_id}\n"
+        details += f"Category: {func.category.value.title()}\n"
+        details += f"Security Level: {func.security_level}\n\n"
+        details += f"Description:\n{func.description}\n\n"
+
+        if func.prerequisites:
+            details += "Prerequisites:\n"
+            for pre in func.prerequisites:
+                details += f"• {pre}\n"
+            details += "\n"
+
+        if func.risks:
+            details += "Risks:\n"
+            for risk in func.risks:
+                details += f"⚠️ {risk}\n"
+            details += "\n"
+
+        if func.parameters:
+            details += "Parameters:\n"
+            for param_name, param_config in func.parameters.items():
+                required = "Required" if param_config['required'] else "Optional"
+                param_type = param_config['type']
+                validation = f" ({param_config['validation']})" if param_config.get('validation') else ""
+                details += f"• {param_name} ({param_type}) - {required}{validation}\n"
+        else:
+            details += "No parameters required."
+
+        self.function_details.setPlainText(details)
+        self.execute_btn.setEnabled(True)
+
+    def execute_selected_function(self):
+        """Execute the selected special function"""
+        current_item = self.functions_list.currentItem()
+        if not current_item:
+            return
+
+        func = current_item.data(Qt.ItemDataRole.UserRole)
+        if not func:
+            return
+
+        # Check if function requires parameters
+        if func.parameters:
+            # Show parameter input dialog
+            params = self.get_function_parameters(func)
+            if params is None:  # User cancelled
+                return
+        else:
+            params = {}
+
+        # Execute function
+        self.execute_btn.setEnabled(False)
+        self.status_label.setText(f"⚡ Executing {func.name}...")
+
+        # Simulate execution with mock results
+        QTimer.singleShot(2000, lambda: self.show_execution_result(func, params))
+
+    def get_function_parameters(self, func):
+        """Get parameters for function execution via dialog"""
         dialog = QDialog(self)
-        dialog.setWindowTitle(" ")
-        dialog.setFixedSize(680, 420)
-        dialog.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-        dialog.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        dialog.setWindowTitle(f"Parameters for {func.name}")
+        dialog.setModal(True)
 
-        # Main glass panel
-        panel = QFrame(dialog)
-        panel.setFixedSize(680, 420)
-        panel.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 rgba(19, 79, 74, 245),
-                    stop:1 rgba(11, 46, 43, 245));
-                border: 2.5px solid #21F5C1;
-                border-radius: 24px;
-            }
-        """)
+        layout = QVBoxLayout(dialog)
 
-        # Real drop shadow using Qt (this works!)
-        shadow = QGraphicsDropShadowEffect(panel)
-        shadow.setBlurRadius(40)
-        shadow.setXOffset = 0
-        shadow.setYOffset = 20
-        shadow.setColor(QColor(0, 255, 200, 180))
-        panel.setGraphicsEffect(shadow)
+        # Function description
+        desc_label = QLabel(f"Description: {func.description}")
+        desc_label.setWordWrap(True)
+        layout.addWidget(desc_label)
 
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(35, 35, 35, 35)
-        layout.setSpacing(20)
+        # Prerequisites
+        if func.prerequisites:
+            pre_label = QLabel("Prerequisites:")
+            pre_label.setStyleSheet("font-weight: bold;")
+            layout.addWidget(pre_label)
 
-        # Title
-        title = QLabel("Logout")
-        title.setStyleSheet("color: #21F5C1; font-size: 28pt; font-weight: bold;")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            for pre in func.prerequisites:
+                pre_item = QLabel(f"• {pre}")
+                pre_item.setStyleSheet("margin-left: 10px;")
+                layout.addWidget(pre_item)
 
-        # Message - CLEAN & FIXED
-        user_info = security_manager.get_user_info() if SECURITY_MANAGER_AVAILABLE else {"full_name": "User", "security_level": "BASIC"}
-        
-        message = QLabel()
-        message.setTextFormat(Qt.TextFormat.RichText)
-        message.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        message.setWordWrap(True)
-        message.setStyleSheet("color: #E8FFFB; font-size: 15pt; background: transparent;")
-        
-        message.setText(
-            "<div style='line-height: 1.6;'>"
-            "Are you sure you want to log out?<br><br>"
-            f"<b style='font-size: 18pt;'>{user_info.get('full_name', 'User')}</b><br>"
-            f"Security Level: <span style='color:#21F5C1; font-weight:bold;'>{user_info.get('security_level', 'BASIC')}</span><br><br>"
-            "<small>All unsaved data will be lost.</small>"
-            "</div>"
-        )
+        # Risks
+        if func.risks:
+            risk_label = QLabel("Risks:")
+            risk_label.setStyleSheet("font-weight: bold; color: #ff6b6b;")
+            layout.addWidget(risk_label)
+
+            for risk in func.risks:
+                risk_item = QLabel(f"⚠️ {risk}")
+                risk_item.setStyleSheet("margin-left: 10px; color: #ff6b6b;")
+                layout.addWidget(risk_item)
+
+        # Parameter inputs
+        param_inputs = {}
+        if func.parameters:
+            params_label = QLabel("Parameters:")
+            params_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+            layout.addWidget(params_label)
+
+            for param_name, param_config in func.parameters.items():
+                param_layout = QHBoxLayout()
+
+                label = QLabel(f"{param_name}:")
+                label.setMinimumWidth(120)
+
+                if param_config['type'] == 'bool':
+                    input_field = QCheckBox()
+                elif param_config['type'] == 'int':
+                    input_field = QSpinBox()
+                    if 'validation' in param_config and param_config['validation'] == '1-8':
+                        input_field.setRange(1, 8)
+                    elif 'validation' in param_config and param_config['validation'] == '70-105':
+                        input_field.setRange(70, 105)
+                    else:
+                        input_field.setRange(0, 9999)
+                else:  # string
+                    input_field = QLineEdit()
+                    if param_config.get('validation') == '70-105':
+                        input_field.setPlaceholderText("70-105")
+
+                param_layout.addWidget(label)
+                param_layout.addWidget(input_field)
+                param_layout.addStretch()
+
+                layout.addLayout(param_layout)
+                param_inputs[param_name] = input_field
 
         # Buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(25)
+        buttons = QHBoxLayout()
+        execute_btn = QPushButton("Execute")
+        execute_btn.setProperty("class", "primary")
+        cancel_btn = QPushButton("Cancel")
 
-        yes = QPushButton("Yes, Logout")
-        no  = QPushButton("Cancel")
-
-        yes.setFixedSize(160, 50)
-        no.setFixedSize(160, 50)
-
-        yes.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #21F5C1, stop:1 #2AF5D1);
-                color: #0B2E2B;
-                border-radius: 16px;
-                font-weight: bold;
-                font-size: 13pt;
-            }
-            QPushButton:hover { background: #2AF5D1; }
-        """)
-
-        no.setStyleSheet("""
-            QPushButton {
-                background: rgba(255,255,255,0.08);
-                color: #9ED9CF;
-                border: 2px solid #21F5C1;
-                border-radius: 16px;
-                font-weight: bold;
-                font-size: 13pt;
-            }
-            QPushButton:hover { background: rgba(33,245,193,0.25); color: #E8FFFB; }
-        """)
-
-        btn_layout.addWidget(no)
-        btn_layout.addWidget(yes)
-
-        layout.addStretch()
-        layout.addWidget(title)
-        layout.addWidget(message)
-        layout.addStretch()
-        layout.addLayout(btn_layout)
-        layout.addStretch()
+        buttons.addStretch()
+        buttons.addWidget(cancel_btn)
+        buttons.addWidget(execute_btn)
+        layout.addLayout(buttons)
 
         # Connect buttons
-        yes.clicked.connect(lambda: [security_manager.logout() if SECURITY_MANAGER_AVAILABLE else None, self.close(), dialog.accept()])
-        no.clicked.connect(dialog.reject)
+        def on_execute():
+            params = {}
+            for param_name, input_field in param_inputs.items():
+                if isinstance(input_field, QCheckBox):
+                    params[param_name] = input_field.isChecked()
+                elif isinstance(input_field, QSpinBox):
+                    params[param_name] = input_field.value()
+                else:  # QLineEdit
+                    params[param_name] = input_field.text()
 
-        # Fade-in animation because why not
-        dialog.setWindowOpacity(0)
-        anim = QPropertyAnimation(dialog, b"windowOpacity")
-        anim.setDuration(300)
-        anim.setStartValue(0)
-        anim.setEndValue(1)
-        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
-        dialog.show()
-        anim.start()
+            dialog.accept()
+            dialog._params = params
 
-        dialog.exec()
+        def on_cancel():
+            dialog.reject()
+
+        execute_btn.clicked.connect(on_execute)
+        cancel_btn.clicked.connect(on_cancel)
+
+        # Set default values
+        for param_name, param_config in func.parameters.items():
+            if param_name in param_inputs:
+                input_field = param_inputs[param_name]
+                if param_config['type'] == 'bool':
+                    input_field.setChecked(False)
+                elif param_name == 'engine_temperature':
+                    input_field.setValue(85)  # Default temperature
+                elif param_name == 'key_count':
+                    input_field.setValue(1)
+
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            return getattr(dialog, '_params', {})
+        return None
+
+    def show_execution_result(self, func, params):
+        """Show mock execution result"""
+        brand = self.header.brand_combo.currentText()
+
+        # Generate mock result based on function
+        result_text = f"Function Execution Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        result_text += f"Brand: {brand}\n"
+        result_text += f"Function: {func.name}\n"
+        result_text += f"Function ID: {func.function_id}\n"
+        result_text += f"Security Level: {func.security_level}\n\n"
+
+        if params:
+            result_text += "Parameters Used:\n"
+            for key, value in params.items():
+                result_text += f"  {key}: {value}\n"
+            result_text += "\n"
+
+        # Mock execution results
+        if "throttle" in func.name.lower():
+            result_text += "✅ Throttle Body Learning: SUCCESS\n"
+            result_text += "✅ Adaptation Values Updated\n"
+            result_text += "✅ Idle Quality Optimized\n"
+            result_text += "⚠️  Vehicle restart recommended\n"
+        elif "dpf" in func.name.lower():
+            result_text += "✅ DPF Regeneration: INITIATED\n"
+            result_text += "🔄 Regeneration in progress...\n"
+            result_text += "📊 Soot Level: 45% → 5%\n"
+            result_text += "✅ Filter cleaned successfully\n"
+        elif "immobilizer" in func.name.lower():
+            result_text += "✅ Immobilizer Registration: SUCCESS\n"
+            result_text += "🔑 Keys programmed successfully\n"
+            result_text += "🔐 Security system updated\n"
+        elif "steering" in func.name.lower():
+            result_text += "✅ Steering Angle Calibration: SUCCESS\n"
+            result_text += "📐 Sensor values reset\n"
+            result_text += "🎯 Calibration completed\n"
+        else:
+            result_text += "✅ Function executed successfully\n"
+            result_text += "📋 All operations completed\n"
+            result_text += "🔍 No errors detected\n"
+
+        result_text += "\n⚡ Execution completed successfully"
+
+        self.results_text.setPlainText(result_text)
+        self.status_label.setText(f"✅ {func.name} completed successfully")
+        self.execute_btn.setEnabled(True)
+
+    def on_brand_changed_calibrations(self, brand):
+        """Handle brand change for calibrations tab"""
+        self.refresh_calibrations_list()
+        self.calibrations_brand_info_label.setText(f"Selected Brand: {brand}")
+        self.status_label.setText(f"⚙️ Calibrations loaded for {brand}")
+
+    def refresh_calibrations_list(self):
+        """Refresh the calibrations list based on selected brand"""
+        brand = self.header.brand_combo.currentText()
+        self.calibrations_list.clear()
+
+        try:
+            procedures = calibrations_resets_manager.get_brand_procedures(brand)
+            if procedures:
+                for proc in procedures:
+                    item_text = f"{proc.name} (Level {proc.security_level})"
+                    item = QListWidgetItem(item_text)
+                    item.setData(Qt.ItemDataRole.UserRole, proc)
+                    self.calibrations_list.addItem(item)
+
+                self.calibrations_brand_info_label.setText(f"Found {len(procedures)} procedures for {brand}")
+            else:
+                self.calibrations_brand_info_label.setText(f"No calibration procedures available for {brand}")
+                self.calibrations_list.addItem("No procedures available")
+
+        except Exception as e:
+            logger.error(f"Error loading calibrations for {brand}: {e}")
+            self.calibrations_brand_info_label.setText(f"Error loading procedures for {brand}")
+            self.calibrations_list.addItem("Error loading procedures")
+
+        # Update procedure details
+        self.calibration_details.setPlainText("Select a procedure to view details and prerequisites.")
+        self.execute_calibration_btn.setEnabled(False)
+
+    def show_calibration_details(self):
+        """Show details of selected calibration procedure"""
+        current_item = self.calibrations_list.currentItem()
+        if not current_item:
+            self.calibration_details.setPlainText("Select a procedure to view details and prerequisites.")
+            self.execute_calibration_btn.setEnabled(False)
+            return
+
+        proc = current_item.data(Qt.ItemDataRole.UserRole)
+        if not proc:
+            self.calibration_details.setPlainText("Invalid procedure selected.")
+            self.execute_calibration_btn.setEnabled(False)
+            return
+
+        # Build details text
+        details = f"Procedure: {proc.name}\n"
+        details += f"ID: {proc.procedure_id}\n"
+        details += f"Type: {proc.reset_type.value.title()}\n"
+        details += f"Security Level: {proc.security_level}\n"
+        details += f"Duration: {proc.duration}\n\n"
+        details += f"Description:\n{proc.description}\n\n"
+
+        if proc.prerequisites:
+            details += "Prerequisites:\n"
+            for pre in proc.prerequisites:
+                details += f"• {pre}\n"
+            details += "\n"
+
+        if proc.steps:
+            details += "Procedure Steps:\n"
+            for i, step in enumerate(proc.steps, 1):
+                details += f"{i}. {step}\n"
+        else:
+            details += "No specific steps defined."
+
+        self.calibration_details.setPlainText(details)
+        self.execute_calibration_btn.setEnabled(True)
+
+    def execute_selected_calibration(self):
+        """Execute the selected calibration procedure"""
+        current_item = self.calibrations_list.currentItem()
+        if not current_item:
+            return
+
+        proc = current_item.data(Qt.ItemDataRole.UserRole)
+        if not proc:
+            return
+
+        # Check if procedure requires parameters (for battery registration, etc.)
+        if "battery" in proc.procedure_id.lower():
+            # Show parameter input dialog for battery specs
+            params = self.get_calibration_parameters(proc)
+            if params is None:  # User cancelled
+                return
+        else:
+            params = {}
+
+        # Execute procedure
+        self.execute_calibration_btn.setEnabled(False)
+        self.status_label.setText(f"⚙️ Executing {proc.name}...")
+
+        # Simulate execution with mock results
+        QTimer.singleShot(3000, lambda: self.show_calibration_result(proc, params))
+
+    def get_calibration_parameters(self, proc):
+        """Get parameters for calibration procedure execution via dialog"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Parameters for {proc.name}")
+        dialog.setModal(True)
+
+        layout = QVBoxLayout(dialog)
+
+        # Procedure description
+        desc_label = QLabel(f"Description: {proc.description}")
+        desc_label.setWordWrap(True)
+        layout.addWidget(desc_label)
+
+        # Prerequisites
+        if proc.prerequisites:
+            pre_label = QLabel("Prerequisites:")
+            pre_label.setStyleSheet("font-weight: bold;")
+            layout.addWidget(pre_label)
+
+            for pre in proc.prerequisites:
+                pre_item = QLabel(f"• {pre}")
+                pre_item.setStyleSheet("margin-left: 10px;")
+                layout.addWidget(pre_item)
+
+        # Parameter inputs (mainly for battery registration)
+        param_inputs = {}
+        if "battery" in proc.procedure_id.lower():
+            params_label = QLabel("Battery Specifications:")
+            params_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+            layout.addWidget(params_label)
+
+            # Battery type
+            type_layout = QHBoxLayout()
+            type_label = QLabel("Battery Type:")
+            type_label.setMinimumWidth(120)
+            type_combo = QComboBox()
+            type_combo.addItems(["AGM", "Lead-acid", "Lithium-ion"])
+            type_layout.addWidget(type_label)
+            type_layout.addWidget(type_combo)
+            type_layout.addStretch()
+            layout.addLayout(type_layout)
+            param_inputs['battery_type'] = type_combo
+
+            # Capacity
+            capacity_layout = QHBoxLayout()
+            capacity_label = QLabel("Capacity (Ah):")
+            capacity_label.setMinimumWidth(120)
+            capacity_spin = QSpinBox()
+            capacity_spin.setRange(30, 200)
+            capacity_spin.setValue(70)
+            capacity_layout.addWidget(capacity_label)
+            capacity_layout.addWidget(capacity_spin)
+            capacity_layout.addStretch()
+            layout.addLayout(capacity_layout)
+            param_inputs['capacity'] = capacity_spin
+
+            # Note: Manufacturer field removed as it's not used in the current implementation
+
+        # Buttons
+        buttons = QHBoxLayout()
+        execute_btn = QPushButton("Execute")
+        execute_btn.setProperty("class", "primary")
+        cancel_btn = QPushButton("Cancel")
+
+        buttons.addStretch()
+        buttons.addWidget(cancel_btn)
+        buttons.addWidget(execute_btn)
+        layout.addLayout(buttons)
+
+        # Connect buttons
+        def on_execute():
+            params = {}
+            for param_name, input_field in param_inputs.items():
+                if isinstance(input_field, QComboBox):
+                    params[param_name] = input_field.currentText()
+                elif isinstance(input_field, QSpinBox):
+                    params[param_name] = input_field.value()
+                else:  # QLineEdit
+                    params[param_name] = input_field.text()
+
+            dialog.accept()
+            dialog._params = params
+
+        def on_cancel():
+            dialog.reject()
+
+        execute_btn.clicked.connect(on_execute)
+        cancel_btn.clicked.connect(on_cancel)
+
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            return getattr(dialog, '_params', {})
+        return None
+
+    def show_calibration_result(self, proc, params):
+        """Show mock calibration execution result"""
+        brand = self.header.brand_combo.currentText()
+
+        # Generate mock result based on procedure
+        result_text = f"Calibration Procedure Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        result_text += f"Brand: {brand}\n"
+        result_text += f"Procedure: {proc.name}\n"
+        result_text += f"Procedure ID: {proc.procedure_id}\n"
+        result_text += f"Type: {proc.reset_type.value.title()}\n"
+        result_text += f"Security Level: {proc.security_level}\n\n"
+
+        if params:
+            result_text += "Parameters Used:\n"
+            for key, value in params.items():
+                result_text += f"  {key}: {value}\n"
+            result_text += "\n"
+
+        # Mock execution results based on procedure type
+        if "steering" in proc.procedure_id.lower():
+            result_text += "✅ Steering Angle Sensor Calibration: SUCCESS\n"
+            result_text += "📐 Zero point set to current position\n"
+            result_text += "🎯 Left stop: -30° | Right stop: +30°\n"
+            result_text += "🔄 Adaptation values stored\n"
+            result_text += "⚠️  Test drive recommended to verify calibration\n"
+        elif "battery" in proc.procedure_id.lower():
+            result_text += "✅ Battery Registration: SUCCESS\n"
+            result_text += "🔋 Battery specifications registered\n"
+            result_text += "⚡ Power management system updated\n"
+            result_text += "🔄 Adaptation values cleared and reset\n"
+            result_text += "📊 Battery monitoring active\n"
+        elif "throttle" in proc.procedure_id.lower():
+            result_text += "✅ Throttle Body Calibration: SUCCESS\n"
+            result_text += "🎛️ Throttle position sensor calibrated\n"
+            result_text += "⚖️ Idle adaptation completed\n"
+            result_text += "🚀 Acceleration response optimized\n"
+        else:
+            result_text += "✅ Procedure executed successfully\n"
+            result_text += "📋 All calibration steps completed\n"
+            result_text += "🔍 System verification passed\n"
+
+        result_text += "\n⚙️ Calibration completed successfully"
+
+        self.calibrations_results_text.setPlainText(result_text)
+        self.status_label.setText(f"✅ {proc.name} completed successfully")
+        self.execute_calibration_btn.setEnabled(True)
+
+    def secure_logout(self):
+        """Enhanced logout dialog"""
+        reply = QMessageBox.question(self, "Logout",
+                                    "Are you sure you want to logout?",
+                                    QMessageBox.StandardButton.Yes |
+                                    QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.close()
+
+    def resizeEvent(self, event):
+        """Handle window resize for responsive layout"""
+        super().resizeEvent(event)
+        if hasattr(self, 'header'):
+            self.header.update_layout()
+
+    def refresh_advanced_functions_list(self):
+        """Refresh the advanced functions list"""
+        self.advanced_functions_list.clear()
+
+        try:
+            functions = get_advanced_functions()
+            if functions:
+                for func in functions:
+                    item_text = f"{func.name} ({func.complexity} - {func.estimated_time})"
+                    item = QListWidgetItem(item_text)
+                    item.setData(Qt.ItemDataRole.UserRole, func)
+                    self.advanced_functions_list.addItem(item)
+
+                self.advanced_status_label.setText(f"Found {len(functions)} advanced functions available")
+            else:
+                self.advanced_status_label.setText("No advanced functions available")
+                self.advanced_functions_list.addItem("No functions available")
+
+        except Exception as e:
+            logger.error(f"Error loading advanced functions: {e}")
+            self.advanced_status_label.setText("Error loading advanced functions")
+            self.advanced_functions_list.addItem("Error loading functions")
+
+        # Update function details
+        self.advanced_function_details.setPlainText("Select an advanced function to view details and parameters.")
+        self.execute_advanced_btn.setEnabled(False)
+
+    def show_advanced_function_details(self):
+        """Show details of selected advanced function"""
+        current_item = self.advanced_functions_list.currentItem()
+        if not current_item:
+            self.advanced_function_details.setPlainText("Select an advanced function to view details and parameters.")
+            self.execute_advanced_btn.setEnabled(False)
+            return
+
+        func = current_item.data(Qt.ItemDataRole.UserRole)
+        if not func:
+            self.advanced_function_details.setPlainText("Invalid function selected.")
+            self.execute_advanced_btn.setEnabled(False)
+            return
+
+        # Build details text
+        details = f"Function: {func.name}\n"
+        details += f"Category: {func.category}\n"
+        details += f"Complexity: {func.complexity}\n"
+        details += f"Estimated Time: {func.estimated_time}\n\n"
+        details += f"Description:\n{func.description}\n\n"
+
+        # Show mock result preview
+        details += "Expected Results:\n"
+        for key, value in func.mock_result.items():
+            if key != "status":
+                details += f"• {key.replace('_', ' ').title()}: {value}\n"
+
+        self.advanced_function_details.setPlainText(details)
+        self.execute_advanced_btn.setEnabled(True)
+
+    def execute_advanced_function(self):
+        """Execute the selected advanced function"""
+        current_item = self.advanced_functions_list.currentItem()
+        if not current_item:
+            return
+
+        func = current_item.data(Qt.ItemDataRole.UserRole)
+        if not func:
+            return
+
+        # Execute function
+        self.execute_advanced_btn.setEnabled(False)
+        self.status_label.setText(f"🚀 Executing {func.name}...")
+
+        # Simulate execution with mock results
+        QTimer.singleShot(2000, lambda: self.show_advanced_execution_result(func))
+
+    def show_advanced_execution_result(self, func):
+        """Show mock execution result for advanced function"""
+        # Get mock execution result
+        result = simulate_function_execution(func.name)
+
+        # Generate result text
+        result_text = f"Advanced Function Execution Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        result_text += f"Function: {func.name}\n"
+        result_text += f"Category: {func.category}\n"
+        result_text += f"Complexity: {func.complexity}\n"
+        result_text += f"Execution Time: {result.get('execution_time', 'N/A')}\n\n"
+
+        if result["status"] == "SUCCESS":
+            result_text += "✅ EXECUTION SUCCESSFUL\n\n"
+        else:
+            result_text += "❌ EXECUTION FAILED\n\n"
+            result_text += f"Error: {result.get('error', 'Unknown error')}\n\n"
+
+        # Show detailed results
+        result_text += "Results:\n"
+        for key, value in result.items():
+            if key not in ["status", "timestamp", "execution_time", "error"]:
+                formatted_key = key.replace('_', ' ').title()
+                result_text += f"• {formatted_key}: {value}\n"
+
+        result_text += "\n⚡ Advanced function completed"
+
+        self.advanced_results_text.setPlainText(result_text)
+        self.status_label.setText(f"✅ {func.name} completed successfully")
+        self.execute_advanced_btn.setEnabled(True)
 
 def main():
     """Main application entry point"""
-    # Configure logging
     logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('autodiag.log', mode='w', encoding='utf-8')
-    ]
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
     app = QApplication(sys.argv)
-
-    app.setApplicationName("AutoDiag Pro Futuristic")
+    app.setApplicationName("AutoDiag Pro")
     app.setApplicationVersion("3.1.2")
-    app.setOrganizationName("SecureAutoClinic")
-
-    # Set the app instance for the style manager
-    style_manager.set_app(app)
 
     try:
-        window = AutoDiagPro()
-        window.show()  # Explicitly show the window
-        sys.exit(app.exec())
+        # Show login dialog first
+        login_dialog = LoginDialog()
+        if login_dialog.exec() == QDialog.DialogCode.Accepted:
+            # Login successful, show main window
+            window = AutoDiagPro()
+            window.show()
+            sys.exit(app.exec())
+        else:
+            # Login cancelled or failed
+            logger.info("Login cancelled or failed, exiting application")
+            sys.exit(0)
     except Exception as e:
-        logger.critical(f"Application crashed: {e}")
-        QMessageBox.critical(None, "Fatal Error", f"Application crashed: {e}")
+        logger.critical(f"Application failed: {e}")
+        QMessageBox.critical(None, "Fatal Error", f"Application failed to start: {e}")
         sys.exit(1)
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = AutoDiagPro()
-    window.show()
-    sys.exit(app.exec())
+    main()
