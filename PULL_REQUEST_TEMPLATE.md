@@ -1,4 +1,4 @@
-# AutoDiag Suite Pull Request
+# DiagAutoClinicOS Pull Request
 
 ## 📋 Pull Request Checklist
 
@@ -247,7 +247,7 @@
 
 ## 🎉 Ready for Review!
 
-**Thank you for contributing to AutoDiag Suite!** 🚗💻
+**Thank you for contributing to DiagAutoClinicOS!** 🚗💻
 
 *Please ensure all security checks pass before merging.*
 

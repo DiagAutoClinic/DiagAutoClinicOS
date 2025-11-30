@@ -236,12 +236,14 @@ DiagAutoClinicOS is built to bring  open-source transparency, modularity, and in
 
 ---
 
-## 🎯 Latest Release: v3.1.0 - VW Polo/Golf Live Testing
+## 🎯 Latest Release: v3.1.0 - GUI Complete, Live Testing Active
 
 ### 🚗 South African VW Market Focus
 This release specifically targets Volkswagen's dominance in South Africa, with enhanced support for Polo and Golf models that represent the majority of the local automotive landscape.
 
 ### ✨ What's New
+- **Completed Futuristic GUI** - Dynamic glassmorphic PyQt6 interface fully implemented
+- **Live Testing Phase** - Active real-world testing with J2534 hardware and VW vehicles
 - **Enhanced VW Diagnostics** - Real J2534 support for Polo/Golf live testing
 - **Advanced VIN Recognition** - Model-specific identification (Polo 6R, Golf VII, etc.)
 - **SA Testing Guide** - Comprehensive procedures for South African conditions

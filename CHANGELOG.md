@@ -5,7 +5,7 @@ All notable changes to DiagAutoClinicOS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.1.0] - 2025-11-27
 
 ### Added
 - **VW Polo & Golf Live Testing Support**
@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - VIN decoder year calculation edge cases
 - J2534 device connection stability improvements
+
+## [Unreleased]
 
 ## [3.0.0] - 2025-01-15
 

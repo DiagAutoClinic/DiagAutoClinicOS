@@ -1,7 +1,7 @@
 # **COMMUNITY_DISCUSSION.md**
 
 
-# 🗣️ AutoDiag Community Discussion
+# 🗣️ DiagAutoClinicOS Community Discussion
 
 # 🤝 Welcome to Our Community!
 
@@ -89,8 +89,8 @@ graph TD
    - Step 3
 
 ## Technical Details
-- AutoDiag Version: [e.g., 2.0.1]
-- Python Version: [e.g., 3.9]
+- DiagAutoClinicOS Version: [e.g., 3.1.0]
+- Python Version: [e.g., 3.10]
 - Operating System: [e.g., Ubuntu 22.04]
 - Logs: [Attach relevant logs]
 
@@ -230,7 +230,7 @@ Q4 AutoDiag Summit 2024 Community & Roadmap
 
 ## General
 
-Q: Can I use AutoDiag for commercial purposes?
+Q: Can I use DiagAutoClinicOS for commercial purposes?
 A:Yes, with proper licensing. Contact us for commercial use.
 
 Q: Is there a mobile version?
@@ -239,7 +239,7 @@ A:Not currently, but it's on our roadmap.
 ## Technical
 
 Q: Why Python instead of C++?
-A:Python provides rapid development, great libraries, and is accessible to more contributors.
+A: Python provides rapid development, great libraries, and is accessible to more contributors.
 
 Q: How do I add support for my specific vehicle?
 A:Check our brand database and protocol documentation. Submit a PR with your additions.
@@ -269,8 +269,8 @@ A:Yes, for diagnostic and repair purposes. Always comply with local laws and man
 
 · General Questions: GitHub Discussions
 · Technical Support: Discord #support channel
-· Security Issues: security@autodiag-suite.com
-· Partnerships: hello@autodiag-suite.com
+· Security Issues: dacos@diagautoclinic.co.za
+· Partnerships: dacos@diagautoclinic.co.za
 
 ---
 

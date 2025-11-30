@@ -43,14 +43,9 @@ LOG_ROTATION = "1 day"
 LOG_RETENTION = "30 days"
 
 # === UI SETTINGS ===
-DEFAULT_THEME = "neon_clinic"
+DEFAULT_THEME = "dacos_unified"
 AVAILABLE_THEMES = [
-    "neon_clinic",
-    "futuristic",
-    "security",
-    "dark",
-    "light",
-    "professional"
+    "dacos_unified"
 ]
 
 # === PERFORMANCE ===

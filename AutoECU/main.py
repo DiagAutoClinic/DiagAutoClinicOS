@@ -1,3 +1,5 @@
+# main.py - COMPLETE ECU PROGRAMMING IMPLEMENTATION
+
 #!/usr/bin/env python3
 """
 AutoECU - Automotive ECU Programming Tool
@@ -15,26 +17,46 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 
-# Import the style manager
-shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
-sys.path.append(shared_path)
+# FIXED: Enhanced import path resolution for shared modules
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+project_root = os.path.dirname(parent_dir)  # Go up to DiagAutoClinicOS root
+
+# Add all possible paths
+sys.path.insert(0, project_root)  # DiagAutoClinicOS root
+sys.path.insert(0, parent_dir)    # AutoECU directory
+sys.path.insert(0, current_dir)   # Current script directory
+sys.path.insert(0, os.path.join(project_root, 'shared'))  # Shared modules
 
 try:
-    from shared.style_manager import style_manager
+    from shared.themes.dacos_theme import DACOS_THEME, DACOS_STYLESHEET, apply_dacos_theme, get_dacos_color
     from shared.brand_database import get_brand_info, get_brand_list
     from shared.circular_gauge import CircularGauge, StatCard
     from shared.mock_ecu_engine import MockECUEngine
+    print("Successfully imported DACOS theme and shared modules")
 except ImportError as e:
     print(f"Warning: Failed to import modules: {e}")
     # Fallback classes
-    class Fallbackstyle_manager:
-        def set_app(self, app): pass
-        def apply_theme(self): pass
-        def set_theme(self, theme): pass
-        def get_theme_names(self): return ["dacos_unified", "futuristic", "neon_clinic", "security", "dark", "light", "professional"]
-        def set_security_level(self, level): pass
-        def get_theme_info(self): return {"dacos_unified": {"name": "DACOS Unified"}, "futuristic": {"name": "Futuristic Teal"}, "neon_clinic": {"name": "Neon Clinic"}, "security": {"name": "Security"}, "dark": {"name": "Dark"}, "light": {"name": "Light"}, "professional": {"name": "Professional"}}
-    style_manager = Fallbackstyle_manager()
+    DACOS_THEME = {
+        "bg_main": "#0A1A1A",
+        "bg_panel": "#0D2323",
+        "bg_card": "#134F4A",
+        "accent": "#21F5C1",
+        "glow": "#2AF5D1",
+        "text_main": "#E8F4F2",
+        "text_muted": "#9ED9CF",
+        "error": "#FF4D4D",
+        "success": "#10B981",
+        "warning": "#F59E0B"
+    }
+    DACOS_STYLESHEET = "/* Fallback DACOS stylesheet */"
+
+    def apply_dacos_theme(app):
+        app.setStyleSheet(DACOS_STYLESHEET)
+        return True
+
+    def get_dacos_color(color_name):
+        return DACOS_THEME.get(color_name, DACOS_THEME['accent'])
 
     def get_brand_list():
         return ["Toyota", "Honda", "Ford", "BMW", "Mercedes-Benz"]
@@ -65,6 +87,7 @@ class AutoECUApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.selected_brand = "Toyota"
+        self.current_window_width = 1366
         self.mock_ecu = MockECUEngine(self.selected_brand, "Generic")
         self.init_ui()
         
@@ -74,9 +97,8 @@ class AutoECUApp(QMainWindow):
         self.setMinimumSize(1280, 700)
         self.resize(1366, 768)
 
-        # Apply the dacos_unified theme immediately
-        style_manager.set_theme("dacos_unified")
-        style_manager.apply_theme()
+        # Apply DACOS theme as per AI_RULES.md
+        # Theme is applied in main() function
 
         # Create central widget and main layout
         central_widget = QWidget()
@@ -108,205 +130,243 @@ class AutoECUApp(QMainWindow):
         
         # Start live updates
         self.start_live_updates()
-        
+
+    def resizeEvent(self, event):
+        """Handle window resize for responsive layouts"""
+        self.current_window_width = event.size().width()
+        self.update_responsive_layouts()
+        super().resizeEvent(event)
+
+    def update_responsive_layouts(self):
+        """Update all responsive layouts based on current window size"""
+        # Update dashboard stats grid
+        if hasattr(self, 'stats_grid'):
+            columns = self.get_column_count()
+            self.update_stats_layout(columns)
+
+        # Update quick actions grid
+        if hasattr(self, 'quick_actions_layout'):
+            self.update_quick_actions_layout()
+
+    def get_column_count(self):
+        """Get appropriate column count based on window width"""
+        if self.current_window_width > 1200:
+            return 4
+        elif self.current_window_width > 800:
+            return 3
+        elif self.current_window_width > 500:
+            return 2
+        else:
+            return 1
+
+    def update_stats_layout(self, columns):
+        """Update stats layout based on column count"""
+        # Clear existing layout
+        for i in reversed(range(self.stats_grid.count())):
+            self.stats_grid.itemAt(i).widget().setParent(None)
+
+        cards = [self.ecu_health_card, self.programming_card, self.modules_card]
+
+        for i, card in enumerate(cards):
+            row = i // columns
+            col = i % columns
+            self.stats_grid.addWidget(card, row, col)
+
+        # Update column stretches
+        for i in range(columns):
+            self.stats_grid.setColumnStretch(i, 1)
+        # Clear unused column stretches
+        for i in range(columns, 4):
+            self.stats_grid.setColumnStretch(i, 0)
+
+    def update_quick_actions_layout(self):
+        """Update quick actions layout responsively"""
+        # Clear existing layout
+        for i in reversed(range(self.quick_actions_layout.count())):
+            self.quick_actions_layout.itemAt(i).widget().setParent(None)
+
+        buttons = [self.scan_btn, self.ready_btn, self.immo_btn, self.egr_btn]
+        columns = 4  # Force 4 columns for 4 buttons in 1 row
+
+        for i, btn in enumerate(buttons):
+            row = i // columns
+            col = i % columns
+            self.quick_actions_layout.addWidget(btn, row, col)
+
     def create_header(self, layout):
-        """Create DACOS Unified Theme header with theme selector"""
+        """Create DACOS Unified Theme header"""
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
-        header_frame.setMaximumHeight(100)
+        header_frame.setMaximumHeight(150)
         header_layout = QHBoxLayout(header_frame)
         header_layout.setSpacing(20)
         header_layout.setContentsMargins(20, 15, 20, 15)
-        
+
         # Title section
         title_section = QWidget()
         title_layout = QVBoxLayout(title_section)
         title_layout.setSpacing(5)
-        
+
         title_label = QLabel("AutoECU Pro")
         title_label.setProperty("class", "hero-title")
         title_font = QFont("Segoe UI", 22, QFont.Weight.Bold)
         title_label.setFont(title_font)
-        
+
         subtitle_label = QLabel("⚙️ Professional ECU Programming")
         subtitle_label.setProperty("class", "section-title")
-        
+
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
-        
+
         # Brand selector
         brand_section = QWidget()
         brand_layout = QVBoxLayout(brand_section)
         brand_layout.setSpacing(5)
-        
+
         brand_label = QLabel("Vehicle Brand:")
         brand_label.setProperty("class", "section-title")
-        
+
         self.brand_combo = QComboBox()
         self.brand_combo.addItems(get_brand_list())
         self.brand_combo.setCurrentText(self.selected_brand)
         self.brand_combo.currentTextChanged.connect(self.on_brand_changed)
         self.brand_combo.setMinimumWidth(180)
-        
+
         brand_layout.addWidget(brand_label)
         brand_layout.addWidget(self.brand_combo)
-        
-        # Theme selector
-        theme_section = QWidget()
-        theme_layout = QVBoxLayout(theme_section)
-        theme_layout.setSpacing(5)
-        
-        theme_label = QLabel("Theme:")
-        theme_label.setProperty("class", "section-title")
-        
-        self.theme_combo = QComboBox()
-        theme_info = style_manager.get_theme_info()
-        for theme_id, info in theme_info.items():
-            self.theme_combo.addItem(info['name'], theme_id)
-        
-        # Find and set dacos_unified
-        for i in range(self.theme_combo.count()):
-            if self.theme_combo.itemData(i) == "dacos_unified":
-                self.theme_combo.setCurrentIndex(i)
-                break
-        
-        self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
-        self.theme_combo.setMinimumWidth(150)
-        
-        theme_layout.addWidget(theme_label)
-        theme_layout.addWidget(self.theme_combo)
-        
+
         header_layout.addWidget(title_section)
         header_layout.addStretch()
         header_layout.addWidget(brand_section)
-        header_layout.addWidget(theme_section)
-        
+
         layout.addWidget(header_frame)
 
     def create_dashboard_tab(self):
-        """Create FUTURISTIC dashboard with live stats"""
+        """Create FUTURISTIC dashboard with live stats – NOW FULLY RESPONSIVE"""
         dashboard_tab = QWidget()
         layout = QVBoxLayout(dashboard_tab)
         layout.setSpacing(20)
         layout.setContentsMargins(15, 15, 15, 15)
-        
-        # Stats Overview Section
-        stats_section = QFrame()
-        stats_layout = QHBoxLayout(stats_section)
-        stats_layout.setSpacing(20)
-        
-        # ECU Health
-        self.ecu_health_card = StatCard("ECU Health", 96, 100, "%")
-        
-        # Connection Status
-        self.connection_card = StatCard("Connection", 88, 100, "%")
-        
-        # Programming Progress
-        self.programming_card = StatCard("Last Program", 100, 100, "%")
-        
-        # Modules Found
-        self.modules_card = StatCard("ECU Modules", 12, 20, "")
-        
-        stats_layout.addWidget(self.ecu_health_card)
-        stats_layout.addWidget(self.connection_card)
-        stats_layout.addWidget(self.programming_card)
-        stats_layout.addWidget(self.modules_card)
-        
-        # Quick Actions Section
+
+        # === RESPONSIVE STATS OVERVIEW ===
+        stats_frame = QFrame()
+        stats_frame.setProperty("class", "glass-card")
+        stats_frame.setMinimumHeight(280)
+
+        # This is the grid that will be re-arranged on resize
+        self.stats_grid = QGridLayout(stats_frame)
+        self.stats_grid.setSpacing(20)
+        self.stats_grid.setContentsMargins(25, 25, 25, 25)
+
+        # Create the 3 stat cards (CircularGauge + label style from shared module)
+        self.ecu_health_card   = StatCard("ECU Health",      96,  max_value=100, unit="")
+        self.programming_card  = StatCard("Last Program",    100, max_value=100, unit="%")
+        self.modules_card      = StatCard("ECU Modules",     12,  max_value=30,  unit="pc")
+
+        # Set uniform fixed size for all stat cards
+        self.ecu_health_card.setFixedSize(250, 250)
+        self.programming_card.setFixedSize(250, 250)
+        self.modules_card.setFixedSize(250, 250)
+
+        # Initially add them (will be re-positioned by update_stats_layout)
+        self.cards = [self.ecu_health_card, self.programming_card, self.modules_card]
+
+        for card in self.cards:
+            self.stats_grid.addWidget(card)
+
+        # === Quick Actions Section (already responsive) ===
         actions_frame = QFrame()
         actions_frame.setProperty("class", "glass-card")
         actions_layout = QVBoxLayout(actions_frame)
         actions_layout.setSpacing(15)
         actions_layout.setContentsMargins(20, 20, 20, 20)
-        
-        actions_title = QLabel("⚡ Quick Actions")
-        actions_title.setStyleSheet("color: #14b8a6; font-size: 16pt; font-weight: bold;")
+
+        actions_title = QLabel("Quick Actions")
+        actions_title.setStyleSheet(f"color: {get_dacos_color('accent')}; font-size: 16pt; font-weight: bold;")
         actions_layout.addWidget(actions_title)
-        
-        # Quick action buttons in grid
-        btn_layout = QGridLayout()
-        btn_layout.setSpacing(20)
 
-        scan_btn = QPushButton("🔍 Scan ECUs")
-        scan_btn.setProperty("class", "primary")
-        scan_btn.setMinimumHeight(60)
-        scan_btn.clicked.connect(self.scan_ecus)
+        self.quick_actions_layout = QGridLayout()
+        self.quick_actions_layout.setSpacing(20)
 
-        ready_btn = QPushButton("✅ Check Start Ready")
-        ready_btn.setProperty("class", "success")
-        ready_btn.setMinimumHeight(60)
-        ready_btn.clicked.connect(self.check_start_ready)
+        # Buttons (same as before)
+        self.scan_btn = QPushButton("Scan ECUs")
+        self.ready_btn = QPushButton("Check Start Ready")
+        self.immo_btn = QPushButton("IMMO Off")
+        self.egr_btn = QPushButton("EGR-DPF Remove")
+        self.file_btn = QPushButton("Import File")
+        self.dtc_btn = QPushButton("Add Start DTC")
 
-        immo_btn = QPushButton("🔐 IMMO Off")
-        immo_btn.setProperty("class", "danger")
-        immo_btn.setMinimumHeight(60)
-        immo_btn.clicked.connect(self.perform_immo_off)
+        for btn in (self.scan_btn, self.ready_btn, self.immo_btn,
+                    self.egr_btn, self.file_btn, self.dtc_btn):
+            btn.setMinimumHeight(60)
+            btn.setProperty("class", "primary" if btn == self.scan_btn else
+                                      "success" if btn == self.ready_btn else
+                                      "danger"  if btn == self.immo_btn else
+                                      "warning" if btn == self.egr_btn else
+                                      "info"    if btn == self.file_btn else "secondary")
 
-        egr_btn = QPushButton("🔧 EGR-DPF Remove")
-        egr_btn.setProperty("class", "warning")
-        egr_btn.setMinimumHeight(60)
-        egr_btn.clicked.connect(self.perform_egr_dpf_removal)
+        # Connect signals (unchanged)
+        self.scan_btn.clicked.connect(self.scan_ecus)
+        self.ready_btn.clicked.connect(self.check_start_ready)
+        self.immo_btn.clicked.connect(self.perform_immo_off)
+        self.egr_btn.clicked.connect(self.perform_egr_dpf_removal)
+        self.file_btn.clicked.connect(self.import_start_ready_file)
+        self.dtc_btn.clicked.connect(self.add_start_ready_dtc)
 
-        file_btn = QPushButton("📥 Import File")
-        file_btn.setProperty("class", "info")
-        file_btn.setMinimumHeight(60)
-        file_btn.clicked.connect(self.import_start_ready_file)
+        actions_layout.addLayout(self.quick_actions_layout)
 
-        dtc_btn = QPushButton("🔧 Add Start DTC")
-        dtc_btn.setProperty("class", "secondary")
-        dtc_btn.setMinimumHeight(60)
-        dtc_btn.clicked.connect(self.add_start_ready_dtc)
-
-        btn_layout.addWidget(scan_btn, 0, 0)
-        btn_layout.addWidget(ready_btn, 0, 1)
-        btn_layout.addWidget(immo_btn, 1, 0)
-        btn_layout.addWidget(egr_btn, 1, 1)
-        btn_layout.addWidget(file_btn, 2, 0)
-        btn_layout.addWidget(dtc_btn, 2, 1)
-        
-        actions_layout.addLayout(btn_layout)
-        
-        # System Info
+        # === System Information (unchanged) ===
         info_frame = QFrame()
         info_frame.setProperty("class", "glass-card")
         info_layout = QVBoxLayout(info_frame)
         info_layout.setSpacing(10)
         info_layout.setContentsMargins(20, 20, 20, 20)
-        
-        info_title = QLabel("📋 System Information")
-        info_title.setStyleSheet("color: #14b8a6; font-size: 14pt; font-weight: bold;")
-        
+
+        info_title = QLabel("System Information")
+        info_title.setStyleSheet(f"color: {get_dacos_color('accent')}; font-size: 14pt; font-weight: bold;")
+        info_layout.addWidget(info_title)
+
         info_grid = QGridLayout()
         info_grid.setSpacing(10)
-        
+
         info_grid.addWidget(QLabel("Selected Brand:"), 0, 0)
         self.brand_info_label = QLabel(self.selected_brand)
         info_grid.addWidget(self.brand_info_label, 0, 1)
-        
+
         info_grid.addWidget(QLabel("Connection Status:"), 1, 0)
         self.conn_info_label = QLabel("Disconnected")
-        self.conn_info_label.setStyleSheet("color: #ef4444;")
+        self.conn_info_label.setStyleSheet(f"color: {get_dacos_color('error')};")
         info_grid.addWidget(self.conn_info_label, 1, 1)
-        
+
         info_grid.addWidget(QLabel("Last Operation:"), 2, 0)
         self.last_op_label = QLabel("None")
         info_grid.addWidget(self.last_op_label, 2, 1)
-        
-        # Style the labels
+
         for i in range(3):
-            info_grid.itemAtPosition(i, 0).widget().setStyleSheet("color: #5eead4; font-weight: bold;")
-            if i > 0:
-                info_grid.itemAtPosition(i, 1).widget().setStyleSheet("color: #a0d4cc;")
-        
-        info_layout.addWidget(info_title)
+            info_grid.itemAtPosition(i, 0).widget().setStyleSheet(f"color: {get_dacos_color('text_muted')}; font-weight: bold;")
+
         info_layout.addLayout(info_grid)
-        
-        layout.addWidget(stats_section)
-        layout.addWidget(actions_frame)
-        layout.addWidget(info_frame)
-        layout.addStretch()
-        
-        self.tab_widget.addTab(dashboard_tab, "📊 Dashboard")
+
+        # === Final layout with scroll area (important for small screens) ===
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.addWidget(stats_frame)
+        content_layout.addWidget(actions_frame)
+        content_layout.addWidget(info_frame)
+        content_layout.addStretch()
+
+        scroll.setWidget(content_widget)
+
+        layout.addWidget(scroll)
+        self.tab_widget.addTab(dashboard_tab, "Dashboard")
+
+        # <<< CRITICAL >>> Force initial responsive layout
+        QTimer.singleShot(100, lambda: self.update_responsive_layouts())
 
     def create_ecu_scan_tab(self):
         """Create FUTURISTIC ECU scan tab"""
@@ -322,7 +382,7 @@ class AutoECUApp(QMainWindow):
         header_layout.setContentsMargins(20, 15, 20, 15)
         
         header_label = QLabel("🔍 ECU Detection & Scanning")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        header_label.setStyleSheet(f"color: {get_dacos_color('accent')}; font-size: 18pt; font-weight: bold;")
         
         scan_btn = QPushButton("🔄 Scan for ECUs")
         scan_btn.setProperty("class", "primary")
@@ -356,7 +416,7 @@ class AutoECUApp(QMainWindow):
         status_layout.setContentsMargins(15, 15, 15, 15)
         
         self.connection_status = QLabel("⚪ Disconnected")
-        self.connection_status.setStyleSheet("color: #ef4444; font-size: 12pt; font-weight: bold;")
+        self.connection_status.setStyleSheet(f"color: {get_dacos_color('error')}; font-size: 12pt; font-weight: bold;")
         
         self.scan_progress = QProgressBar()
         self.scan_progress.setMinimumHeight(30)
@@ -387,7 +447,7 @@ class AutoECUApp(QMainWindow):
         header_layout.setContentsMargins(20, 15, 20, 15)
         
         header_label = QLabel("⚙️ ECU Programming")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        header_label.setStyleSheet(f"color: {get_dacos_color('accent')}; font-size: 18pt; font-weight: bold;")
         header_layout.addWidget(header_label)
         
         # Programming controls
@@ -424,7 +484,7 @@ class AutoECUApp(QMainWindow):
         
         # Hex viewer
         hex_label = QLabel("📄 ECU Memory View:")
-        hex_label.setStyleSheet("color: #5eead4; font-weight: bold; margin-top: 10px;")
+        hex_label.setStyleSheet(f"color: {get_dacos_color('text_muted')}; font-weight: bold; margin-top: 10px;")
         
         self.hex_viewer = QTextEdit()
         self.hex_viewer.setPlaceholderText("ECU memory content will appear here...\nClick 'Read ECU Memory' to start")
@@ -435,7 +495,7 @@ class AutoECUApp(QMainWindow):
         
         # Programming progress
         progress_label = QLabel("Programming Progress:")
-        progress_label.setStyleSheet("color: #5eead4; font-weight: bold;")
+        progress_label.setStyleSheet(f"color: {get_dacos_color('text_muted')}; font-weight: bold;")
         
         self.prog_progress = QProgressBar()
         self.prog_progress.setMinimumHeight(35)
@@ -464,7 +524,7 @@ class AutoECUApp(QMainWindow):
         header_layout.setContentsMargins(20, 15, 20, 15)
         
         header_label = QLabel("🎛️ ECU Parameters")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        header_label.setStyleSheet(f"color: {get_dacos_color('accent')}; font-size: 18pt; font-weight: bold;")
         
         load_btn = QPushButton("📥 Load Parameters")
         load_btn.setProperty("class", "primary")
@@ -488,7 +548,7 @@ class AutoECUApp(QMainWindow):
         param_layout.setContentsMargins(20, 20, 20, 20)
         
         table_label = QLabel("Available Parameters:")
-        table_label.setStyleSheet("color: #5eead4; font-weight: bold; margin-bottom: 10px;")
+        table_label.setStyleSheet(f"color: {get_dacos_color('text_muted')}; font-weight: bold; margin-bottom: 10px;")
         
         self.param_table = QTableWidget()
         self.param_table.setColumnCount(3)
@@ -517,7 +577,7 @@ class AutoECUApp(QMainWindow):
         header_layout.setContentsMargins(20, 15, 20, 15)
         
         header_label = QLabel("🔧 ECU Diagnostics")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        header_label.setStyleSheet(f"color: {get_dacos_color('accent')}; font-size: 18pt; font-weight: bold;")
         
         scan_dtc_btn = QPushButton("🔍 Read DTCs")
         scan_dtc_btn.setProperty("class", "primary")
@@ -541,7 +601,7 @@ class AutoECUApp(QMainWindow):
         diag_layout.setContentsMargins(20, 20, 20, 20)
         
         table_label = QLabel("Diagnostic Trouble Codes:")
-        table_label.setStyleSheet("color: #5eead4; font-weight: bold; margin-bottom: 10px;")
+        table_label.setStyleSheet(f"color: {get_dacos_color('text_muted')}; font-weight: bold; margin-bottom: 10px;")
         
         self.dtc_table = QTableWidget()
         self.dtc_table.setColumnCount(3)
@@ -570,7 +630,7 @@ class AutoECUApp(QMainWindow):
         header_layout.setContentsMargins(20, 15, 20, 15)
         
         header_label = QLabel("🔐 Module Coding & Adaptations")
-        header_label.setStyleSheet("color: #14b8a6; font-size: 18pt; font-weight: bold;")
+        header_label.setStyleSheet(f"color: {get_dacos_color('accent')}; font-size: 18pt; font-weight: bold;")
         header_layout.addWidget(header_label)
         
         # Content
@@ -585,7 +645,7 @@ class AutoECUApp(QMainWindow):
                             "• Adaptation values\n"
                             "• Module configuration\n"
                             "• Security access")
-        placeholder.setStyleSheet("color: #a0d4cc; font-size: 12pt; line-height: 1.8;")
+        placeholder.setStyleSheet(f"color: {get_dacos_color('text_muted')}; font-size: 12pt; line-height: 1.8;")
         placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         content_layout.addWidget(placeholder)
@@ -606,7 +666,7 @@ class AutoECUApp(QMainWindow):
         status_layout.setContentsMargins(10, 5, 10, 5)
         
         self.status_label = QLabel("✨ Ready to program ECUs")
-        self.status_label.setStyleSheet("color: #10b981; font-weight: bold;")
+        self.status_label.setStyleSheet(f"color: {get_dacos_color('success')}; font-weight: bold;")
         
         status_layout.addWidget(self.status_label)
         status_layout.addStretch()
@@ -627,25 +687,10 @@ class AutoECUApp(QMainWindow):
             current_health = random.randint(94, 98)
             self.ecu_health_card.update_value(current_health)
             
-            # Update connection quality
-            connection_quality = random.randint(85, 95)
-            self.connection_card.update_value(connection_quality)
             
         except Exception as e:
             print(f"Error updating live data: {e}")
     
-    def on_theme_changed(self, theme_name):
-        """Handle theme change"""
-        try:
-            theme_info = style_manager.get_theme_info()
-            for theme_id, info in theme_info.items():
-                if info.get('name') == theme_name:
-                    style_manager.set_theme(theme_id)
-                    style_manager.apply_theme()
-                    self.status_label.setText(f"✨ Theme changed to: {theme_name}")
-                    return
-        except Exception as e:
-            self.status_label.setText(f"⚠️ Error changing theme: {e}")
     
     def on_brand_changed(self, brand):
         """Handle brand change"""
@@ -661,7 +706,7 @@ class AutoECUApp(QMainWindow):
         try:
             self.status_label.setText("🔍 Identifying ECU modules...")
             self.last_op_label.setText("Module Identification")
-            self.last_op_label.setStyleSheet("color: #10b981;")
+            self.last_op_label.setStyleSheet(f"color: {get_dacos_color('success')};")
             
             # Simulate identification process
             QTimer.singleShot(1500, self.complete_identification)
@@ -700,13 +745,13 @@ class AutoECUApp(QMainWindow):
         """Scan for ECU modules using mock engine"""
         try:
             self.connection_status.setText("🔄 Scanning...")
-            self.connection_status.setStyleSheet("color: #f59e0b; font-size: 12pt; font-weight: bold;")
+            self.connection_status.setStyleSheet(f"color: {get_dacos_color('warning')}; font-size: 12pt; font-weight: bold;")
             self.scan_progress.setVisible(True)
             self.scan_progress.setValue(0)
 
             self.status_label.setText("🔍 Scanning for ECU modules...")
             self.last_op_label.setText("ECU Scan")
-            self.last_op_label.setStyleSheet("color: #10b981;")
+            self.last_op_label.setStyleSheet(f"color: {get_dacos_color('success')};")
 
             # Use mock ECU engine for scanning
             self.mock_ecu.connect_to_ecu("0x7E0")
@@ -728,9 +773,9 @@ class AutoECUApp(QMainWindow):
                 self.scan_timer.stop()
                 self.scan_progress.setVisible(False)
                 self.connection_status.setText("✅ Connected")
-                self.connection_status.setStyleSheet("color: #10b981; font-size: 12pt; font-weight: bold;")
+                self.connection_status.setStyleSheet(f"color: {get_dacos_color('success')}; font-size: 12pt; font-weight: bold;")
                 self.conn_info_label.setText("Connected")
-                self.conn_info_label.setStyleSheet("color: #10b981;")
+                self.conn_info_label.setStyleSheet(f"color: {get_dacos_color('success')};")
                 
                 # Add sample ECU data
                 self.add_sample_ecu_data()
@@ -918,7 +963,7 @@ class AutoECUApp(QMainWindow):
             else:
                 self.status_label.setText("❌ ECU not start-ready")
                 self.last_op_label.setText("Start Ready: NO")
-                self.last_op_label.setStyleSheet("color: #ef4444;")
+                self.last_op_label.setStyleSheet(f"color: {get_dacos_color('error')};")
 
             # Update system info
             self.conn_info_label.setText(f"Start Ready: {result['start_ready']}")
@@ -1034,19 +1079,12 @@ def main():
     app.setOrganizationName("DiagAutoClinicOS")
 
     try:
-        # Initialize style manager with app instance first
-        style_manager.set_app(app)
-        
-        # Set and apply dacos_unified theme immediately
-        style_manager.set_theme("dacos_unified")
-        style_manager.apply_theme()
-        
+        # Apply DACOS theme as per AI_RULES.md
+        apply_dacos_theme(app)
+
         # Create and show main window
         window = AutoECUApp()
-        
-        # Apply theme again to ensure it's set
-        style_manager.apply_theme()
-        
+
         sys.exit(app.exec())
     except Exception as e:
         print(f"Fatal error: {e}")

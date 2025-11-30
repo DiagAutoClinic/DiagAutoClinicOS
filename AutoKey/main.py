@@ -1,7 +1,9 @@
+# main.py - RESPONSIVE KEY PROGRAMMING SUITE
+
 #!/usr/bin/env python3
 """
 AutoKey Pro - Automotive Key Programming Tool
-FUTURISTIC GLASSMORPHIC DESIGN with Global Theme Support
+RESPONSIVE GUI VERSION - FIXED IMPORTS & DACOS THEME COMPLIANCE
 """
 
 import sys
@@ -9,93 +11,135 @@ import os
 import re
 import logging
 import random
+
+# FIXED: Enhanced import path resolution
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+project_root = os.path.dirname(parent_dir)  # Go up to DiagAutoClinicOS root
+
+# Add all possible paths
+sys.path.insert(0, project_root)  # DiagAutoClinicOS root
+sys.path.insert(0, parent_dir)    # AutoKey directory  
+sys.path.insert(0, current_dir)   # Current script directory
+sys.path.insert(0, os.path.join(project_root, 'shared'))  # Shared modules
+
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
                             QWidget, QPushButton, QLabel, QComboBox, QTabWidget,
                             QGroupBox, QTableWidget, QTableWidgetItem, QProgressBar,
                             QTextEdit, QLineEdit, QHeaderView, QRadioButton,
-                            QInputDialog, QFrame, QGridLayout, QScrollArea)
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QFont
+                            QInputDialog, QFrame, QGridLayout, QScrollArea, QSizePolicy)
+from PyQt6.QtCore import Qt, QTimer, QSize
+from PyQt6.QtGui import QFont, QResizeEvent
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Import custom modules safely
-shared_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
-if shared_path not in sys.path:
-    sys.path.append(shared_path)
+# FIXED: Import DACOS theme ONLY from shared module as per AI_RULES.md
 try:
-    from shared.style_manager import style_manager  # Use global instance
-    from shared.brand_database import get_brand_info, get_brand_list
-    from shared.circular_gauge import CircularGauge, StatCard
+    from shared.themes.dacos_theme import DACOS_THEME, DACOS_STYLESHEET, apply_dacos_theme, get_dacos_color
+    logger.info("✅ Successfully imported DACOS theme from shared modules")
 except ImportError as e:
-    logger.error(f"Failed to import custom modules: {e}")
-    # Fallback classes
-    class style_manager:
-        def set_theme(self, theme): pass
-        def get_theme_names(self): return ["dacos_unified", "futuristic", "neon_clinic", "security", "dark", "light", "professional"]
-        def get_theme_info(self): return {"dacos_unified": {"name": "DACOS Unified"}, "futuristic": {"name": "Futuristic"}, "neon_clinic": {"name": "Neon Clinic"}, "security": {"name": "Security"}, "dark": {"name": "Dark"}, "light": {"name": "Light"}, "professional": {"name": "Professional"}}
-    style_manager = style_manager()
-    
+    logger.error(f"❌ Failed to import DACOS theme: {e}")
+    logger.error("This is a critical failure - DACOS theme is required")
+    sys.exit(1)
+
+# FIXED: Import other shared modules with fallbacks
+try:
+    from shared.brand_database import get_brand_info, get_brand_list
+    logger.info("✅ Successfully imported brand database")
+except ImportError as e:
+    logger.warning(f"⚠️ Failed to import brand database: {e}")
+    # Minimal fallback that won't crash
     def get_brand_list():
         return ["Toyota", "Honda", "Ford", "BMW", "Mercedes-Benz", "Audi", "Volkswagen"]
-    
     def get_brand_info(brand):
-        return {"name": brand}
-    
+        return {"name": brand, "region": "Unknown", "security_level": 3}
+
+try:
+    from shared.circular_gauge import CircularGauge, StatCard
+    logger.info("✅ Successfully imported circular gauges")
+except ImportError as e:
+    logger.warning(f"⚠️ Failed to import circular gauges: {e}")
+    # Minimal fallback gauges
     class CircularGauge(QWidget):
-        def __init__(self, *args, **kwargs):
-            super().__init__()
+        def __init__(self, value=0, max_value=100, label="", unit="%", parent=None):
+            super().__init__(parent)
             self.setMinimumSize(120, 120)
-        def set_value(self, val): pass
-    
+        def set_value(self, val): 
+            self.update()
     class StatCard(QFrame):
-        def __init__(self, title, value, *args, **kwargs):
+        def __init__(self, title, value, max_value=100, unit="%"):
             super().__init__()
             layout = QVBoxLayout(self)
             self.title_label = QLabel(title)
-            self.value_label = QLabel(str(value))
+            self.value_label = QLabel(f"{value}{unit}")
             layout.addWidget(self.title_label)
             layout.addWidget(self.value_label)
         def update_value(self, val): 
-            if hasattr(self, 'value_label'):
-                self.value_label.setText(str(val))
+            self.value_label.setText(f"{val}%")
+
+class ResponsiveGridLayout(QGridLayout):
+    """Responsive grid layout that adapts to screen size"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setSpacing(15)
+        self.setContentsMargins(10, 10, 10, 10)
+        
+    def update_columns(self, width):
+        """Update number of columns based on available width"""
+        if width > 1200:
+            columns = 4
+        elif width > 800:
+            columns = 3
+        elif width > 500:
+            columns = 2
+        else:
+            columns = 1
+        return columns
+
+class ResponsiveTabWidget(QTabWidget):
+    """Responsive tab widget that adjusts tab bar for mobile"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setDocumentMode(True)
+        self.setElideMode(Qt.TextElideMode.ElideRight)
+        
+    def resizeEvent(self, event: QResizeEvent):
+        """Handle resize events for responsive tab bar"""
+        if event.size().width() < 600:
+            self.setStyleSheet("QTabBar::tab { min-width: 80px; max-width: 120px; }")
+        else:
+            self.setStyleSheet("QTabBar::tab { min-width: 120px; }")
+        super().resizeEvent(event)
 
 class AutoKeyApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.selected_brand = "Toyota"
+        self.current_window_width = 1366
         self.init_ui()
         
     def init_ui(self):
-        """Initialize FUTURISTIC user interface"""
+        """Initialize RESPONSIVE user interface"""
         self.setWindowTitle("AutoKey Pro - Futuristic Key Programming")
-        self.setMinimumSize(1280, 700)
+        self.setMinimumSize(800, 600)  # More reasonable minimum size
         self.resize(1366, 768)
 
         # Create central widget and main layout
         central_widget = QWidget()
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setSpacing(15)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-
-        # Create scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-
-        # Content widget
-        content = QWidget()
-        layout = QVBoxLayout(content)
-        layout.setContentsMargins(20, 20, 20, 20)
+        self.setCentralWidget(central_widget)
         
+        self.main_layout = QVBoxLayout(central_widget)
+        self.main_layout.setSpacing(15)
+        self.main_layout.setContentsMargins(15, 15, 15, 15)
+
         # Create header
-        self.create_header(main_layout)
+        self.create_header(self.main_layout)
         
         # Create main tab widget
-        self.tab_widget = QTabWidget()
-        main_layout.addWidget(self.tab_widget)
+        self.tab_widget = ResponsiveTabWidget()
+        self.main_layout.addWidget(self.tab_widget)
         
         # Create tabs
         self.create_dashboard_tab()
@@ -113,14 +157,42 @@ class AutoKeyApp(QMainWindow):
         # Start live updates
         self.start_live_updates()
         
+    def resizeEvent(self, event):
+        """Handle window resize for responsive layouts"""
+        self.current_window_width = event.size().width()
+        self.update_responsive_layouts()
+        super().resizeEvent(event)
+        
+    def update_responsive_layouts(self):
+        """Update all responsive layouts based on current window size"""
+        # Update dashboard stats grid
+        if hasattr(self, 'stats_layout'):
+            columns = self.get_column_count()
+            self.update_stats_layout(columns)
+            
+        # Update quick actions grid
+        if hasattr(self, 'quick_actions_layout'):
+            self.update_quick_actions_layout()
+        
+    def get_column_count(self):
+        """Get appropriate column count based on window width"""
+        if self.current_window_width > 1200:
+            return 4
+        elif self.current_window_width > 800:
+            return 3
+        elif self.current_window_width > 500:
+            return 2
+        else:
+            return 1
+            
     def create_header(self, layout):
-        """Create FUTURISTIC header with theme selector"""
+        """Create RESPONSIVE header with theme selector"""
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
-        header_frame.setMaximumHeight(100)
+        header_frame.setMaximumHeight(150)
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setSpacing(20)
-        header_layout.setContentsMargins(20, 15, 20, 15)
+        header_layout.setSpacing(15)
+        header_layout.setContentsMargins(15, 10, 15, 10)
         
         # Title section
         title_section = QWidget()
@@ -129,12 +201,19 @@ class AutoKeyApp(QMainWindow):
         
         title_label = QLabel("AutoKey Pro")
         title_label.setProperty("class", "hero-title")
+        title_label.setWordWrap(True)
         
         subtitle_label = QLabel("🔑 Professional Key Programming")
         subtitle_label.setProperty("class", "subtitle")
+        subtitle_label.setWordWrap(True)
         
         title_layout.addWidget(title_label)
         title_layout.addWidget(subtitle_label)
+        
+        # Controls section - will wrap on small screens
+        controls_widget = QWidget()
+        self.controls_layout = QHBoxLayout(controls_widget)
+        self.controls_layout.setSpacing(10)
         
         # Brand selector
         brand_section = QWidget()
@@ -148,7 +227,8 @@ class AutoKeyApp(QMainWindow):
         self.brand_combo.addItems(get_brand_list())
         self.brand_combo.setCurrentText(self.selected_brand)
         self.brand_combo.currentTextChanged.connect(self.on_brand_changed)
-        self.brand_combo.setMinimumWidth(180)
+        self.brand_combo.setMinimumWidth(150)
+        self.brand_combo.setMaximumWidth(200)
         
         brand_layout.addWidget(brand_label)
         brand_layout.addWidget(self.brand_combo)
@@ -162,167 +242,222 @@ class AutoKeyApp(QMainWindow):
         theme_label.setProperty("class", "section-label")
         
         self.theme_combo = QComboBox()
-        theme_info = style_manager.get_theme_info()
-        for theme_id, info in theme_info.items():
-            self.theme_combo.addItem(info['name'], theme_id)
-        # Set default theme to dacos_unified
-        self.theme_combo.setCurrentIndex(self.theme_combo.findData('dacos_unified'))
-        self.theme_combo.currentTextChanged.connect(self.on_theme_changed)
-        self.theme_combo.setMinimumWidth(150)
+        self.theme_combo.addItem("DACOS Unified", "dacos_unified")
+        self.theme_combo.setCurrentIndex(0)
+        self.theme_combo.setEnabled(False)
+        self.theme_combo.setMinimumWidth(120)
+        self.theme_combo.setMaximumWidth(150)
         
         theme_layout.addWidget(theme_label)
         theme_layout.addWidget(self.theme_combo)
         
+        self.controls_layout.addWidget(brand_section)
+        self.controls_layout.addWidget(theme_section)
+        self.controls_layout.addStretch()
+        
         header_layout.addWidget(title_section)
-        header_layout.addStretch()
-        header_layout.addWidget(brand_section)
-        header_layout.addWidget(theme_section)
+        header_layout.addWidget(controls_widget)
         
         layout.addWidget(header_frame)
 
     def create_dashboard_tab(self):
-        """Create FUTURISTIC dashboard with key programming stats"""
+        """Create RESPONSIVE dashboard with key programming stats"""
         dashboard_tab = QWidget()
         layout = QVBoxLayout(dashboard_tab)
-        layout.setSpacing(20)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(15)
+        layout.setContentsMargins(10, 10, 10, 10)
         
-        # Stats Overview Section
-        stats_section = QFrame()
-        stats_layout = QHBoxLayout(stats_section)
-        stats_layout.setSpacing(20)
+        # Create scroll area for mobile
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(15)
+        scroll_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Stats Overview Section - Responsive grid
+        stats_container = QWidget()
+        self.stats_layout = ResponsiveGridLayout(stats_container)
         
         # Key Programming Success
         self.success_card = StatCard("Success Rate", 98, 100, "%")
+        self.success_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         
         # Keys Programmed Today
         self.keys_today_card = StatCard("Keys Today", 12, 50, "")
+        self.keys_today_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         
         # System Status
         self.system_card = StatCard("System Status", 100, 100, "%")
+        self.system_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         
         # Active Vehicles
         self.vehicles_card = StatCard("Active Vehicles", 8, 20, "")
+        self.vehicles_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         
-        stats_layout.addWidget(self.success_card)
-        stats_layout.addWidget(self.keys_today_card)
-        stats_layout.addWidget(self.system_card)
-        stats_layout.addWidget(self.vehicles_card)
+        # Add cards to grid - layout will be updated dynamically
+        self.stats_layout.addWidget(self.success_card, 0, 0)
+        self.stats_layout.addWidget(self.keys_today_card, 0, 1)
+        self.stats_layout.addWidget(self.system_card, 1, 0)
+        self.stats_layout.addWidget(self.vehicles_card, 1, 1)
         
         # Quick Actions Section
         actions_frame = QFrame()
         actions_frame.setProperty("class", "glass-card")
         actions_layout = QVBoxLayout(actions_frame)
         actions_layout.setSpacing(15)
-        actions_layout.setContentsMargins(20, 20, 20, 20)
+        actions_layout.setContentsMargins(15, 15, 15, 15)
         
         actions_title = QLabel("⚡ Quick Actions")
         actions_title.setProperty("class", "section-title")
         
-        # Quick action buttons in grid
-        btn_layout = QGridLayout()
-        btn_layout.setSpacing(15)
+        # Responsive quick action buttons
+        self.quick_actions_layout = QGridLayout()
+        self.quick_actions_layout.setSpacing(10)
+        self.quick_actions_layout.setContentsMargins(5, 5, 5, 5)
         
-        program_btn = QPushButton("🔑 Program New Key")
-        program_btn.setProperty("class", "primary")
-        program_btn.setMinimumHeight(50)
-        program_btn.clicked.connect(self.program_key)
+        buttons = [
+            ("🔑 Program New Key", "primary", self.program_key),
+            ("📋 Clone Key", "success", self.clone_key),
+            ("🔄 Reset System", "danger", self.reset_system),
+            ("🔍 Diagnose Keys", "primary", self.diagnose_keys),
+        ]
         
-        clone_btn = QPushButton("📋 Clone Key")
-        clone_btn.setProperty("class", "success")
-        clone_btn.setMinimumHeight(50)
-        clone_btn.clicked.connect(self.clone_key)
-        
-        reset_btn = QPushButton("🔄 Reset System")
-        reset_btn.setProperty("class", "danger")
-        reset_btn.setMinimumHeight(50)
-        reset_btn.clicked.connect(self.reset_system)
-        
-        diagnose_btn = QPushButton("🔍 Diagnose Keys")
-        diagnose_btn.setProperty("class", "primary")
-        diagnose_btn.setMinimumHeight(50)
-        diagnose_btn.clicked.connect(self.diagnose_keys)
-        
-        btn_layout.addWidget(program_btn, 0, 0)
-        btn_layout.addWidget(clone_btn, 0, 1)
-        btn_layout.addWidget(reset_btn, 1, 0)
-        btn_layout.addWidget(diagnose_btn, 1, 1)
+        self.action_buttons = []
+        for i, (text, style, callback) in enumerate(buttons):
+            btn = QPushButton(text)
+            btn.setProperty("class", style)
+            btn.setMinimumHeight(45)
+            btn.clicked.connect(callback)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            self.action_buttons.append(btn)
+            
+        # Initial layout - will be updated dynamically
+        self.update_quick_actions_layout()
         
         actions_layout.addWidget(actions_title)
-        actions_layout.addLayout(btn_layout)
+        actions_layout.addLayout(self.quick_actions_layout)
         
-        # System Info
+        # System Info - Responsive
         info_frame = QFrame()
         info_frame.setProperty("class", "glass-card")
         info_layout = QVBoxLayout(info_frame)
         info_layout.setSpacing(10)
-        info_layout.setContentsMargins(20, 20, 20, 20)
+        info_layout.setContentsMargins(15, 15, 15, 15)
         
         info_title = QLabel("📋 System Information")
         info_title.setProperty("class", "section-title")
         
         info_grid = QGridLayout()
-        info_grid.setSpacing(10)
+        info_grid.setSpacing(8)
+        info_grid.setColumnStretch(1, 1)  # Make value column expandable
         
         info_grid.addWidget(QLabel("Selected Brand:"), 0, 0)
         self.brand_info_label = QLabel(self.selected_brand)
+        self.brand_info_label.setWordWrap(True)
         info_grid.addWidget(self.brand_info_label, 0, 1)
         
         info_grid.addWidget(QLabel("Interface Status:"), 1, 0)
         self.interface_info_label = QLabel("🔌 Connected")
         self.interface_info_label.setProperty("class", "status-connected")
+        self.interface_info_label.setWordWrap(True)
         info_grid.addWidget(self.interface_info_label, 1, 1)
         
         info_grid.addWidget(QLabel("Last Operation:"), 2, 0)
         self.last_op_label = QLabel("None")
+        self.last_op_label.setWordWrap(True)
         info_grid.addWidget(self.last_op_label, 2, 1)
         
         # Style the labels
         for i in range(3):
             label = info_grid.itemAtPosition(i, 0).widget()
             label.setProperty("class", "info-label")
+            label.setMinimumWidth(100)  # Ensure consistent label width
         
         info_layout.addWidget(info_title)
         info_layout.addLayout(info_grid)
         
-        layout.addWidget(stats_section)
-        layout.addWidget(actions_frame)
-        layout.addWidget(info_frame)
-        layout.addStretch()
+        scroll_layout.addWidget(stats_container)
+        scroll_layout.addWidget(actions_frame)
+        scroll_layout.addWidget(info_frame)
+        scroll_layout.addStretch()
+        
+        scroll_area.setWidget(scroll_content)
+        layout.addWidget(scroll_area)
         
         self.tab_widget.addTab(dashboard_tab, "📊 Dashboard")
         
+    def update_stats_layout(self, columns):
+        """Update stats layout based on column count"""
+        # Clear existing layout
+        for i in reversed(range(self.stats_layout.count())):
+            self.stats_layout.itemAt(i).widget().setParent(None)
+            
+        cards = [self.success_card, self.keys_today_card, self.system_card, self.vehicles_card]
+        
+        for i, card in enumerate(cards):
+            row = i // columns
+            col = i % columns
+            self.stats_layout.addWidget(card, row, col)
+            
+    def update_quick_actions_layout(self):
+        """Update quick actions layout to 1 row 4 buttons"""
+        # Clear existing layout
+        for i in reversed(range(self.quick_actions_layout.count())):
+            self.quick_actions_layout.itemAt(i).widget().setParent(None)
+
+        columns = 4
+
+        for i, btn in enumerate(self.action_buttons):
+            row = i // columns
+            col = i % columns
+            self.quick_actions_layout.addWidget(btn, row, col)
+
     def create_key_programming_tab(self):
-        """Create FUTURISTIC key programming tab"""
+        """Create RESPONSIVE key programming tab"""
         key_tab = QWidget()
         layout = QVBoxLayout(key_tab)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
+
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(10)
+        scroll_layout.setContentsMargins(5, 5, 5, 5)
 
         # Header
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
         header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 15, 20, 15)
+        header_layout.setContentsMargins(15, 10, 15, 10)
         
         header_label = QLabel("🔑 Key Programming")
         header_label.setProperty("class", "tab-title")
+        header_label.setWordWrap(True)
         header_layout.addWidget(header_label)
 
         # Vehicle information
         vehicle_frame = QFrame()
         vehicle_frame.setProperty("class", "glass-card")
         vehicle_layout = QVBoxLayout(vehicle_frame)
-        vehicle_layout.setContentsMargins(20, 20, 20, 20)
+        vehicle_layout.setContentsMargins(15, 15, 15, 15)
         
         vehicle_title = QLabel("🚗 Vehicle Information")
         vehicle_title.setProperty("class", "section-title")
         
         make_label = QLabel("Toyota Camry 2020")
         make_label.setProperty("class", "vehicle-make")
+        make_label.setWordWrap(True)
         
         model_label = QLabel("2.5L Hybrid - Smart Key System")
         model_label.setProperty("class", "vehicle-model")
+        model_label.setWordWrap(True)
         
         vehicle_layout.addWidget(vehicle_title)
         vehicle_layout.addWidget(make_label)
@@ -332,68 +467,78 @@ class AutoKeyApp(QMainWindow):
         key_frame = QFrame()
         key_frame.setProperty("class", "glass-card")
         key_layout = QVBoxLayout(key_frame)
-        key_layout.setSpacing(15)
-        key_layout.setContentsMargins(20, 20, 20, 20)
+        key_layout.setSpacing(10)
+        key_layout.setContentsMargins(15, 15, 15, 15)
         
-        # Security code input
-        security_layout = QHBoxLayout()
+        # Security code input - responsive
+        security_layout = QVBoxLayout() if self.current_window_width < 600 else QHBoxLayout()
         security_label = QLabel("🔒 Security Code:")
         security_label.setProperty("class", "input-label")
+        security_label.setMinimumWidth(120)
         
         self.security_input = QLineEdit()
         self.security_input.setPlaceholderText("Enter vehicle security code (4-8 alphanumeric characters)")
         self.security_input.setMaxLength(8)
         self.security_input.setMinimumHeight(40)
         
-        security_layout.addWidget(security_label)
-        security_layout.addWidget(self.security_input)
-        security_layout.addStretch()
+        if self.current_window_width < 600:
+            security_layout.addWidget(security_label)
+            security_layout.addWidget(self.security_input)
+        else:
+            security_layout.addWidget(security_label)
+            security_layout.addWidget(self.security_input)
+            security_layout.addStretch()
         
-        # Programming buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(15)
+        # Programming buttons - responsive grid
+        btn_layout = QGridLayout()
+        btn_layout.setSpacing(10)
         
-        program_btn = QPushButton("🔑 Program New Key")
-        program_btn.setProperty("class", "primary")
-        program_btn.setMinimumHeight(50)
-        program_btn.clicked.connect(self.program_key)
+        buttons = [
+            ("🔑 Program New Key", "primary", self.program_key),
+            ("📋 Clone Key", "success", self.clone_key),
+            ("🔄 Reset System", "danger", self.reset_system),
+        ]
         
-        clone_btn = QPushButton("📋 Clone Key")
-        clone_btn.setProperty("class", "success")
-        clone_btn.setMinimumHeight(50)
-        clone_btn.clicked.connect(self.clone_key)
+        columns = 2 if self.current_window_width < 800 else 3
+        for i, (text, style, callback) in enumerate(buttons):
+            btn = QPushButton(text)
+            btn.setProperty("class", style)
+            btn.setMinimumHeight(45)
+            btn.clicked.connect(callback)
+            row = i // columns
+            col = i % columns
+            btn_layout.addWidget(btn, row, col)
         
-        reset_btn = QPushButton("🔄 Reset System")
-        reset_btn.setProperty("class", "danger")
-        reset_btn.setMinimumHeight(50)
-        reset_btn.clicked.connect(self.reset_system)
-        
-        btn_layout.addWidget(program_btn)
-        btn_layout.addWidget(clone_btn)
-        btn_layout.addWidget(reset_btn)
-        btn_layout.addStretch()
-        
-        # Key status
+        # Key status - responsive
         status_frame = QFrame()
         status_frame.setProperty("class", "stat-card")
         status_frame.setMaximumHeight(80)
-        status_layout = QHBoxLayout(status_frame)
-        status_layout.setContentsMargins(20, 15, 20, 15)
+        status_layout = QVBoxLayout() if self.current_window_width < 500 else QHBoxLayout()
+        status_layout.setContentsMargins(15, 10, 15, 10)
         
         self.key_status = QLabel("🔴 No Key Detected")
         self.key_status.setProperty("class", "status-error")
+        self.key_status.setWordWrap(True)
         
         self.immobilizer_status = QLabel("🛡️ Immobilizer: Active")
         self.immobilizer_status.setProperty("class", "status-success")
+        self.immobilizer_status.setWordWrap(True)
         
-        status_layout.addWidget(QLabel("Key Status:"))
-        status_layout.addWidget(self.key_status)
-        status_layout.addStretch()
-        status_layout.addWidget(self.immobilizer_status)
+        if self.current_window_width < 500:
+            status_layout.addWidget(QLabel("Key Status:"))
+            status_layout.addWidget(self.key_status)
+            status_layout.addWidget(self.immobilizer_status)
+        else:
+            status_layout.addWidget(QLabel("Key Status:"))
+            status_layout.addWidget(self.key_status)
+            status_layout.addStretch()
+            status_layout.addWidget(self.immobilizer_status)
+        
+        status_frame.setLayout(status_layout)
         
         # Programming progress
         self.key_progress = QProgressBar()
-        self.key_progress.setMinimumHeight(25)
+        self.key_progress.setMinimumHeight(20)
         self.key_progress.setTextVisible(True)
         self.key_progress.setValue(0)
         self.key_progress.setVisible(False)
@@ -402,52 +547,78 @@ class AutoKeyApp(QMainWindow):
         key_layout.addLayout(btn_layout)
         key_layout.addWidget(self.key_progress)
         
-        layout.addWidget(header_frame)
-        layout.addWidget(vehicle_frame)
-        layout.addWidget(key_frame)
-        layout.addWidget(status_frame)
+        scroll_layout.addWidget(header_frame)
+        scroll_layout.addWidget(vehicle_frame)
+        scroll_layout.addWidget(key_frame)
+        scroll_layout.addWidget(status_frame)
+        scroll_layout.addStretch()
+        
+        scroll_area.setWidget(scroll_content)
+        layout.addWidget(scroll_area)
         
         self.tab_widget.addTab(key_tab, "🔑 Key Programming")
-        
+
     def create_transponder_tab(self):
-        """Create FUTURISTIC transponder management tab"""
+        """Create RESPONSIVE transponder management tab"""
         transponder_tab = QWidget()
         layout = QVBoxLayout(transponder_tab)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
         
-        # Header
+        # Header with responsive button
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
-        header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 15, 20, 15)
+        header_layout = QVBoxLayout() if self.current_window_width < 600 else QHBoxLayout()
+        header_frame.setLayout(header_layout)
+        header_layout.setContentsMargins(15, 10, 15, 10)
         
         header_label = QLabel("📡 Transponder Management")
         header_label.setProperty("class", "tab-title")
+        header_label.setWordWrap(True)
         
         scan_btn = QPushButton("🔍 Scan Transponders")
         scan_btn.setProperty("class", "primary")
-        scan_btn.setMinimumHeight(45)
+        scan_btn.setMinimumHeight(40)
         scan_btn.clicked.connect(self.scan_transponders)
         
-        header_layout.addWidget(header_label)
-        header_layout.addStretch()
-        header_layout.addWidget(scan_btn)
+        if self.current_window_width < 600:
+            header_layout.addWidget(header_label)
+            header_layout.addWidget(scan_btn)
+        else:
+            header_layout.addWidget(header_label)
+            header_layout.addStretch()
+            header_layout.addWidget(scan_btn)
         
-        # Transponder group
+        # Transponder table in scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setSpacing(10)
+        content_layout.setContentsMargins(5, 5, 5, 5)
+        
         transponder_frame = QFrame()
         transponder_frame.setProperty("class", "glass-card")
         transponder_layout = QVBoxLayout(transponder_frame)
-        transponder_layout.setContentsMargins(20, 20, 20, 20)
+        transponder_layout.setContentsMargins(15, 15, 15, 15)
         
         table_label = QLabel("Available Transponders:")
         table_label.setProperty("class", "section-title")
         
-        # Transponder table
+        # Responsive table
         self.transponder_table = QTableWidget()
         self.transponder_table.setColumnCount(4)
         self.transponder_table.setHorizontalHeaderLabels(["Key ID", "Type", "Status", "Vehicle"])
-        self.transponder_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        
+        # Make table responsive
+        header = self.transponder_table.horizontalHeader()
+        if self.current_window_width < 800:
+            header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        else:
+            header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+            
+        self.transponder_table.verticalHeader().setVisible(False)
         
         # Add sample data
         self.add_sample_transponder_data()
@@ -455,51 +626,75 @@ class AutoKeyApp(QMainWindow):
         transponder_layout.addWidget(table_label)
         transponder_layout.addWidget(self.transponder_table)
         
-        layout.addWidget(header_frame)
-        layout.addWidget(transponder_frame)
+        content_layout.addWidget(header_frame)
+        content_layout.addWidget(transponder_frame)
+        content_layout.addStretch()
+        
+        scroll_area.setWidget(content_widget)
+        layout.addWidget(scroll_area)
         
         self.tab_widget.addTab(transponder_tab, "📡 Transponders")
-        
+
     def create_vehicle_info_tab(self):
-        """Create FUTURISTIC vehicle information tab"""
+        """Create RESPONSIVE vehicle information tab"""
         vehicle_tab = QWidget()
         layout = QVBoxLayout(vehicle_tab)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
         
-        # Header
+        # Header with responsive layout
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
-        header_layout = QHBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 15, 20, 15)
+        header_layout = QVBoxLayout() if self.current_window_width < 600 else QHBoxLayout()
+        header_frame.setLayout(header_layout)
+        header_layout.setContentsMargins(15, 10, 15, 10)
         
         header_label = QLabel("🚗 Vehicle Information")
         header_label.setProperty("class", "tab-title")
+        header_label.setWordWrap(True)
         
         refresh_btn = QPushButton("🔄 Refresh Data")
         refresh_btn.setProperty("class", "primary")
-        refresh_btn.setMinimumHeight(45)
+        refresh_btn.setMinimumHeight(40)
         refresh_btn.clicked.connect(self.refresh_vehicle_data)
         
-        header_layout.addWidget(header_label)
-        header_layout.addStretch()
-        header_layout.addWidget(refresh_btn)
+        if self.current_window_width < 600:
+            header_layout.addWidget(header_label)
+            header_layout.addWidget(refresh_btn)
+        else:
+            header_layout.addWidget(header_label)
+            header_layout.addStretch()
+            header_layout.addWidget(refresh_btn)
+        
+        # Scrollable content
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setSpacing(10)
+        content_layout.setContentsMargins(5, 5, 5, 5)
         
         vehicle_frame = QFrame()
         vehicle_frame.setProperty("class", "glass-card")
         vehicle_layout = QVBoxLayout(vehicle_frame)
-        vehicle_layout.setContentsMargins(20, 20, 20, 20)
+        vehicle_layout.setContentsMargins(15, 15, 15, 15)
         
         table_label = QLabel("Vehicle Details:")
         table_label.setProperty("class", "section-title")
         
-        # Vehicle details table
+        # Responsive table
         details_table = QTableWidget()
         details_table.setColumnCount(2)
         details_table.setHorizontalHeaderLabels(["Property", "Value"])
-        details_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         
-        # Load vehicle data securely (mock for now)
+        # Adjust table based on screen size
+        if self.current_window_width < 600:
+            details_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        else:
+            details_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        
+        # Load vehicle data
         vehicle_data = [
             ["VIN", "REDACTED_VIN_123"],
             ["Make", "Toyota"],
@@ -517,38 +712,54 @@ class AutoKeyApp(QMainWindow):
             for col, value in enumerate(data):
                 item = QTableWidgetItem(value)
                 item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                if self.current_window_width < 600:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignLeft)
                 details_table.setItem(row, col, item)
         
         vehicle_layout.addWidget(table_label)
         vehicle_layout.addWidget(details_table)
         
-        layout.addWidget(header_frame)
-        layout.addWidget(vehicle_frame)
+        content_layout.addWidget(header_frame)
+        content_layout.addWidget(vehicle_frame)
+        content_layout.addStretch()
+        
+        scroll_area.setWidget(content_widget)
+        layout.addWidget(scroll_area)
         
         self.tab_widget.addTab(vehicle_tab, "🚗 Vehicle Info")
 
     def create_security_tab(self):
-        """Create FUTURISTIC security and diagnostics tab"""
+        """Create RESPONSIVE security and diagnostics tab"""
         security_tab = QWidget()
         layout = QVBoxLayout(security_tab)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
+        
+        # Scroll area for mobile
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setSpacing(10)
+        content_layout.setContentsMargins(5, 5, 5, 5)
         
         # Header
         header_frame = QFrame()
         header_frame.setProperty("class", "glass-card")
         header_layout = QVBoxLayout(header_frame)
-        header_layout.setContentsMargins(20, 15, 20, 15)
+        header_layout.setContentsMargins(15, 10, 15, 10)
         
         header_label = QLabel("🔐 Security & Diagnostics")
         header_label.setProperty("class", "tab-title")
+        header_label.setWordWrap(True)
         header_layout.addWidget(header_label)
         
         # Content
         content_frame = QFrame()
         content_frame.setProperty("class", "glass-card")
-        content_layout = QVBoxLayout(content_frame)
-        content_layout.setContentsMargins(20, 20, 20, 20)
+        content_layout_inner = QVBoxLayout(content_frame)
+        content_layout_inner.setContentsMargins(20, 20, 20, 20)
         
         placeholder = QLabel("🚧 Advanced security features under development\n\n"
                             "This tab will include:\n"
@@ -559,29 +770,40 @@ class AutoKeyApp(QMainWindow):
                             "• Backup and restore functions")
         placeholder.setProperty("class", "placeholder-text")
         placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        placeholder.setWordWrap(True)
         
-        content_layout.addWidget(placeholder)
+        content_layout_inner.addWidget(placeholder)
         
-        layout.addWidget(header_frame)
-        layout.addWidget(content_frame)
-        layout.addStretch()
+        content_layout.addWidget(header_frame)
+        content_layout.addWidget(content_frame)
+        content_layout.addStretch()
+        
+        scroll_area.setWidget(content_widget)
+        layout.addWidget(scroll_area)
         
         self.tab_widget.addTab(security_tab, "🔐 Security")
         
     def create_status_bar(self):
-        """Create FUTURISTIC status bar"""
+        """Create RESPONSIVE status bar"""
         status_frame = QFrame()
         status_frame.setProperty("class", "glass-card")
-        status_frame.setMaximumHeight(40)
+        status_frame.setMaximumHeight(50)
         
         status_layout = QHBoxLayout()
         status_layout.setContentsMargins(10, 5, 10, 5)
         
         self.status_label = QLabel("✨ Ready to program keys")
         self.status_label.setProperty("class", "status-ready")
+        self.status_label.setWordWrap(True)
+        self.status_label.setMinimumWidth(200)
         
         status_layout.addWidget(self.status_label)
         status_layout.addStretch()
+        
+        # Add responsive system info
+        system_info = QLabel(f"Screen: {self.current_window_width}px")
+        system_info.setProperty("class", "system-info")
+        status_layout.addWidget(system_info)
         
         status_frame.setLayout(status_layout)
         self.statusBar().addPermanentWidget(status_frame, 1)
@@ -603,16 +825,7 @@ class AutoKeyApp(QMainWindow):
             
         except Exception as e:
             logger.error(f"Error updating live data: {e}")
-    
-    def on_theme_changed(self, theme_name):
-        """Handle theme change using global style_manager"""
-        try:
-            style_manager.set_theme(theme_name)
-            self.status_label.setText(f"✨ Theme changed to: {theme_name}")
-        except Exception as e:
-            logger.error(f"Failed to change theme: {e}")
-            self.status_label.setText(f"⚠️ Error changing theme: {e}")
-    
+
     def on_brand_changed(self, brand):
         """Handle brand change"""
         self.selected_brand = brand
@@ -787,16 +1000,16 @@ class AutoKeyApp(QMainWindow):
 
 def main():
     app = QApplication(sys.argv)
-    
+
     app.setApplicationName("AutoKey Pro")
     app.setApplicationVersion("2.0.0")
     app.setOrganizationName("DiagAutoClinicOS")
-    
+
     try:
+        # FIXED: Apply DACOS theme properly as per AI_RULES.md
+        apply_dacos_theme(app)
+
         window = AutoKeyApp()
-        style_manager.set_app(app)
-        style_manager.set_theme('dacos_unified')
-        style_manager.apply_theme()
         window.show()
         sys.exit(app.exec())
     except Exception as e:
