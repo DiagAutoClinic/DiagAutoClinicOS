@@ -41,14 +41,14 @@ Developed by **Shaun Smit** and the **DiagAutoClinic (DACOS)** team, it integrat
 ---
 
 ## ✨ Key Features
-- ✅ **25+ brand diagnostic coverage** with **enhanced Ford, GM, and VW support**
+- ✅ **25+ brand diagnostic coverage** with **enhanced Ford and GM support**
 - 🧠 Dynamic glassmorphic UI built with **PyQt6**
-- 🧩 **Advanced VIN decoding** (recognizes Ford, GM, and VW models specifically)
+- 🧩 **Advanced VIN decoding** (recognizes Ford and GM models specifically)
 - 🔐 Secure **login and user role management**
-- ⚙️ **Calibration & reset manager** with Ford/GM/VW-specific ECU routines
+- ⚙️ **Calibration & reset manager** with Ford/GM-specific ECU routines
 - 🧱 **Modular design** — easily extend with your own tools
 - 🖥️ **Cross-platform:** Linux, Windows (Android support planned)
-- 🎯 **Real J2534 diagnostics** for live Ford, GM, and VW vehicle testing
+- 🎯 **Real J2534 diagnostics** for live Ford and GM vehicle testing
 - 📚 **Comprehensive documentation** for South African conditions
 
 ---
@@ -212,7 +212,7 @@ Kilo Code has been instrumental in transforming DiagAutoClinicOS from concept to
 | Contributor                     | Role                     | Description                             |
 | ------------------------------- | ------------------------ | --------------------------------------- |
 | **Shaun Smit**                  | Founder & Lead Developer | Architecture, Design, Implementation    |
-| **Kilo Code (xAI Grok)**        | Core AI Collaborator     | Ford/GM/VW Diagnostics, Testing, Documentation |
+| **Kilo Code (xAI Grok)**        | Core AI Collaborator     | Ford/GM Diagnostics, Testing, Documentation |
 | **DiagAutoClinic Team (DACOS)** | Development              | Testing, Calibration, and UI Design     |
 | **HostAfrica**                  | Hosting Partner          | Providing secure backend infrastructure |
 | **Community Testers**           | QA                       | Hardware integration and bug reporting  |
@@ -235,16 +235,16 @@ DiagAutoClinicOS is built to bring  open-source transparency, modularity, and in
 
 ---
 
-## 🎯 Latest Release: v3.1.0 - VW Polo/Golf Live Testing Release
+## 🎯 Latest Release: v3.1.0 - Ford Ranger/Figo Live Testing Release
 
-### 🚗 South African VW Market Focus
-This release specifically targets Volkswagen's dominance in South Africa, with enhanced support for Polo and Golf models that represent a significant portion of the local automotive landscape.
+### 🚗 South African Ford Market Focus
+This release specifically targets Ford's presence in South Africa, with enhanced support for Ranger and Figo models that represent popular vehicles in the local market.
 
 ### ✨ What's New
-- **VW Polo & Golf Live Testing Support** - Enhanced VIN decoder with specific Polo/Golf model recognition (Polo 6R, Polo Classic, Polo 9N, Polo Vivo; Golf IV-VIII)
+- **Ford Ranger & Figo Live Testing Support** - Enhanced VIN decoder with specific Ranger/Figo model recognition
 - **South Africa Live Testing Guide** - Complete testing procedures for SA environmental conditions, hardware setup for GoDiag GD101, safety protocols
-- **Enhanced VW Diagnostic Engine** - Improved J2534 PassThru integration, real-time connection validation, enhanced DTC parsing for VW group vehicles
-- **Comprehensive Test Fixtures** - Mock testing suite for Polo/Golf DTC scenarios
+- **Enhanced Ford Diagnostic Engine** - Improved J2534 PassThru integration, real-time connection validation, enhanced DTC parsing for Ford vehicles
+- **Comprehensive Test Fixtures** - Mock testing suite for Ranger/Figo DTC scenarios
 - **SA-Specific Troubleshooting** - Handling heat, dust, fuel quality issues
 
 ### 🏆 Recognition
@@ -289,11 +289,11 @@ For commercial licensing inquiries, contact: **dacos@diagautoclinic.co.za**
 
 ### ✅ What's New in v3.1.0
 
-- **VW Polo & Golf Live Testing Support** - Enhanced diagnostic suite for South Africa's VW market
-- **Enhanced VIN Decoder** - Model-specific recognition for Ford, GM, and VW models
+- **Ford and GM Live Testing Support** - Complete diagnostic suite for South Africa's most common vehicles
+- **Enhanced VIN Decoder** - Model-specific recognition for Ford and GM models
 - **J2534 Real Hardware Support** - Professional diagnostic capabilities
 - **South African Testing Guide** - Environment-specific procedures and safety protocols
-- **Comprehensive Documentation** - Ford/GM/VW diagnostics manuals and video tutorial frameworks
+- **Comprehensive Documentation** - Ford/GM diagnostics manuals and video tutorial frameworks
 - **AI Collaboration Recognition** - Kilo Code acknowledged as core development collaborator
 - **Sponsor Emphasis** - Without EshuTech, GoDiag, and ScanTool.net, this project wouldn't exist
 - Ready for GitHub rendering (centered, clean, dark/light theme safe)
