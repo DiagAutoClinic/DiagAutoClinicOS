@@ -15,7 +15,6 @@ docs/testing/
 ├── writing_tests.md            # Guidelines for writing new tests
 ├── mock_mode_guide.md          # Using mock mode for testing
 ├── ci_cd_setup.md              # CI/CD pipeline configuration
-├── SA_LIVE_TESTING_GUIDE.md    # South Africa specific testing
 └── testing/
     └── README.md               # Additional testing resources
 ```
@@ -90,7 +89,7 @@ Special considerations for South African automotive testing:
 - Local vehicle models (VW Polo/Golf dominance)
 - Regulatory compliance (POPIA, local standards)
 
-See [SA_LIVE_TESTING_GUIDE.md](SA_LIVE_TESTING_GUIDE.md) for comprehensive procedures.
+See general testing procedures for South African conditions.
 
 ## CI/CD Integration
 
@@ -196,7 +195,6 @@ pip install -r requirements-dev.txt
 - [Writing Tests Guide](writing_tests.md)
 - [Mock Mode Guide](mock_mode_guide.md)
 - [CI/CD Setup](ci_cd_setup.md)
-- [South African Testing](SA_LIVE_TESTING_GUIDE.md)
 
 ---
 

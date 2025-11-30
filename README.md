@@ -41,14 +41,14 @@ Developed by **Shaun Smit** and the **DiagAutoClinic (DACOS)** team, it integrat
 ---
 
 ## ✨ Key Features
-- ✅ **25+ brand diagnostic coverage** with **enhanced VW Polo/Golf support**
+- ✅ **25+ brand diagnostic coverage** with **enhanced Ford and GM support**
 - 🧠 Dynamic glassmorphic UI built with **PyQt6**
-- 🧩 **Advanced VIN decoding** (recognizes Polo 6R/Golf VII models specifically)
+- 🧩 **Advanced VIN decoding** (recognizes Ford and GM models specifically)
 - 🔐 Secure **login and user role management**
-- ⚙️ **Calibration & reset manager** with VW-specific ECU routines
+- ⚙️ **Calibration & reset manager** with Ford/GM-specific ECU routines
 - 🧱 **Modular design** — easily extend with your own tools
 - 🖥️ **Cross-platform:** Linux, Windows (Android support planned)
-- 🎯 **Real J2534 diagnostics** for live VW vehicle testing
+- 🎯 **Real J2534 diagnostics** for live Ford and GM vehicle testing
 - 📚 **Comprehensive documentation** for South African conditions
 
 ---
@@ -108,8 +108,7 @@ DiagAutoClinicOS/
 │
 ├── docs/                   # Documentation
 │   ├── testing/           # Testing guides and procedures
-│   ├── VIDEO_TUTORIALS_GUIDE.md
-│   └── VW_POLO_GOLF_DIAGNOSTICS.md
+│   └── VIDEO_TUTORIALS_GUIDE.md
 │
 ├── assets/                 # Images and resources
 ├── resources/              # Additional resources
@@ -195,8 +194,8 @@ python launcher.py
 
 Kilo Code has been instrumental in transforming DiagAutoClinicOS from concept to reality:
 
-- **VW Polo/Golf Live Testing Implementation** - Complete diagnostic enhancements for South Africa's most prevalent vehicles
-- **Advanced VIN Decoder** - Model-specific recognition for Polo 6R, Golf VII, and all VW generations
+- **Ford and GM Live Testing Implementation** - Complete diagnostic enhancements for South Africa's most prevalent vehicles
+- **Advanced VIN Decoder** - Model-specific recognition for Ford and GM models
 - **J2534 Integration** - Real hardware support for professional diagnostics
 - **Comprehensive Documentation** - South African testing guides, video tutorial frameworks, and technical documentation
 - **Code Quality & Testing** - Rigorous testing framework ensuring reliability
@@ -213,7 +212,7 @@ Kilo Code has been instrumental in transforming DiagAutoClinicOS from concept to
 | Contributor                     | Role                     | Description                             |
 | ------------------------------- | ------------------------ | --------------------------------------- |
 | **Shaun Smit**                  | Founder & Lead Developer | Architecture, Design, Implementation    |
-| **Kilo Code (xAI Grok)**        | Core AI Collaborator     | VW Diagnostics, Testing, Documentation |
+| **Kilo Code (xAI Grok)**        | Core AI Collaborator     | Ford/GM Diagnostics, Testing, Documentation |
 | **DiagAutoClinic Team (DACOS)** | Development              | Testing, Calibration, and UI Design     |
 | **HostAfrica**                  | Hosting Partner          | Providing secure backend infrastructure |
 | **Community Testers**           | QA                       | Hardware integration and bug reporting  |
@@ -238,16 +237,16 @@ DiagAutoClinicOS is built to bring  open-source transparency, modularity, and in
 
 ## 🎯 Latest Release: v3.1.0 - GUI Complete, Live Testing Active
 
-### 🚗 South African VW Market Focus
-This release specifically targets Volkswagen's dominance in South Africa, with enhanced support for Polo and Golf models that represent the majority of the local automotive landscape.
+### 🚗 South African Ford and GM Market Focus
+This release specifically targets Ford and GM's presence in South Africa, with enhanced support for popular models.
 
 ### ✨ What's New
 - **Completed Futuristic GUI** - Dynamic glassmorphic PyQt6 interface fully implemented
-- **Live Testing Phase** - Active real-world testing with J2534 hardware and VW vehicles
-- **Enhanced VW Diagnostics** - Real J2534 support for Polo/Golf live testing
-- **Advanced VIN Recognition** - Model-specific identification (Polo 6R, Golf VII, etc.)
+- **Live Testing Phase** - Active real-world testing with J2534 hardware and Ford/GM vehicles
+- **Enhanced Ford/GM Diagnostics** - Real J2534 support for Ford and GM live testing
+- **Advanced VIN Recognition** - Model-specific identification for Ford and GM models
 - **SA Testing Guide** - Comprehensive procedures for South African conditions
-- **Professional Documentation** - Complete VW diagnostic manuals and video frameworks
+- **Professional Documentation** - Complete Ford/GM diagnostic manuals and video frameworks
 - **Hardware Integration** - GoDiag GD101 and J2534 device support
 
 ### 🏆 Recognition
@@ -292,12 +291,12 @@ For commercial licensing inquiries, contact: **dacos@diagautoclinic.co.za**
 
 ### ✅ What's New in v3.1.0
 
-- **VW Polo/Golf Live Testing Support** - Complete diagnostic suite for South Africa's most common vehicles
-- **Enhanced VIN Decoder** - Model-specific recognition for all VW generations
+- **Ford and GM Live Testing Support** - Complete diagnostic suite for South Africa's most common vehicles
+- **Enhanced VIN Decoder** - Model-specific recognition for Ford and GM models
 - **J2534 Real Hardware Support** - Professional diagnostic capabilities
 - **South African Testing Guide** - Environment-specific procedures and safety protocols
-- **Comprehensive Documentation** - VW diagnostics manuals and video tutorial frameworks
+- **Comprehensive Documentation** - Ford/GM diagnostics manuals and video tutorial frameworks
 - **AI Collaboration Recognition** - Kilo Code acknowledged as core development collaborator
 - **Sponsor Emphasis** - Without EshuTech, GoDiag, and ScanTool.net, this project wouldn't exist
 - Ready for GitHub rendering (centered, clean, dark/light theme safe)
-- SEO-friendly with clear project keywords (VW, Polo, Golf, Diagnostics, South Africa)
+- SEO-friendly with clear project keywords (Ford, GM, Diagnostics, South Africa)

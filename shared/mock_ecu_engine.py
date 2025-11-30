@@ -46,7 +46,7 @@ class MockECUEngine:
             elif self.brand.lower() == "toyota":
                 data_file = fixture_path / "toyota_responses.json"
             else:
-                data_file = fixture_path / "vw_responses.json"  # fallback
+                data_file = fixture_path / "toyota_responses.json"  # fallback
 
             if data_file.exists():
                 with open(data_file, 'r', encoding='utf-8-sig') as f:
