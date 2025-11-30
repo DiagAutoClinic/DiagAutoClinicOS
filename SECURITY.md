@@ -1,4 +1,4 @@
-# 🔒 AutoDiag Suite Security Policy
+# 🔒 DiagAutoClinicOS Security Policy
 
 ## Supported Versions
 
@@ -20,7 +20,7 @@
 ## Private Disclosure Process
 We strongly prefer responsible disclosure through private channels:
 
-**Preferred Method**: Email security@autodiag-suite.com
+**Preferred Method**: Email dacos@diagautoclinic.co.za
 **Backup Method**: Use GitHub Security Advisories
 
 ## What to Include in Reports

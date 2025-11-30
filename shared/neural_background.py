@@ -2,18 +2,21 @@
 import sys
 import math
 import random
-from PyQt5 import QtWidgets, QtGui, QtCore
-from PyQt5.QtCore import Qt, QPointF, QTimer
-from PyQt5.QtWidgets import QWidget
+from PyQt6 import QtWidgets, QtGui, QtCore
+from PyQt6.QtCore import Qt, QPointF, QTimer
+from PyQt6.QtWidgets import QWidget
 
 # SACRED THEME - SINGLE SOURCE OF TRUTH
-from theme_constants import THEME
+import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+from shared.theme_constants import THEME
 
 class NeuralBackground(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAttribute(Qt.WA_StyledBackground, False)
-        self.setAttribute(Qt.WA_TranslucentBackground, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, False)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
 
         # Match your window size exactly
         self.resize(1400, 900)
@@ -64,7 +67,7 @@ class NeuralBackground(QWidget):
         for intensity, width in [(0.04, 7), (0.1, 4), (0.35, 2)]:
             pen = QtGui.QPen()
             pen.setWidth(width)
-            pen.setCapStyle(Qt.RoundCap)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             for i, n1 in enumerate(self.nodes):
                 for n2 in self.nodes[i+1:]:
                     dist = (n1['pos'] - n2['pos']).manhattanLength()
@@ -78,7 +81,7 @@ class NeuralBackground(QWidget):
                             painter.drawLine(n1['pos'], n2['pos'])
 
         # Crisp accent lines on top
-        pen = QtGui.QPen(self.accent, 1, Qt.SolidLine, Qt.RoundCap)
+        pen = QtGui.QPen(self.accent, 1, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
         painter.setPen(pen)
         for i, n1 in enumerate(self.nodes):
             for n2 in self.nodes[i+1:]:
@@ -95,7 +98,7 @@ class NeuralBackground(QWidget):
         for node in self.nodes:
             # Outer glow
             painter.setBrush(QtGui.QBrush(self.glow))
-            painter.setPen(Qt.NoPen)
+            painter.setPen(Qt.PenStyle.NoPen)
             painter.drawEllipse(node['pos'], 5, 5)
             # Bright core
             painter.setBrush(QtGui.QBrush(self.accent))

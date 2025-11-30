@@ -217,7 +217,7 @@ class AutoDiagPro(QMainWindow):
         # Apply theme
         try:
             if STYLE_MANAGER_AVAILABLE:
-                style_manager.set_theme("neon_clinic")
+                style_manager.set_theme("dacos_unified")
         except Exception as e:
             logger.warning(f"Theme application failed: {e}")
 
@@ -394,7 +394,7 @@ class AutoDiagPro(QMainWindow):
         theme_info = get_theme_info()
         for theme_id, info in theme_info.items():
             self.theme_combo.addItem(info['name'], theme_id)
-        self.theme_combo.setCurrentText("Neon Clinic")
+        self.theme_combo.setCurrentText("Dacos Unified Futuristic")
         self.theme_combo.currentTextChanged.connect(self.change_theme)
         self.theme_combo.setMinimumWidth(100)
         self.theme_combo.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)

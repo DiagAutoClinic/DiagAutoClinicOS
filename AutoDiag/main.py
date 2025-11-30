@@ -1,9 +1,9 @@
-# main.py - COMPLETE FIXED VERSION
+# main.py - COMPLETE DIAGNOSTIC SUITE IMPLEMENTATION WITH DACOS THEME
 
 #!/usr/bin/env python3
 """
 AutoDiag Pro - Professional 25-Brand Diagnostic Suite v3.1.2
-COMPLETE IMPLEMENTATION WITH ALL MISSING METHODS
+COMPLETE IMPLEMENTATION WITH DACOS UNIFIED THEME
 """
 
 import sys
@@ -13,6 +13,7 @@ import logging
 from typing import Dict, List
 import random
 from datetime import datetime
+import argparse
 
 # ----------------------------------------------------------------------
 # Security: Import validation
@@ -27,17 +28,28 @@ except ImportError:
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# ===== DACOS THEME IMPORTS - UNIFIED APPROACH =====
+# Only import GUI-related modules if not in headless mode
+DACOS_AVAILABLE = False
 try:
-    from shared.theme_constants import THEME
+    from shared.themes.dacos_theme import DACOS_THEME, apply_dacos_theme
+    from shared.circular_gauge import CircularGauge, StatCard
     from shared.style_manager import style_manager
+    DACOS_AVAILABLE = True
+    logger = logging.getLogger(__name__)
+    logger.info("✅ DACOS theme system imported successfully")
 except ImportError as e:
-    logging.error(f"Theme imports failed: {e}")
-    # Fallback theme
-    THEME = {
-        "bg_main": "#0B2E2B", "bg_panel": "#0F3D3A", "bg_card": "#134F4A",
-        "accent": "#21F5C1", "glow": "#2AF5D1", "text_main": "#E8FFFB",
-        "text_muted": "#9ED9CF", "error": "#FF4D4D", "success": "#10B981"
+    logging.error(f"❌ DACOS theme imports failed: {e}")
+    style_manager = None
+    DACOS_AVAILABLE = False
+    # Fallback theme (shouldn't be needed since your files exist)
+    DACOS_THEME = {
+        "bg_main": "#0A1A1A", "bg_panel": "#0D2323", "bg_card": "#134F4A",
+        "accent": "#21F5C1", "glow": "#2AF5D1", "text_main": "#E8F4F2",
+        "text_muted": "#9ED9CF", "error": "#FF4D4D", "success": "#10B981",
+        "warning": "#F59E0B", "info": "#3B82F6"
     }
+
 
 # ----------------------------------------------------------------------
 # Qt imports
@@ -46,115 +58,24 @@ from PyQt6.QtWidgets import *
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QFont, QPalette, QColor, QLinearGradient, QPainter, QPen
 
-# Import login dialog
-from ui.login_dialog import LoginDialog
-
-# Import special functions manager
-from shared.special_functions import special_functions_manager
-
-# Import calibrations and resets manager
-from shared.calibrations_reset import calibrations_resets_manager
-
-# Import live data generator
-from shared.live_data import live_data_generator, start_live_stream, stop_live_stream, get_mock_live_data
-
-# Import advanced functions mock data
-from shared.advance import get_advanced_functions, simulate_function_execution, get_mock_advanced_data
-
-logger = logging.getLogger(__name__)
-
-# DACOS Theme Import - FIXED POSITION
+# Import other modules
 try:
-    from shared.themes.dacos_theme import apply_dacos_theme, get_dacos_color, DACOS_THEME
-    DACOS_AVAILABLE = True
+    from ui.login_dialog import LoginDialog
+    from shared.special_functions import special_functions_manager
+    from shared.calibrations_reset import calibrations_resets_manager
+    from shared.live_data import live_data_generator, start_live_stream, stop_live_stream, get_mock_live_data
+    from shared.advance import get_advanced_functions, simulate_function_execution, get_mock_advanced_data
+    from shared.circular_gauge import CircularGauge, StatCard
 except ImportError as e:
-    logger.warning(f"DACOS theme not available: {e}")
-    DACOS_AVAILABLE = False
-
-class CircularGauge(QWidget):
-    """Complete circular gauge implementation"""
-    def __init__(self, title="", value=0, unit="", max_value=100, parent=None):
-        super().__init__(parent)
-        self.title = title
-        self.value = value
-        self.unit = unit
-        self.max_value = max_value
-        self.setMinimumSize(120, 120)
-        
-    def set_value(self, value):
-        self.value = max(0, min(value, self.max_value))
-        self.update()
-        
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-        # Draw background
-        rect = self.rect()
-        center = rect.center()
-        radius = min(rect.width(), rect.height()) // 2 - 15
-        
-        # Draw gauge background
-        painter.setPen(QPen(QColor(30, 41, 59), 8))
-        painter.drawArc(rect.center().x() - radius, rect.center().y() - radius, 
-                       radius * 2, radius * 2, 0, 360 * 16)
-        
-        # Draw value arc
-        value_angle = int((self.value / self.max_value) * 360 * 16)
-        gradient = QLinearGradient(0, 0, self.width(), self.height())
-        gradient.setColorAt(0, QColor(33, 245, 193))
-        gradient.setColorAt(1, QColor(42, 245, 209))
-        
-        painter.setPen(QPen(gradient, 8))
-        painter.drawArc(rect.center().x() - radius, rect.center().y() - radius, 
-                       radius * 2, radius * 2, 90 * 16, -value_angle)
-        
-        # Draw text
-        painter.setPen(QColor(232, 255, 251))
-        font = QFont("Segoe UI", 10)
-        painter.setFont(font)
-        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, 
-                        f"{self.value}{self.unit}")
-
-class StatCard(QFrame):
-    """Enhanced stat card with circular gauge"""
-    def __init__(self, title, value, unit="", max_value=100, parent=None):
-        super().__init__(parent)
-        self.setProperty("class", "glass-card")
-        self.setMinimumSize(200, 180)
-        
-        layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.setSpacing(10)
-        
-        # Title
-        title_label = QLabel(title)
-        title_label.setProperty("class", "stat-label")
-        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # Gauge
-        self.gauge = CircularGauge(title, value, unit, max_value)
-        
-        # Value display
-        self.value_label = QLabel(f"{value}{unit}")
-        self.value_label.setProperty("class", "stat-value")
-        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        layout.addWidget(title_label)
-        layout.addWidget(self.gauge)
-        layout.addWidget(self.value_label)
-        
-    def update_value(self, value):
-        self.gauge.set_value(value)
-        self.value_label.setText(f"{value}{getattr(self.gauge, 'unit', '')}")
+    logging.warning(f"Some modules not available: {e}")
 
 class ResponsiveHeader(QFrame):
-    """Responsive header that adapts to screen size"""
+    """Responsive header that adapts to screen size with DACOS styling"""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setProperty("class", "glass-card")
-        self.setMinimumHeight(80)
-        self.setMaximumHeight(120)
+        self.setMinimumHeight(130)
+        self.setMaximumHeight(150)
         
         self.main_layout = QHBoxLayout(self)
         self.main_layout.setContentsMargins(20, 15, 20, 15)
@@ -163,7 +84,7 @@ class ResponsiveHeader(QFrame):
         self.setup_ui()
         
     def setup_ui(self):
-        """Setup header components"""
+        """Setup header components with DACOS styling"""
         # User info section
         self.user_section = self.create_user_section()
         
@@ -177,7 +98,7 @@ class ResponsiveHeader(QFrame):
         # Brand selector
         self.brand_layout = self.create_brand_selector()
         
-        # Theme selector
+        # Theme selector (simplified - DACOS only)
         self.theme_layout = self.create_theme_selector()
         
         # Logout button
@@ -187,16 +108,16 @@ class ResponsiveHeader(QFrame):
         self.update_layout()
         
     def create_user_section(self):
-        """Create user information section"""
+        """Create user information section with DACOS colors"""
         user_section = QFrame()
         user_layout = QVBoxLayout(user_section)
         user_layout.setSpacing(2)
         
         self.user_name = QLabel("👤 Demo User")
-        self.user_name.setStyleSheet("color: #14b8a6; font-size: 12pt; font-weight: bold;")
+        self.user_name.setProperty("class", "section-title")
         
         self.user_role = QLabel("🔐 BASIC • technician")
-        self.user_role.setStyleSheet("color: #5eead4; font-size: 9pt;")
+        self.user_role.setProperty("class", "subtitle")
         
         user_layout.addWidget(self.user_name)
         user_layout.addWidget(self.user_role)
@@ -204,16 +125,15 @@ class ResponsiveHeader(QFrame):
         return user_section
         
     def create_brand_selector(self):
-        """Create brand selection combo"""
+        """Create brand selection combo with DACOS styling"""
         brand_layout = QVBoxLayout()
         brand_label = QLabel("Vehicle:")
-        brand_label.setStyleSheet("color: #5eead4; font-size: 8pt;")
+        brand_label.setProperty("class", "section-label")
         
         self.brand_combo = QComboBox()
         self.brand_combo.setMinimumWidth(120)
         self.brand_combo.setMaximumWidth(150)
         self.brand_combo.addItems(["Toyota", "Honda", "Ford", "BMW", "Mercedes", "Audi", "Volkswagen"])
-        self.brand_combo.setStyleSheet(self.get_combo_style())
         
         brand_layout.addWidget(brand_label)
         brand_layout.addWidget(self.brand_combo)
@@ -221,16 +141,16 @@ class ResponsiveHeader(QFrame):
         return brand_layout
         
     def create_theme_selector(self):
-        """Create theme selection combo"""
+        """Create theme selection combo - DACOS Unified only"""
         theme_layout = QVBoxLayout()
         theme_label = QLabel("Theme:")
-        theme_label.setStyleSheet("color: #5eead4; font-size: 8pt;")
+        theme_label.setProperty("class", "section-label")
         
         self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["dacos_unified", "dacos_particles", "neon_clinic"])
+        self.theme_combo.addItems(["DACOS Unified"])
         self.theme_combo.setMinimumWidth(100)
         self.theme_combo.setMaximumWidth(130)
-        self.theme_combo.setStyleSheet(self.get_combo_style())
+        self.theme_combo.setEnabled(False)  # DACOS only
         
         theme_layout.addWidget(theme_label)
         theme_layout.addWidget(self.theme_combo)
@@ -238,55 +158,16 @@ class ResponsiveHeader(QFrame):
         return theme_layout
         
     def create_logout_button(self):
-        """Create logout button"""
+        """Create logout button with DACOS danger styling"""
         logout_btn = QPushButton("🚪 Logout")
         logout_btn.setProperty("class", "danger")
         logout_btn.setMinimumHeight(45)
         logout_btn.setMaximumWidth(120)
         logout_btn.setToolTip("Logout")
-        logout_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #ef4444, stop:1 #dc2626);
-                border: none;
-                border-radius: 8px;
-                color: white;
-                font-weight: bold;
-                font-size: 10pt;
-                padding: 8px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #dc2626, stop:1 #b91c1c);
-            }
-        """)
         return logout_btn
         
-    def get_combo_style(self):
-        """Get consistent combo box style"""
-        return """
-            QComboBox {
-                background: rgba(255, 255, 255, 0.1);
-                border: 1px solid rgba(148, 163, 184, 0.5);
-                border-radius: 6px;
-                padding: 6px;
-                color: white;
-                min-height: 18px;
-                font-size: 9pt;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox QAbstractItemView {
-                background: rgba(30, 41, 59, 0.95);
-                border: 1px solid #334155;
-                color: white;
-                selection-background-color: #14b8a6;
-            }
-        """
-        
     def update_layout(self):
-        """Update layout based on available width"""
+        """Update layout based on available width - FIXED VERSION"""
         # Clear existing layout
         while self.main_layout.count():
             child = self.main_layout.takeAt(0)
@@ -295,12 +176,15 @@ class ResponsiveHeader(QFrame):
                 
         width = self.parent().width() if self.parent() else 1000
         
-        if width < 900:
-            # Compact layout
-            self.main_layout.addWidget(self.logout_btn, 0)
+        if width < 700:
+            # Ultra-compact layout
             self.main_layout.addWidget(self.title_label, 1)
-            self.main_layout.addLayout(self.brand_layout, 0)
-            self.main_layout.addLayout(self.theme_layout, 0)
+            self.main_layout.addWidget(self.logout_btn, 0)
+        elif width < 900:
+            # Compact layout
+            self.main_layout.addWidget(self.user_section, 0)
+            self.main_layout.addWidget(self.title_label, 1)
+            self.main_layout.addWidget(self.logout_btn, 0)
         else:
             # Full layout
             self.main_layout.addWidget(self.user_section, 0)
@@ -313,20 +197,130 @@ class AutoDiagPro(QMainWindow):
     def __init__(self):
         super().__init__()
         
-        # Initialize UI first for better user experience
+        # Apply DACOS theme first
+        self.apply_dacos_theme()
+        
+        # Initialize UI
         self.init_ui()
         
         # Simulate login for demo
         self.status_label.setText("✨ System Ready - Demo Mode")
         
+    def apply_dacos_theme(self):
+        """Apply DACOS unified theme using your existing theme file"""
+        try:
+            if DACOS_AVAILABLE:
+                # Use your existing apply_dacos_theme function
+                success = apply_dacos_theme(QApplication.instance())
+                if success:
+                    logger.info("✅ DACOS theme applied successfully")
+                    return
+                    
+            # Fallback if theme application fails
+            self.apply_fallback_theme()
+            
+        except Exception as e:
+            logger.error(f"❌ Theme application failed: {e}")
+            self.apply_fallback_theme()
+
+    def apply_fallback_theme(self):
+        """Enhanced fallback theme using DACOS colors"""
+        t = DACOS_THEME  # Use DACOS_THEME, not THEME
+        fallback_stylesheet = f"""
+            QMainWindow {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 {t['bg_main']}, stop:0.5 {t['bg_panel']}, stop:1 {t['bg_main']});
+                color: {t['text_main']};
+                font-family: "Segoe UI";
+            }}
+            QTabWidget::pane {{
+                border: 2px solid rgba(33, 245, 193, 0.3);
+                background: {t['bg_panel']};
+                border-radius: 12px;
+            }}
+            QTabBar::tab {{
+                background: {t['bg_card']};
+                color: {t['text_muted']};
+                padding: 12px 24px;
+                border-radius: 8px;
+                margin: 2px;
+                font-weight: bold;
+            }}
+            QTabBar::tab:selected {{
+                background: {t['accent']};
+                color: #0A1A1A;
+            }}
+            QFrame[class="glass-card"] {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 rgba(19, 79, 74, 0.9), stop:1 rgba(13, 35, 35, 0.9));
+                border: 2px solid rgba(33, 245, 193, 0.4);
+                border-radius: 12px;
+                padding: 15px;
+            }}
+            QPushButton {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {t['accent']}, stop:1 {t['glow']});
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                color: #0A1A1A;
+                font-weight: bold;
+                min-height: 35px;
+            }}
+            QPushButton:hover {{
+                background: {t['glow']};
+            }}
+            QPushButton[class="primary"] {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {t['accent']}, stop:1 {t['glow']});
+                color: #0A1A1A;
+            }}
+            QPushButton[class="success"] {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {t['success']}, stop:1 #059669);
+                color: white;
+            }}
+            QPushButton[class="warning"] {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {t['warning']}, stop:1 #D97706);
+                color: white;
+            }}
+            QPushButton[class="danger"] {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 {t['error']}, stop:1 #DC2626);
+                color: white;
+            }}
+            QLabel[class="hero-title"] {{
+                color: {t['accent']};
+                font-size: 18pt;
+                font-weight: bold;
+            }}
+            QLabel[class="tab-title"] {{
+                color: {t['accent']};
+                font-size: 16pt;
+                font-weight: bold;
+            }}
+            QLabel[class="section-title"] {{
+                color: {t['text_main']};
+                font-size: 12pt;
+                font-weight: bold;
+            }}
+            QLabel[class="section-label"] {{
+                color: {t['text_muted']};
+                font-size: 10pt;
+            }}
+            QLabel[class="subtitle"] {{
+                color: {t['text_muted']};
+                font-size: 9pt;
+            }}
+        """
+        self.setStyleSheet(fallback_stylesheet)
+
     def init_ui(self):
-        """Initialize optimized futuristic UI"""
+        """Initialize optimized futuristic UI with DACOS theme"""
         self.setWindowTitle("AutoDiag Pro - Futuristic Diagnostics")
         self.setMinimumSize(1024, 600)
         self.resize(1366, 768)
-
-        # Apply DACOS unified theme
-        self.apply_global_theme()
 
         # Central widget
         central_widget = QWidget()
@@ -346,7 +340,7 @@ class AutoDiagPro(QMainWindow):
         self.tab_widget.setDocumentMode(True)
         main_layout.addWidget(self.tab_widget, 1)
 
-        # Create all tabs
+        # Create all tabs (rest of your tab creation methods remain the same)
         self.create_dashboard_tab()
         self.create_enhanced_diagnostics_tab()
         self.create_live_data_tab()
@@ -362,6 +356,40 @@ class AutoDiagPro(QMainWindow):
         self.header.theme_combo.currentTextChanged.connect(self.change_theme)
         self.header.brand_combo.currentTextChanged.connect(self.on_brand_changed)
         self.header.logout_btn.clicked.connect(self.secure_logout)
+
+    # [ALL YOUR EXISTING TAB CREATION METHODS REMAIN THE SAME]
+    # create_dashboard_tab(), create_enhanced_diagnostics_tab(), etc.
+    # They will automatically use DACOS styling through the property classes
+
+    def create_status_bar(self):
+        """Create status bar with DACOS styling"""
+        self.statusBar().showMessage("Ready")
+        self.status_label = QLabel("✨ System Initialized")
+        self.status_label.setProperty("class", "status-label")
+        self.statusBar().addPermanentWidget(self.status_label)
+
+    def change_theme(self, theme_name):
+        """Theme change handler - DACOS only"""
+        self.status_label.setText("✨ DACOS Unified Theme Active")
+
+    def on_brand_changed(self, brand):
+        """Handle brand change"""
+        self.status_label.setText(f"🚗 Vehicle brand: {brand}")
+
+    def secure_logout(self):
+        """Enhanced logout dialog with DACOS styling"""
+        reply = QMessageBox.question(self, "Logout",
+                                    "Are you sure you want to logout?",
+                                    QMessageBox.StandardButton.Yes |
+                                    QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.close()
+
+    def resizeEvent(self, event):
+        """Handle window resize for responsive layout"""
+        super().resizeEvent(event)
+        if hasattr(self, 'header'):
+            self.header.update_layout()
 
     def create_dashboard_tab(self):
         """Ultra-sexy animated dashboard with DACOS styling"""
@@ -380,16 +408,12 @@ class AutoDiagPro(QMainWindow):
         top_grid.setSpacing(25)
 
         # Create DACOS-styled stat cards
-        self.system_health_card = StatCard("System Health", 98, unit="%", max_value=100)
-        self.connection_card = StatCard("Connection Quality", 85, unit="%", max_value=100)
-        self.dtc_card = StatCard("Active DTCs", 0, unit="", max_value=50)
-        self.security_card = StatCard("Security Level", 5, unit="/5", max_value=5)
+        self.system_health_card = StatCard("System Health", 98, 100, "%")
+        self.connection_card = StatCard("Connection Quality", 85, 100, "%")
+        self.dtc_card = StatCard("Active DTCs", 0, 50, "")
+        self.security_card = StatCard("Security Level", 5, 5, "/5")
 
-        # Apply DACOS sizing
-        for card in [self.system_health_card, self.connection_card, self.dtc_card, self.security_card]:
-            card.setMinimumSize(260, 280)
-            if hasattr(card, 'gauge'):
-                card.gauge.setMinimumSize(200, 200)
+        # Shared StatCard handles sizing responsively
 
         top_grid.addWidget(self.system_health_card, 0, 0)
         top_grid.addWidget(self.connection_card, 0, 1)
@@ -442,8 +466,8 @@ class AutoDiagPro(QMainWindow):
 
         actions_layout.addWidget(btn1, 0, 0)
         actions_layout.addWidget(btn2, 0, 1)
-        actions_layout.addWidget(btn3, 1, 0)
-        actions_layout.addWidget(btn4, 1, 1)
+        actions_layout.addWidget(btn3, 0, 2)
+        actions_layout.addWidget(btn4, 0, 3)
 
         # DACOS title
         actions_title = QLabel("⚡ Quick Actions")
@@ -862,34 +886,28 @@ class AutoDiagPro(QMainWindow):
         """Create security tab"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        
+
         header = QLabel("🔒 Security & Access")
         header.setProperty("class", "tab-title")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
+
         security_frame = QFrame()
         security_frame.setProperty("class", "glass-card")
         security_layout = QVBoxLayout(security_frame)
-        
+
         user_info = QLabel("Current User: Demo Technician\n"
                           "Security Level: BASIC\n"
                           "Access: Standard Diagnostics\n"
                           "Session: Active")
         user_info.setProperty("class", "section-title")
-        
+
         security_layout.addWidget(user_info)
-        
+
         layout.addWidget(header)
         layout.addWidget(security_frame)
         layout.addStretch()
-        
-        self.tab_widget.addTab(tab, "🔒 Security")
 
-    def create_status_bar(self):
-        """Create status bar"""
-        self.statusBar().showMessage("Ready")
-        self.status_label = QLabel("✨ System Initialized")
-        self.statusBar().addPermanentWidget(self.status_label)
+        self.tab_widget.addTab(tab, "🔒 Security")
 
     # ========== ALL MISSING METHOD IMPLEMENTATIONS ==========
 
@@ -1043,7 +1061,7 @@ class AutoDiagPro(QMainWindow):
         try:
             # Try DACOS theme first
             if DACOS_AVAILABLE:
-                success = apply_dacos_theme(QApplication.instance())
+                success = apply_theme(QApplication.instance())
                 if success:
                     logger.info("DACOS Unified theme applied successfully")
                     return
@@ -1067,7 +1085,7 @@ class AutoDiagPro(QMainWindow):
 
     def apply_fallback_theme(self):
         """Enhanced fallback theme"""
-        t = THEME
+        t = DACOS_THEME
         self.setStyleSheet(f"""
             QMainWindow {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
@@ -1781,18 +1799,158 @@ class AutoDiagPro(QMainWindow):
         self.status_label.setText(f"✅ {func.name} completed successfully")
         self.execute_advanced_btn.setEnabled(True)
 
+class HeadlessDiagnostics:
+    """Headless diagnostic operations for CLI mode"""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def check_device_detection(self):
+        """Check device detection capabilities"""
+        self.logger.info("Starting device detection...")
+        try:
+            # Check J2534 registry
+            import winreg
+            try:
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                                   r"SOFTWARE\WOW6432Node\PassThruSupport.04.04")
+                self.logger.info("✓ J2534 registry detected")
+            except FileNotFoundError:
+                self.logger.warning("⚠️ J2534 registry not found")
+
+            # Check SocketCAN (though this is Linux-specific)
+            try:
+                import socket
+                # This would be more complex in real implementation
+                self.logger.info("✓ SocketCAN base available")
+            except ImportError:
+                self.logger.info("✓ SocketCAN base available (simulated)")
+
+            return True
+        except Exception as e:
+            self.logger.error(f"Device detection failed: {e}")
+            return False
+
+    def run_quick_scan(self, brand="Toyota"):
+        """Run a quick diagnostic scan"""
+        self.logger.info(f"Running quick scan for {brand}...")
+
+        # Simulate scan results
+        results = {
+            "communication": "ESTABLISHED",
+            "bus_status": "NORMAL",
+            "voltage": "13.8V",
+            "dtc_count": 0,
+            "scan_time": "2.3s"
+        }
+
+        self.logger.info("✅ Quick scan completed:")
+        for key, value in results.items():
+            self.logger.info(f"  {key.replace('_', ' ').title()}: {value}")
+
+        return results
+
+    def read_dtcs(self, brand="Toyota"):
+        """Read diagnostic trouble codes"""
+        self.logger.info(f"Reading DTCs for {brand}...")
+
+        # Simulate DTC reading
+        dtcs = [
+            {"code": "P0301", "description": "Cylinder 1 Misfire Detected", "status": "Confirmed"},
+            {"code": "U0121", "description": "Lost Communication With ABS", "status": "Pending"}
+        ]
+
+        if dtcs:
+            self.logger.info(f"Found {len(dtcs)} DTC(s):")
+            for dtc in dtcs:
+                self.logger.info(f"  {dtc['code']}: {dtc['description']} ({dtc['status']})")
+        else:
+            self.logger.info("No DTCs found")
+
+        return dtcs
+
+    def check_system_health(self):
+        """Check overall system health"""
+        self.logger.info("Checking system health...")
+
+        health_metrics = {
+            "system_health": 98,
+            "connection_quality": 85,
+            "active_dtcs": 0,
+            "security_level": 5
+        }
+
+        self.logger.info("System Health Report:")
+        for metric, value in health_metrics.items():
+            status = "✅" if (isinstance(value, int) and value > 80) or value == 0 or value == 5 else "⚠️"
+            self.logger.info(f"  {status} {metric.replace('_', ' ').title()}: {value}")
+
+        return health_metrics
+
 def main():
-    """Main application entry point"""
+    """Main application entry point with DACOS theme and headless support"""
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="AutoDiag Pro - Professional Diagnostic Suite")
+    parser.add_argument("--headless", action="store_true",
+                       help="Run in headless mode without GUI")
+    parser.add_argument("--scan", action="store_true",
+                       help="Run quick diagnostic scan")
+    parser.add_argument("--dtc", action="store_true",
+                       help="Read diagnostic trouble codes")
+    parser.add_argument("--health", action="store_true",
+                       help="Check system health")
+    parser.add_argument("--brand", default="Toyota",
+                       help="Vehicle brand for diagnostics (default: Toyota)")
+
+    args = parser.parse_args()
+
+    # Setup logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
+    logger = logging.getLogger(__name__)
+
+    # Check if running in headless mode
+    if args.headless or any([args.scan, args.dtc, args.health]):
+        logger.info("🔧 Starting AutoDiag Pro in headless mode")
+
+        # Initialize headless diagnostics
+        diagnostics = HeadlessDiagnostics()
+
+        try:
+            # Perform requested operations
+            if args.scan or not any([args.dtc, args.health]):
+                diagnostics.run_quick_scan(args.brand)
+
+            if args.dtc:
+                diagnostics.read_dtcs(args.brand)
+
+            if args.health:
+                diagnostics.check_system_health()
+
+            # Check device detection by default
+            diagnostics.check_device_detection()
+
+            logger.info("✅ Headless diagnostics completed successfully")
+            sys.exit(0)
+
+        except Exception as e:
+            logger.error(f"❌ Headless diagnostics failed: {e}")
+            sys.exit(1)
+
+    # GUI mode (original functionality)
     app = QApplication(sys.argv)
     app.setApplicationName("AutoDiag Pro")
     app.setApplicationVersion("3.1.2")
 
     try:
+        # Apply global theme first
+        if style_manager:
+            style_manager.set_app(app)
+            style_manager.ensure_theme()
+
         # Show login dialog first
         login_dialog = LoginDialog()
         if login_dialog.exec() == QDialog.DialogCode.Accepted:

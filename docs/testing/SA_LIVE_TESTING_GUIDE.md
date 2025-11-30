@@ -12,7 +12,7 @@ This guide provides comprehensive instructions for conducting live diagnostic te
 - **Power Source**: Reliable 12V battery (vehicle or external)
 
 ### Software Requirements
-- DiagAutoClinicOS v3.0+
+- DiagAutoClinicOS v3.1.0+
 - Python 3.8+
 - PyQt6
 - J2534 drivers installed

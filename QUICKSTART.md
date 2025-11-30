@@ -1,21 +1,39 @@
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/DiagAutoClinic/DiagAutoClinicOS.git
+cd DiagAutoClinicOS
+```
+
 ### Step 2: Create Virtual Environment (Recommended)
 
-bash
-
+```bash
 # Linux/Mac
-python3 -m venv venv source venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
+
 # Windows
-python -m venv venv venv\Scripts\activate
+python -m venv venv
+venv\Scripts\activate
+```
 
 ### Step 3: Install Dependencies
-pip install -r requirements.txt
 
+```bash
+pip install -r requirements.txt
+```
 
 ### Step 4: Validate Installation
-bash python scripts/validate_install.py
+
+```bash
+python scripts/validate_install.py
+```
 
 ### Step 5: Launch Application
-bash python launcher.py
+
+```bash
+python launcher.py
+```
 
 ## ✅ Verification
 

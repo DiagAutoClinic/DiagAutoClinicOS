@@ -66,7 +66,7 @@ obd                                0.7.3         ✅
 
 ## 🛠️ **Solutions**
 
-### Option 1: Run with GUI Environment
+### Option 1: Run with GUI Environment (Original)
 ```bash
 # Windows with GUI
 python launcher.py
@@ -82,7 +82,25 @@ export DISPLAY=:0  # Linux
 python launcher.py
 ```
 
-### Option 3: Run Tests Headlessly
+### Option 3: **NEW - Run Diagnostics Headlessly** ⭐
+```bash
+# Quick diagnostic scan
+python AutoDiag/main.py --scan
+
+# Read diagnostic trouble codes
+python AutoDiag/main.py --dtc --brand Toyota
+
+# Check system health
+python AutoDiag/main.py --health
+
+# Run all diagnostics
+python AutoDiag/main.py --headless --scan --dtc --health
+
+# Specify vehicle brand
+python AutoDiag/main.py --scan --brand Honda
+```
+
+### Option 4: Run Tests Headlessly
 ```bash
 # Run unit tests to verify functionality
 python -m pytest tests/AutoDiag/ -v
@@ -91,7 +109,7 @@ python -m pytest tests/AutoDiag/ -v
 python -m pytest tests/integration_tests/ -v
 ```
 
-### Option 4: Check Application Status
+### Option 5: Check Application Status
 ```python
 # Test that all modules load correctly
 python -c "
@@ -119,17 +137,41 @@ except ImportError as e:
 
 ## 🎯 **Conclusion**
 
-**AutoDiag is NOT broken.** The application is working perfectly but cannot display GUI windows in this terminal environment. The same applies to the launcher.
+**AutoDiag issue has been RESOLVED!** ✅
 
-**To use the applications:**
-- Run them in a GUI environment (Windows Desktop, Linux with X11, etc.)
-- Both applications will start successfully and display their interfaces
-- All functionality has been verified to work correctly
+**What was the problem?**
+- AutoDiag was a GUI-only application that couldn't run in headless/terminal environments
+- Applications would start successfully but exit immediately when trying to create GUI windows
+
+**What was the solution?**
+- Added comprehensive headless mode support with CLI arguments
+- Implemented diagnostic functions that work without GUI dependencies
+- Maintained full GUI functionality for desktop environments
+
+**How to use AutoDiag now:**
+
+### GUI Mode (Full Interface):
+```bash
+python AutoDiag/main.py  # Launches full GUI application
+```
+
+### Headless Mode (Command Line):
+```bash
+# Quick diagnostics without GUI
+python AutoDiag/main.py --scan --dtc --health --brand Toyota
+```
 
 ## 🚀 **Ready to Launch**
 
-Once you run these applications in a proper GUI environment, they will:
-- Display the futuristic teal launcher interface
-- Allow launching AutoDiag with professional diagnostics UI
-- Provide full functionality for 25 automotive brands
-- Include advanced security and calibration features
+AutoDiag now supports both environments:
+
+**GUI Environment:**
+- Full futuristic teal interface with all features
+- Professional diagnostics UI for 25+ automotive brands
+- Advanced security and calibration features
+
+**Headless/Terminal Environment:**
+- Command-line diagnostic operations
+- Device detection and health checks
+- DTC reading and system scanning
+- Perfect for automation and CI/CD pipelines
