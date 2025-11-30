@@ -1,7 +1,7 @@
 # Video Tutorials Creation Guide
 
 ## Overview
-This guide provides a framework for creating professional video tutorials demonstrating DiagAutoClinicOS usage, specifically focused on VW Polo and Golf diagnostics in South African conditions.
+This guide provides a framework for creating professional video tutorials demonstrating DiagAutoClinicOS usage, specifically focused on Ford and GM diagnostics in South African conditions.
 
 ## Target Audience
 - Independent workshop owners
@@ -15,7 +15,7 @@ This guide provides a framework for creating professional video tutorials demons
 1. **Introduction to DiagAutoClinicOS**
    - What is it and why use it
    - South African automotive context
-   - VW market dominance explanation
+   - Ford and GM market presence
 
 2. **Installation and Setup**
    - System requirements
@@ -28,37 +28,37 @@ This guide provides a framework for creating professional video tutorials demons
    - Brand selection
    - Connection procedures
 
-### Series 2: VW Polo Diagnostics
-1. **Polo VIN Reading**
+### Series 2: Ford Diagnostics
+1. **Ford VIN Reading**
    - Model identification
    - Year/make verification
-   - Common Polo VIN patterns
+   - Common Ford VIN patterns
 
-2. **Polo DTC Scanning**
+2. **Ford DTC Scanning**
    - Real vehicle demonstration
-   - Common Polo fault codes
+   - Common Ford fault codes
    - Severity interpretation
 
-3. **Polo DTC Clearing**
+3. **Ford DTC Clearing**
    - Safety procedures
    - Code clearing process
    - Verification steps
 
-4. **Polo Special Functions**
+4. **Ford Special Functions**
    - Throttle adaptation
    - Battery reset procedures
 
-### Series 3: VW Golf Diagnostics
-1. **Golf Model Identification**
-   - Generation differences (IV-VIII)
+### Series 3: GM Diagnostics
+1. **GM Model Identification**
+   - Generation differences
    - Engine variant identification
 
-2. **Golf Advanced Diagnostics**
-   - DSG transmission codes
+2. **GM Advanced Diagnostics**
+   - Transmission codes
    - ABS/ESP system faults
    - Airbag system checks
 
-3. **Golf Maintenance Procedures**
+3. **GM Maintenance Procedures**
    - Service interval resets
    - Brake system adaptations
 
@@ -124,7 +124,7 @@ This guide provides a framework for creating professional video tutorials demons
 ### Video Script Structure
 ```
 [Opening Scene - Workshop/Garage]
-"Today we're diagnosing a common issue on VW Polo models in South Africa..."
+"Today we're diagnosing a common issue on Ford models in South Africa..."
 
 [Transition to Computer]
 "First, ensure your DiagAutoClinicOS is properly installed..."
@@ -135,7 +135,7 @@ This guide provides a framework for creating professional video tutorials demons
 "Launch the application..."
 
 [Close-up Screen Actions]
-"Select Volkswagen from the brand dropdown..."
+"Select Ford from the brand dropdown..."
 "Click 'Connect Vehicle'..."
 
 [Narration Over Demonstration]
@@ -145,7 +145,7 @@ This guide provides a framework for creating professional video tutorials demons
 "If you encounter connection issues, check these common problems..."
 
 [Conclusion]
-"That's how you perform basic diagnostics on a VW Polo..."
+"That's how you perform basic diagnostics on a Ford..."
 ```
 
 ## Visual Elements
@@ -158,7 +158,7 @@ This guide provides a framework for creating professional video tutorials demons
 
 ### Background Elements
 - **Workshop Setting**: Authentic SA garage
-- **Vehicle Focus**: Clear view of Polo/Golf being diagnosed
+- **Vehicle Focus**: Clear view of Ford/GM being diagnosed
 - **Equipment Display**: Show tools and hardware used
 
 ## Audio Guidelines
@@ -177,9 +177,9 @@ This guide provides a framework for creating professional video tutorials demons
 ## SEO and Distribution
 
 ### YouTube Optimization
-- **Title**: "VW Polo Diagnostics South Africa | DiagAutoClinicOS Tutorial"
+- **Title**: "Ford Diagnostics South Africa | DiagAutoClinicOS Tutorial"
 - **Description**: Include keywords, timestamps, links
-- **Tags**: VW, Polo, Golf, diagnostics, South Africa, OBD-II
+- **Tags**: Ford, GM, diagnostics, South Africa, OBD-II
 - **Thumbnail**: Clear, professional, text overlay
 
 ### Platform Strategy
@@ -233,7 +233,7 @@ This guide provides a framework for creating professional video tutorials demons
 
 ### Graphics Assets
 - DiagAutoClinicOS logo and branding
-- VW model identification charts
+- Ford/GM model identification charts
 - Diagnostic flow diagrams
 
 ### Contact Information
@@ -264,4 +264,4 @@ This guide provides a framework for creating professional video tutorials demons
 
 ---
 
-*This guide ensures consistent, professional video content that effectively demonstrates DiagAutoClinicOS capabilities for the South African VW diagnostic market.*
+*This guide ensures consistent, professional video content that effectively demonstrates DiagAutoClinicOS capabilities for the South African Ford and GM diagnostic market.*
