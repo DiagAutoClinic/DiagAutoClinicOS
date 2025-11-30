@@ -772,6 +772,134 @@ class DeviceHandler:
         # Real implementation would go here
         return False
 
+    def enable_can_sniffing(self, protocol: str = "ISO15765") -> bool:
+        """Enable CAN bus sniffing mode for OBDLink MX+"""
+        if not self.is_connected or self.current_device.device_type != "ELM327":
+            logger.error("Not connected to ELM327 device")
+            return False
+
+        if self.mock_mode:
+            logger.info("[MOCK] CAN sniffing enabled")
+            return True
+
+        try:
+            # Commands to set up CAN sniffing on OBDLink MX+
+            commands = []
+
+            # Reset device
+            commands.append(b'ATZ\r\n')
+
+            # Disable echo
+            commands.append(b'ATE0\r\n')
+
+            # Set protocol based on vehicle
+            if protocol == "ISO15765":
+                # ISO 15765-4 CAN 11-bit ID, 500 kbaud (standard for Ford)
+                commands.append(b'ATSP6\r\n')
+            elif protocol == "CAN29":
+                # ISO 15765-4 CAN 29-bit ID, 500 kbaud
+                commands.append(b'ATSP7\r\n')
+            else:
+                commands.append(b'ATSP6\r\n')  # Default to 11-bit
+
+            # Turn off CAN auto formatting for raw sniffing
+            commands.append(b'ATCAF0\r\n')
+
+            # Turn off headers for cleaner output
+            commands.append(b'ATH0\r\n')
+
+            # Set timeout
+            commands.append(b'ATST64\r\n')
+
+            # Send all setup commands
+            for cmd in commands:
+                if self.serial_conn:
+                    self.serial_conn.write(cmd)
+                    time.sleep(0.1)  # Brief pause between commands
+                    # Read response (optional, for debugging)
+                    if self.serial_conn.in_waiting:
+                        response = self.serial_conn.read_all().decode(errors='ignore').strip()
+                        logger.debug(f"ELM response to {cmd.decode().strip()}: {response}")
+
+            logger.info(f"CAN sniffing enabled for protocol: {protocol}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to enable CAN sniffing: {e}")
+            return False
+
+    def start_can_monitor(self) -> bool:
+        """Start monitoring CAN bus traffic"""
+        if not self.is_connected or self.current_device.device_type != "ELM327":
+            logger.error("Not connected to ELM327 device")
+            return False
+
+        if self.mock_mode:
+            logger.info("[MOCK] CAN monitoring started")
+            return True
+
+        try:
+            # Send monitor all command
+            if self.serial_conn:
+                self.serial_conn.write(b'ATMA\r\n')
+                logger.info("CAN monitoring started - press Ctrl+C to stop")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to start CAN monitoring: {e}")
+            return False
+
+    def read_can_messages(self, timeout_ms: int = 1000) -> List[str]:
+        """Read CAN messages from the bus"""
+        if not self.is_connected or self.current_device.device_type != "ELM327":
+            return []
+
+        if self.mock_mode:
+            # Return mock CAN messages for Ford Ranger
+            mock_messages = [
+                "7E0 02 3E 00",  # Tester present response
+                "7E8 06 41 0C 0F A0 00 00",  # Engine RPM
+                "7E8 04 41 0D 32",  # Vehicle speed
+                "7E8 03 7F 01 78",  # Pending response
+            ]
+            time.sleep(0.1)  # Simulate delay
+            return mock_messages
+
+        messages = []
+        try:
+            if self.serial_conn and self.serial_conn.in_waiting:
+                start_time = time.time()
+                while (time.time() - start_time) * 1000 < timeout_ms:
+                    if self.serial_conn.in_waiting:
+                        data = self.serial_conn.readline().decode(errors='ignore').strip()
+                        if data:
+                            messages.append(data)
+                    else:
+                        time.sleep(0.01)  # Small delay to prevent busy waiting
+        except Exception as e:
+            logger.error(f"Error reading CAN messages: {e}")
+
+        return messages
+
+    def stop_can_monitor(self) -> bool:
+        """Stop CAN monitoring"""
+        if not self.is_connected:
+            return False
+
+        if self.mock_mode:
+            logger.info("[MOCK] CAN monitoring stopped")
+            return True
+
+        try:
+            # Send any character to stop monitoring
+            if self.serial_conn:
+                self.serial_conn.write(b'\r\n')
+                time.sleep(0.1)
+                logger.info("CAN monitoring stopped")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to stop CAN monitoring: {e}")
+            return False
+
 # Test function
 def test_professional_devices():
     """Test the professional device handler"""
