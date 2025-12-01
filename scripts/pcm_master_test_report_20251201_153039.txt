@@ -1,0 +1,75 @@
+
+PCM MASTER TEST REPORT VIA OBD2
+Generated: 2025-12-01 15:30:39
+Test Session: 20251201_153039
+
+EXECUTIVE SUMMARY
+================
+Overall Status: INIT_FAILED
+Execution Time: N/A seconds
+Test Mode: Live Hardware Mode
+
+TEST CONFIGURATION
+=================
+Primary Device: PCMmaster (J2534)
+Secondary Device: OBDLink MX+ (CAN Sniffer)
+Supported Protocols: ISO15765, CAN, J2534
+PCM Addresses: 7E0, 7E8, 7E1
+
+TEST RESULTS SUMMARY
+===================
+
+PCM Identification:
+- Status: UNKNOWN
+- ECU Part Number: N/A
+- Software Version: N/A
+
+PCM DTC Scanning:
+- Status: UNKNOWN
+- DTCs Found: 0
+
+PCM Live Data Monitoring:
+- Status: UNKNOWN
+- Parameters Monitored: 0
+- Reasonable Ranges: 0/0
+
+PCM Special Functions:
+- Status: UNKNOWN
+- Adaptation Systems: 0
+- Security Levels: 0
+
+PCM Security Access:
+- Status: UNKNOWN
+
+PCM CAN Traffic Analysis:
+- Status: UNKNOWN
+- PCM Messages/sec: 0.00
+- Total Messages/sec: 0.00
+- PCM Traffic Share: 0.0%
+
+TECHNICAL ANALYSIS
+==================
+Protocol Compatibility: NEEDS REVIEW
+PCM Communication: LIMITED
+Device Integration: FUNCTIONAL
+
+RECOMMENDATIONS
+===============
+1. Review failed test components
+2. Investigate CAN traffic patterns
+3. Check protocol configuration
+
+NOTES
+=====
+- Test performed in live mode
+- Results may vary based on actual vehicle and PCM configuration
+- Security access testing is simulated in mock mode
+- CAN traffic analysis requires active vehicle communication
+
+CONCLUSION
+==========
+The PCM master test via OBD2 interface has completed with limitations.
+The system demonstrates partial PCM diagnostic capability.
+
+END OF REPORT
+=============

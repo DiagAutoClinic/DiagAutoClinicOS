@@ -1,0 +1,11 @@
+{
+  "timestamp": "20251201_153039",
+  "mock_mode": false,
+  "pcm_identification": {},
+  "pcm_dtc_scan": {},
+  "pcm_live_data": {},
+  "pcm_special_functions": {},
+  "pcm_security_access": {},
+  "can_traffic_analysis": {},
+  "overall_status": "INIT_FAILED"
+}
