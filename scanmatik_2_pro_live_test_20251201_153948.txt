@@ -1,0 +1,3 @@
+2025-12-01 15:39:48,753 - __main__ - INFO - Starting ScanMatik 2 Pro live testing session
+2025-12-01 15:39:48,753 - shared.scanmatik_2_pro - INFO - Setting up mock ScanMatik 2 Pro devices...
+2025-12-01 15:39:48,753 - shared.scanmatik_2_pro - INFO - Mock device setup complete: ScanMatik 2 Pro (Mock)

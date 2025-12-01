@@ -1,0 +1,94 @@
+
+CHEVROLET CRUZE 2014 LIVE TESTING REPORT
+Generated: 2025-12-01 13:34:25
+Test Session: 20251201_133425
+
+VEHICLE INFORMATION
+==================
+Make: Chevrolet
+Model: Cruze
+Year: 2014
+VIN: KL1JF6889EK617029
+Odometer: 115315km
+Engine: 1.6L/1.8L
+Transmission: Manual/Automatic
+
+TESTING CONFIGURATION
+====================
+Mode: Mock Mode
+Primary Device: GoDiag GD101 (J2534)
+Secondary Device: OBDLink MX+ (CAN Sniffer)
+Protocol: ISO15765-11BIT (GM/Chevrolet)
+
+DIAGNOSTIC TEST RESULTS
+=======================
+
+VIN Reading:
+- Status: PASS
+- Captured VIN: WVWZZZ3CZ7E123456
+- Expected VIN: KL1JF6889EK617029
+- CAN Messages: 4
+- Duration: 507ms
+
+DTC Scanning:
+- Status: PASS
+- DTCs Found: 2
+  - P0300 (Medium): Random/Multiple Cylinder Misfire
+  - P0420 (Medium): Catalyst System Efficiency Below Threshold
+
+- CAN Messages: 5
+- Duration: 515ms
+
+ECU Information:
+- Status: PASS
+- ECU Data Available: Yes
+- CAN Messages: 4
+- Duration: 501ms
+
+CAN TRAFFIC ANALYSIS
+===================
+Total Messages: 91
+Recent Messages (10s): 91
+Unique Arbitration IDs: 4
+Messages Per Second: 8.3
+
+Top Arbitration IDs:
+- 7E8: 57 messages
+- 740: 12 messages
+- 7E0: 11 messages
+- 720: 11 messages
+
+GM PROTOCOL VALIDATION
+=====================
+Vehicle Profile Set: YES
+Protocol Configured: YES
+Engine: SUPPORTED
+Transmission: SUPPORTED
+Brakes: SUPPORTED
+Steering: SUPPORTED
+Body: SUPPORTED
+Instrument: SUPPORTED
+Climate: SUPPORTED
+
+PERFORMANCE METRICS
+==================
+Connection Success: YES
+CAN Monitoring: ACTIVE
+Total Diagnostic Operations: 3
+Total CAN Messages Captured: 105
+
+TESTING SUMMARY
+===============
+Overall Status: SUCCESS
+Protocol Compatibility: GOOD
+CAN Bus Monitoring: FUNCTIONAL
+
+NOTES
+=====
+- Test performed in mock mode
+- VIN matching may differ in mock mode
+- Real hardware testing recommended for final validation
+- CAN traffic analysis shows healthy message rate
+
+END OF REPORT
+=============

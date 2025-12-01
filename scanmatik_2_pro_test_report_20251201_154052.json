@@ -1,0 +1,59 @@
+{
+  "test_session": {
+    "timestamp": "2025-12-01T15:40:52.487419",
+    "handler_version": "ScanMatik 2 Pro Handler v1.0",
+    "log_file": "scanmatik_2_pro_live_test_20251201_154052.txt"
+  },
+  "device_info": {
+    "name": "ScanMatik 2 Pro (Mock)",
+    "type": "ScanMatik 2 Pro",
+    "port": "MOCK_PORT",
+    "description": "Mock ScanMatik 2 Pro device for testing",
+    "firmware_version": "2.1.3",
+    "protocol_support": [
+      "ISO 15765-2 (11-bit CAN)",
+      "ISO 15765-2 (29-bit CAN)",
+      "UDS (ISO 14229) over CAN",
+      "ISO 14230-4 KWP2000"
+    ],
+    "features": [
+      "Basic OBD-II",
+      "Enhanced OBD (Mode 9)",
+      "Diagnostic Trouble Codes",
+      "Live Data Streaming",
+      "Bidirectional Control",
+      "ECU Programming",
+      "UDS Protocol Commands",
+      "CAN Bus Sniffing"
+    ],
+    "capabilities": [
+      "PID_READ",
+      "LIVE_DATA",
+      "DTC_SCAN",
+      "DTC_CLEAR",
+      "VIN_READ",
+      "ECU_INFO",
+      "FREEZE_FRAMES",
+      "READINESS",
+      "BIDIRECTIONAL",
+      "PROGRAMMING",
+      "UDS_COMMANDS"
+    ],
+    "is_real_hardware": false
+  },
+  "test_results": {
+    "device_detection": true,
+    "connection": true,
+    "obd_commands": true,
+    "live_data": true,
+    "comprehensive_diagnostics": true,
+    "uds_commands": true,
+    "advanced_features": true
+  },
+  "summary": {
+    "total_tests": 7,
+    "passed_tests": 7,
+    "failed_tests": 0,
+    "success_rate": 100.0
+  }
+}
