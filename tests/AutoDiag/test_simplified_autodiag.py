@@ -15,9 +15,9 @@ from PyQt6.QtCore import Qt
 # Add shared path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'shared'))
 
-# Import from simplified main
-sys.path.insert(0, os.path.dirname(__file__))
-from main_simplified import (
+# Import from main_final for AutoDiag functionality
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'AutoDiag'))
+from main_final import (
     DiagnosticSession,
     VWDiagnosticEngine,
     MockDiagnosticEngine,

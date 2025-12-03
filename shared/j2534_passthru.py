@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-J2534 PassThru Protocol Handler
+J2534 PassThru Protocol Handler with OBD2 16-Pin Direct Connection
 Supports GoDiag GD101 and compatible J2534 devices for UDS/ISO 14229 diagnostics
+Direct connection to OBD2 16-pin connector with proper pinout configuration
 """
 
 import logging
@@ -9,6 +10,12 @@ import time
 from typing import Optional, List, Tuple, Dict
 from enum import Enum
 from abc import ABC, abstractmethod
+
+# Import OBD2 configuration
+from .godiag_gd101_obd2_config import (
+    OBD2Pin, OBD2Protocol, GoDiagOBD2Config,
+    GoDiagOBD2Connector, OBD2PinMapper, create_godiag_obd2_config
+)
 
 logger = logging.getLogger(__name__)
 
@@ -197,9 +204,9 @@ class MockJ2534PassThru(J2534PassThru):
 
 
 class GoDiagGD101PassThru(J2534PassThru):
-    """Real GoDiag GD101 J2534 PassThru implementation"""
+    """Real GoDiag GD101 J2534 PassThru with OBD2 16-Pin Direct Connection"""
     
-    def __init__(self, port: str = "COM1", baudrate: int = 115200):
+    def __init__(self, port: str = "COM1", baudrate: int = 115200, obd2_protocol: str = "ISO15765_11"):
         self.port = port
         self.baudrate = baudrate
         self._is_connected = False
@@ -207,6 +214,10 @@ class GoDiagGD101PassThru(J2534PassThru):
         self.channels: Dict[int, J2534Protocol] = {}
         self.next_channel_id = 1
         self.serial_conn = None
+        
+        # Initialize OBD2 16-pin connector
+        self.obd2_config = create_godiag_obd2_config(port, obd2_protocol)
+        self.obd2_connector = GoDiagOBD2Connector(self.obd2_config)
         
         try:
             import serial
@@ -216,12 +227,21 @@ class GoDiagGD101PassThru(J2534PassThru):
             self.serial = None
     
     def open(self) -> bool:
-        """Open GoDiag GD101 device"""
+        """Open GoDiag GD101 device with OBD2 16-Pin connection"""
         try:
             if not self.serial:
                 logger.error("Serial module not available")
                 return False
             
+            # Connect to OBD2 16-pin port
+            logger.info("Establishing OBD2 16-pin connection...")
+            obd2_success = self.obd2_connector.connect_obd2_port(self.port)
+            
+            if not obd2_success:
+                logger.error("Failed to establish OBD2 16-pin connection")
+                return False
+            
+            # Open serial connection to GoDiag GD101
             self.serial_conn = self.serial.Serial(
                 port=self.port,
                 baudrate=self.baudrate,
@@ -233,7 +253,12 @@ class GoDiagGD101PassThru(J2534PassThru):
             time.sleep(0.5)
             
             self._is_open = True
-            logger.info(f"Opened GoDiag GD101 on {self.port}")
+            logger.info(f"Opened GoDiag GD101 on {self.port} with OBD2 16-Pin connection")
+            
+            # Log connection details
+            status = self.obd2_connector.get_connection_status()
+            logger.info(f"OBD2 Status: Protocol={status['protocol']}, Required Pins={status['required_pins']}")
+            
             return True
         
         except Exception as e:
@@ -241,8 +266,12 @@ class GoDiagGD101PassThru(J2534PassThru):
             return False
     
     def close(self) -> bool:
-        """Close GoDiag GD101 device"""
+        """Close GoDiag GD101 device and OBD2 connection"""
         try:
+            # Disconnect OBD2 connection first
+            if hasattr(self, 'obd2_connector') and self.obd2_connector:
+                self.obd2_connector.disconnect_obd2_port()
+            
             if self.serial_conn:
                 self._send_command(b'\x00\x02')  # Close GoDiag
                 self.serial_conn.close()
@@ -250,7 +279,7 @@ class GoDiagGD101PassThru(J2534PassThru):
             self._is_open = False
             self._is_connected = False
             self.channels.clear()
-            logger.info("Closed GoDiag GD101")
+            logger.info("Closed GoDiag GD101 and OBD2 16-Pin connection")
             return True
         
         except Exception as e:
@@ -396,6 +425,31 @@ class GoDiagGD101PassThru(J2534PassThru):
         except Exception as e:
             logger.error(f"Command error: {e}")
             return None
+    def get_obd2_status(self) -> Dict:
+        """Get OBD2 16-pin connection status"""
+        if hasattr(self, 'obd2_connector') and self.obd2_connector:
+            return self.obd2_connector.get_connection_status()
+        return {'connected': False, 'protocol': None}
+    
+    def validate_obd2_connection(self) -> Tuple[bool, List[str]]:
+        """Validate OBD2 16-pin connection setup"""
+        if hasattr(self, 'obd2_connector') and self.obd2_connector:
+            return self.obd2_connector.pin_mapper.validate_godiag_connection()
+        return False, ["OBD2 connector not initialized"]
+    
+    def get_obd2_pin_instructions(self) -> List[str]:
+        """Get step-by-step OBD2 pin connection instructions"""
+        if hasattr(self, 'obd2_connector') and self.obd2_connector:
+            return self.obd2_connector.pin_mapper.get_connection_instructions()
+        return ["OBD2 connector not initialized"]
+    
+    def auto_detect_protocol(self) -> bool:
+        """Auto-detect OBD2 protocol from vehicle"""
+        if hasattr(self, 'obd2_connector') and self.obd2_connector:
+            detected_protocol = self.obd2_connector.auto_detect_protocol()
+            logger.info(f"Auto-detected OBD2 protocol: {detected_protocol.name}")
+            return True
+        return False
 
 
 def get_passthru_device(mock_mode: bool = True, device_name: str = "GoDiag GD101", 

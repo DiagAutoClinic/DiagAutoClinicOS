@@ -16,7 +16,7 @@ shared_path = os.path.join(os.path.dirname(__file__), '..', 'shared')
 sys.path.insert(0, shared_path)
 
 from security_manager import (
-    EnhancedSecurityManager, SecurityLevel, UserRole, security_manager
+    SecurityManager, SecurityLevel, UserRole, security_manager
 )
 
 
@@ -27,7 +27,7 @@ def sec_manager():
     temp_config = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json')
     temp_config.close()
     
-    manager = EnhancedSecurityManager(config_path=temp_config.name)
+    manager = SecurityManager()
     
     yield manager
     

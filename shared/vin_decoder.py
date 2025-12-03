@@ -16,6 +16,7 @@ class VINDecoder:
             # GM/Chevy/GMC/Cadillac
             '1G1': 'Chevrolet', '1GC': 'GMC', '1G2': 'Pontiac', '1G3': 'Saturn', '1G4': 'Buick',
             '1G6': 'Cadillac', '1G8': 'Saturn', '2G1': 'Chevrolet', '3GC': 'GMC',
+            'KL1': 'Chevrolet',  # Chevrolet Cruze (KL1)
             # Nissan/Infiniti
             '1N4': 'Nissan', 'JN1': 'Nissan', 'JN8': 'Nissan', '3N1': 'Nissan',
             'JN3': 'Infiniti',
@@ -28,7 +29,7 @@ class VINDecoder:
             'JM1': 'Mazda', '1Y1': 'Mazda',
             # Generic/Euro/Asia fallbacks
             'SAJ': 'Jaguar', 'WP0': 'Porsche', 'VF3': 'Peugeot', 'Z3S': 'Citroen',
-            'LVV': 'Volvo', 'YV1': 'Volvo', 'KL1': 'Suzuki', 'MM6': 'Mitsubishi'
+            'LVV': 'Volvo', 'YV1': 'Volvo', 'JS1': 'Suzuki', 'MM6': 'Mitsubishi'
         }
 
     def decode(self, vin):
@@ -54,12 +55,12 @@ class VINDecoder:
         # Brand
         brand = self.wmi_to_brand.get(wmi, 'Generic')
 
-        # Model estimate (VDS patterns)
-        model = self._estimate_model(vds, brand)
-
         # Year decoder (VIN std: 1980-2009: A=80, 1=01...9=09; 2010+: A=10,
         # B=11... up to Y=30)
-        year = self._decode_year(year_char)
+        year = self._decode_year(year_char, wmi, brand)
+
+        # Model estimate (VDS patterns)
+        model = self._estimate_model(vds, brand)
 
         return {
             'full_vin': full_vin,
@@ -74,7 +75,7 @@ class VINDecoder:
             'error': None
         }
 
-    def _decode_year(self, year_char):
+    def _decode_year(self, year_char, wmi=None, brand=None):
         # 1980-2009: A=1980, B=81...Y=2000, 1=2001,2=02...9=09
         pre_2010_codes = {
             'A': 1980, 'B': 1981, 'C': 1982, 'D': 1983, 'E': 1984, 'F': 1985, 'G': 1986, 'H': 1987,
@@ -96,9 +97,11 @@ class VINDecoder:
         elif year_char in pre_2010_codes:
             year_pre = pre_2010_codes[year_char]
             if year_char in post_2010_codes:  # A-Y overlap
-                # Heuristic: If WMI US/Japan (e.g., 1HG), post-2010 more likely
-                # if >2009
-                if year_pre <= 2009:
+                # Heuristic: For US brands, prefer post-2010 for newer models
+                us_brands = ['Chevrolet', 'Ford', 'GMC', 'Cadillac', 'Buick', 'Lincoln', 'Tesla', 'Jeep']
+                if brand in us_brands and year_pre <= 2009:
+                    return post_2010_codes[year_char]  # Prefer newer for US brands
+                elif year_pre <= 2009:
                     return year_pre
                 else:
                     return post_2010_codes[year_char]  # Prefer newer
@@ -125,6 +128,9 @@ class VINDecoder:
             },
             'BMW': {
                 'WBA': '3 Series', 'WBS': 'M Series', 'default': 'Generic BMW Model'
+            },
+            'Chevrolet': {
+                'JF': 'Cruze', 'CM': 'Malibu', 'GN': 'Impala', 'default': 'Generic Chevrolet Model'
             },
             'Volkswagen': {
                 '1J': 'Golf IV', '1K': 'Golf V', '5K': 'Golf VI', '3V': 'Golf VII', '3G': 'Golf VIII',

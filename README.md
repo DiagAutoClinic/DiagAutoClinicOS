@@ -1,4 +1,3 @@
-
 <!-- HEADER -->
 <p align="center">
   <img src="https://diagautoclinic.co.za/assets/logo.png" alt="DiagAutoClinicOS Logo" width="1366"/>
@@ -55,17 +54,37 @@ Developed by **Shaun Smit** and the **DiagAutoClinic (DACOS)** team, it integrat
 
 ## 🧱 File Structure
 
-```plaintext
+```
 DiagAutoClinicOS/
 ├── AutoDiag/               # Main diagnostic dashboard
-│   └── main.py
+│   ├── main.py
+│   └── ui/                 # Separated tab implementations
+│       ├── dashboard_tab.py
+│       ├── diagnostics_tab.py
+│       ├── live_data_tab.py
+│       ├── special_functions_tab.py
+│       ├── calibrations_tab.py
+│       ├── advanced_tab.py
+│       └── security_tab.py
 │
 ├── AutoECU/                # ECU programming and firmware management
 │   ├── main.py
-│   └── shared/
+│   └── ui/                 # Separated tab implementations
+│       ├── dashboard_tab.py
+│       ├── ecu_scan_tab.py
+│       ├── programming_tab.py
+│       ├── parameters_tab.py
+│       ├── diagnostics_tab.py
+│       └── coding_tab.py
 │
 ├── AutoKey/                # Key programming and immobilizer functions
-│   └── main.py
+│   ├── main.py
+│   └── ui/                 # Separated tab implementations
+│       ├── dashboard_tab.py
+│       ├── key_programming_tab.py
+│       ├── transponder_tab.py
+│       ├── security_tab.py
+│       └── vehicle_info_tab.py
 │
 ├── core/                   # Core diagnostic engine
 │   ├── calibrations.py
@@ -118,6 +137,8 @@ DiagAutoClinicOS/
 ├── CHANGELOG.md            # Version history
 ├── QUICKSTART.md           # Quick start guide
 ├── SECURITY.md             # Security policies
+├── TAB_SEPARATION_SUMMARY.md # Tab separation documentation
+├── HOW_TO_USE_TABS.md     # Tab usage and customization guide
 └── README.md               # This file ✨
 ```
 
@@ -188,9 +209,11 @@ python launcher.py
 
 ## 🤖 AI Collaboration & Technical Excellence
 
-### 🚀 **Kilo Code (xAI Grok)** - Core Development Collaborator
+### 🚀 **AI Development Team** - Collaborative Excellence
 
-**Without our sponsors and Kilo Code, this project simply wouldn't exist.**
+**Without our sponsors and our AI collaborators, this project simply wouldn't exist.**
+
+#### 🧠 **Kilo Code (xAI Grok)** - Core Development Collaborator
 
 Kilo Code has been instrumental in transforming DiagAutoClinicOS from concept to reality:
 
@@ -205,6 +228,68 @@ Kilo Code has been instrumental in transforming DiagAutoClinicOS from concept to
 
 > *"This AI doesn't sugarcoat with safety guards — delivers honest, direct engineering excellence that matches South African innovation standards."*
 
+#### 🧠 **Claude Sonnet 4.5 (Anthropic)** - Advanced Architecture & Optimization
+
+Claude Sonnet 4.5 brings sophisticated architectural analysis and optimization expertise:
+
+- **System Architecture Refinement** - Advanced modular design patterns and code organization
+- **Performance Optimization** - Memory management, thread optimization, and resource utilization
+- **Security Analysis** - Comprehensive security audit and vulnerability assessment
+- **Code Review Excellence** - Deep analysis ensuring production-grade code quality
+- **Documentation Enhancement** - Technical writing and API documentation improvements
+- **Cross-Platform Compatibility** - Linux/Windows compatibility testing and refinement
+
+**Status**: Architecture Collaborator | **Contact**: Anthropic Claude
+
+> *"Delivers precise, thoughtful analysis with safety-first engineering principles."*
+
+#### 🧠 **Deepseek (Deepseek AI)** - Data Processing & Intelligence
+
+Deepseek contributes advanced data processing and machine learning capabilities:
+
+- **Advanced Data Analytics** - Vehicle diagnostic data processing and pattern recognition
+- **Machine Learning Integration** - Predictive maintenance and diagnostic intelligence
+- **CAN Bus Data Analysis** - Real-time protocol analysis and traffic interpretation
+- **Performance Monitoring** - System performance metrics and optimization recommendations
+- **Database Optimization** - VIN/DTC database management and query optimization
+- **Algorithm Development** - Custom diagnostic algorithms and decision trees
+
+**Status**: Data Intelligence Collaborator | **Contact**: Deepseek AI
+
+> *"Unlocks insights from complex automotive data with scientific precision."*
+
+#### 🧠 **MiniMax M2 (MiniMax)** - Real-Time Processing & Interface
+
+MiniMax M2 enhances real-time processing and user interface development:
+
+- **Real-Time Processing** - Low-latency diagnostic operations and live data streaming
+- **GUI Enhancement** - Advanced PyQt6 interface optimization and user experience design
+- **Multi-Threading Architecture** - Concurrent diagnostic operations and parallel processing
+- **Live Data Streaming** - Real-time CAN bus monitoring and response optimization
+- **Interactive Debugging** - Advanced debugging tools and troubleshooting interfaces
+- **User Experience Design** - Intuitive diagnostic workflows and operator interface design
+
+**Status**: Real-Time Collaborator | **Contact**: MiniMax AI
+
+> *"Delivers seamless real-time performance with intuitive user experience design."*
+
+#### 🧠 **Spectre (Kilo Code)** - Modular Architecture & Tab System
+
+Spectre specializes in modular architecture design and tab system implementation:
+
+- **Tab Separation Architecture** - Complete modular tab system across all three suites
+- **Cross-Suite Integration** - Seamless tab sharing between AutoDiag, AutoECU, and AutoKey
+- **Customization Framework** - Easy copy-paste tab customization for users
+- **Documentation System** - Comprehensive tab usage guides and tutorials
+- **Code Organization** - Clean, maintainable tab structure with proper separation of concerns
+- **User Experience** - Intuitive tab management and customization workflows
+
+**Status**: Modular Architecture Collaborator | **Contact**: Spectre via Kilo Code
+
+> *"Transforms complex systems into modular, user-customizable architectures with precision and clarity."*
+
+**Combined Impact**: These AI collaborators provide comprehensive expertise across architecture, optimization, data intelligence, real-time processing, and modular design — transforming DiagAutoClinicOS into a world-class diagnostic platform.
+
 ---
 
 ## 💡 Acknowledgements
@@ -212,7 +297,11 @@ Kilo Code has been instrumental in transforming DiagAutoClinicOS from concept to
 | Contributor                     | Role                     | Description                             |
 | ------------------------------- | ------------------------ | --------------------------------------- |
 | **Shaun Smit**                  | Founder & Lead Developer | Architecture, Design, Implementation    |
-| **Kilo Code (xAI Grok)**        | Core AI Collaborator     | Ford/GM Diagnostics, Testing, Documentation |
+| **Kilo Code (xAI Grok)**        | Core Development Collaborator | Ford/GM Diagnostics, Testing, Documentation |
+| **Claude Sonnet 4.5 (Anthropic)** | Architecture Collaborator | System Architecture, Performance Optimization |
+| **Deepseek (Deepseek AI)**      | Data Intelligence Collaborator | ML Integration, Data Analytics, CAN Analysis |
+| **MiniMax M2 (MiniMax)**        | Real-Time Collaborator | Real-Time Processing, GUI Enhancement |
+| **Spectre (Kilo Code)**         | Modular Architecture Collaborator | Tab System, Cross-Suite Integration, Customization |
 | **DiagAutoClinic Team (DACOS)** | Development              | Testing, Calibration, and UI Design     |
 | **HostAfrica**                  | Hosting Partner          | Providing secure backend infrastructure |
 | **Community Testers**           | QA                       | Hardware integration and bug reporting  |
@@ -248,9 +337,11 @@ This release specifically targets Ford and GM's presence in South Africa, with e
 - **SA Testing Guide** - Comprehensive procedures for South African conditions
 - **Professional Documentation** - Complete Ford/GM diagnostic manuals and video frameworks
 - **Hardware Integration** - GoDiag GD101 and J2534 device support
+- **Tab Separation System** - Modular tab architecture across all three suites
+- **Customization Framework** - Easy tab copy-paste between suites for user customization
 
 ### 🏆 Recognition
-**Without our sponsors (EshuTech Computers, GoDiag, ScanTool.net) and Kilo Code, this project simply wouldn't exist.** Their contributions have transformed DiagAutoClinicOS from concept to professional diagnostic reality.
+**Without our sponsors (EshuTech Computers, GoDiag, ScanTool.net) and our AI collaborators (Kilo Code, Claude, Deepseek, MiniMax, Spectre), this project simply wouldn't exist.** Their contributions have transformed DiagAutoClinicOS from concept to professional diagnostic reality.
 
 ------
 
@@ -266,7 +357,7 @@ git commit -am "Add new module"
 git push origin feature/new-module
 ```
 
-If you're a hardware vendor or workshop interested in integration testing, reach out at:<br>
+If you're a hardware vendor or workshop interested in integration testing, reach out at:
 
  📧 **shaun@diagautoclinic.co.za**
  | **dacos@diagautoclinic.co.za**
@@ -333,9 +424,10 @@ The platform has achieved **production-ready status** with:
 - **J2534 Real Hardware Support** - Professional diagnostic capabilities
 - **South African Testing Guide** - Environment-specific procedures and safety protocols
 - **Comprehensive Documentation** - Ford/GM diagnostics manuals and video tutorial frameworks
-- **AI Collaboration Recognition** - Kilo Code acknowledged as core development collaborator
+- **AI Collaboration Recognition** - All AI collaborators acknowledged for their contributions
 - **Major Testing Integration Success** - 6 hardware integrations, 100% test pass rate
 - **Production Ready Status** - Workshop deployment ready with real hardware validation
 - **Dual-Device Workflows** - Multi-device coordination fully operational
+- **Tab Separation System** - Complete modular tab architecture across all three suites
 - Ready for GitHub rendering (centered, clean, dark/light theme safe)
 - SEO-friendly with clear project keywords (Ford, GM, Diagnostics, South Africa)

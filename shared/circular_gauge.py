@@ -44,7 +44,7 @@ class CircularGauge(QWidget):
         self.max_value = max_value
         self.label_text = label
         self.unit = unit
-        self.setMinimumSize(160, 160)
+        self.setMinimumSize(100, 100)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
         # Animation setup
@@ -153,7 +153,7 @@ class CircularGauge(QWidget):
 
         # Draw value text (large)
         painter.setPen(QColor(get_dacos_color('accent')))  # Accent teal
-        value_font = QFont("Segoe UI", 16, QFont.Weight.Bold)
+        value_font = QFont("Segoe UI", 12, QFont.Weight.Bold)
         painter.setFont(value_font)
         value_text = f"{int(self._animated_value)}"
 
@@ -163,7 +163,7 @@ class CircularGauge(QWidget):
 
         # Draw unit text (smaller)
         painter.setPen(QColor(get_dacos_color('text_muted')))  # Muted teal
-        unit_font = QFont("Segoe UI", 9)
+        unit_font = QFont("Segoe UI", 7)
         painter.setFont(unit_font)
         unit_rect = QRectF(center_x - center_radius, center_y + center_radius/4,
                            center_radius * 2, center_radius/2)
@@ -172,7 +172,7 @@ class CircularGauge(QWidget):
         # Draw label below gauge
         if self.label_text:
             painter.setPen(QColor(get_dacos_color('text_muted')))
-            label_font = QFont("Segoe UI", 8)
+            label_font = QFont("Segoe UI", 6)
             painter.setFont(label_font)
             label_rect = QRectF(center_x - radius - 10, center_y + radius + 5,
                                 (radius + 10) * 2, 20)
@@ -185,7 +185,7 @@ class StatCard(QFrame):
     def __init__(self, title, value, max_value=100, unit="%", parent=None):
         super().__init__(parent)
         self.setProperty("class", "stat-card")
-        self.setMinimumSize(140, 160)
+        self.setMinimumSize(120, 120)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
         # Apply styling using DACOS theme
@@ -207,7 +207,7 @@ class StatCard(QFrame):
         """)
         
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
+        layout.setSpacing(0)
         layout.setContentsMargins(15, 15, 15, 15)
         
         # Title
@@ -217,7 +217,7 @@ class StatCard(QFrame):
         self.title_label.setStyleSheet(f"""
             QLabel {{
                 color: {DACOS_THEME['text_muted']};
-                font-size: 11pt;
+                font-size: 9pt;
                 font-weight: bold;
                 background: transparent;
             }}
@@ -243,8 +243,8 @@ class StatCard(QFrame):
         self.value_label.setVisible(False)  # Hidden by default, gauge shows value
         
         layout.addWidget(self.title_label)
-        layout.addWidget(self.gauge, alignment=Qt.AlignmentFlag.AlignCenter)
-        layout.addStretch()
+        layout.addWidget(self.gauge, alignment=Qt.AlignmentFlag.AlignTop)
+        # Removed stretch to move gauge up
     
     def _parse_value(self, value):
         """Parse value - handles strings like '97%' or numbers"""

@@ -52,9 +52,14 @@ except ImportError as e:
 
 
 # ----------------------------------------------------------------------
-# Qt imports
+# Qt imports - Fixed to resolve Pylance issues
 # ----------------------------------------------------------------------
-from PyQt6.QtWidgets import *
+from PyQt6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QFrame, QLabel, QPushButton, QComboBox,
+    QHBoxLayout, QVBoxLayout, QTabWidget, QGroupBox, QListWidget, QListWidgetItem,
+    QTextEdit, QTableWidget, QTableWidgetItem, QSpinBox, QScrollArea, QDialog,
+    QMessageBox, QLineEdit, QSizePolicy
+)
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QFont, QPalette, QColor, QLinearGradient, QPainter, QPen
 
@@ -66,6 +71,14 @@ try:
     from shared.live_data import live_data_generator, start_live_stream, stop_live_stream, get_mock_live_data
     from shared.advance import get_advanced_functions, simulate_function_execution, get_mock_advanced_data
     from shared.circular_gauge import CircularGauge, StatCard
+    # Import separate tab classes
+    from AutoDiag.ui.dashboard_tab import DashboardTab
+    from AutoDiag.ui.diagnostics_tab import DiagnosticsTab
+    from AutoDiag.ui.live_data_tab import LiveDataTab
+    from AutoDiag.ui.special_functions_tab import SpecialFunctionsTab
+    from AutoDiag.ui.calibrations_tab import CalibrationsTab
+    from AutoDiag.ui.advanced_tab import AdvancedTab
+    from AutoDiag.ui.security_tab import SecurityTab
 except ImportError as e:
     logging.warning(f"Some modules not available: {e}")
 
@@ -340,14 +353,8 @@ class AutoDiagPro(QMainWindow):
         self.tab_widget.setDocumentMode(True)
         main_layout.addWidget(self.tab_widget, 1)
 
-        # Create all tabs (rest of your tab creation methods remain the same)
-        self.create_dashboard_tab()
-        self.create_enhanced_diagnostics_tab()
-        self.create_live_data_tab()
-        self.create_special_functions_tab()
-        self.create_calibrations_resets_tab()
-        self.create_advanced_tab()
-        self.create_security_tab()
+        # Create all tabs using separate tab classes
+        self.create_tabs_using_separate_classes()
 
         # Status bar
         self.create_status_bar()
@@ -357,9 +364,54 @@ class AutoDiagPro(QMainWindow):
         self.header.brand_combo.currentTextChanged.connect(self.on_brand_changed)
         self.header.logout_btn.clicked.connect(self.secure_logout)
 
-    # [ALL YOUR EXISTING TAB CREATION METHODS REMAIN THE SAME]
-    # create_dashboard_tab(), create_enhanced_diagnostics_tab(), etc.
-    # They will automatically use DACOS styling through the property classes
+    def create_tabs_using_separate_classes(self):
+        """Create all tabs using separate tab classes for better modularity"""
+        # Initialize tab instances
+        dashboard_tab = DashboardTab(self)
+        diagnostics_tab = DiagnosticsTab(self)
+        live_data_tab = LiveDataTab(self)
+        special_functions_tab = SpecialFunctionsTab(self)
+        calibrations_tab = CalibrationsTab(self)
+        advanced_tab = AdvancedTab(self)
+        security_tab = SecurityTab(self)
+
+        # Create tabs and add them to tab widget
+        dashboard_widget, dashboard_title = dashboard_tab.create_tab()
+        self.tab_widget.addTab(dashboard_widget, dashboard_title)
+
+        diagnostics_widget, diagnostics_title = diagnostics_tab.create_tab()
+        self.tab_widget.addTab(diagnostics_widget, diagnostics_title)
+
+        live_data_widget, live_data_title = live_data_tab.create_tab()
+        self.tab_widget.addTab(live_data_widget, live_data_title)
+
+        special_functions_widget, special_functions_title = special_functions_tab.create_tab()
+        self.tab_widget.addTab(special_functions_widget, special_functions_title)
+
+        calibrations_widget, calibrations_title = calibrations_tab.create_tab()
+        self.tab_widget.addTab(calibrations_widget, calibrations_title)
+
+        advanced_widget, advanced_title = advanced_tab.create_tab()
+        self.tab_widget.addTab(advanced_widget, advanced_title)
+
+        security_widget, security_title = security_tab.create_tab()
+        self.tab_widget.addTab(security_widget, security_title)
+
+        # Store references to tab instances for later use
+        self.dashboard_tab = dashboard_tab
+        self.diagnostics_tab = diagnostics_tab
+        self.live_data_tab = live_data_tab
+        self.special_functions_tab = special_functions_tab
+        self.calibrations_tab = calibrations_tab
+        self.advanced_tab = advanced_tab
+        self.security_tab = security_tab
+
+        # Connect brand change signals to tab methods
+        self.header.brand_combo.currentTextChanged.connect(self.special_functions_tab.refresh_functions_list)
+        self.header.brand_combo.currentTextChanged.connect(self.calibrations_tab.refresh_calibrations_list)
+
+        # Initialize special functions tab with current brand
+        self.special_functions_tab.refresh_functions_list()
 
     def create_status_bar(self):
         """Create status bar with DACOS styling"""
@@ -391,166 +443,7 @@ class AutoDiagPro(QMainWindow):
         if hasattr(self, 'header'):
             self.header.update_layout()
 
-    def create_dashboard_tab(self):
-        """Ultra-sexy animated dashboard with DACOS styling"""
-        tab = QWidget()
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(tab)
-        self.tab_widget.addTab(scroll, "🚀 Dashboard")
 
-        layout = QVBoxLayout(tab)
-        layout.setSpacing(20)
-        layout.setContentsMargins(20, 30, 20, 30)
-
-        # === TOP ROW: 4 BIG GLOWING GAUGES ===
-        top_grid = QGridLayout()
-        top_grid.setSpacing(25)
-
-        # Create DACOS-styled stat cards
-        self.system_health_card = StatCard("System Health", 98, 100, "%")
-        self.connection_card = StatCard("Connection Quality", 85, 100, "%")
-        self.dtc_card = StatCard("Active DTCs", 0, 50, "")
-        self.security_card = StatCard("Security Level", 5, 5, "/5")
-
-        # Shared StatCard handles sizing responsively
-
-        top_grid.addWidget(self.system_health_card, 0, 0)
-        top_grid.addWidget(self.connection_card, 0, 1)
-        top_grid.addWidget(self.dtc_card, 0, 2)
-        top_grid.addWidget(self.security_card, 0, 3)
-
-        # === QUICK ACTIONS ROW ===
-        actions_frame = QFrame()
-        actions_frame.setProperty("class", "glass-card")
-        actions_layout = QGridLayout(actions_frame)
-        actions_layout.setSpacing(15)
-
-        # DACOS-styled buttons
-        btn_style = """
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #1F5E5A, stop:1 #134F4A);
-                color: #E8FFFB;
-                border: 2px solid #21F5C1;
-                border-radius: 16px;
-                padding: 20px;
-                font-size: 14pt;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2AF5D1, stop:1 #21F5C1);
-                border: 2px solid #2AF5D1;
-                color: #0B2E2B;
-            }
-        """
-
-        btn1 = QPushButton("🚀 Quick Scan")
-        btn2 = QPushButton("🔍 Read DTCs") 
-        btn3 = QPushButton("📊 Live Data")
-        btn4 = QPushButton("💻 ECU Info")
-
-        for btn in (btn1, btn2, btn3, btn4):
-            btn.setStyleSheet(btn_style)
-            btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            # Connect to your existing methods
-            if btn.text() == "🚀 Quick Scan":
-                btn.clicked.connect(self.run_quick_scan)
-            elif btn.text() == "🔍 Read DTCs":
-                btn.clicked.connect(self.read_dtcs)
-            elif btn.text() == "📊 Live Data":
-                btn.clicked.connect(self.show_live_data)
-            elif btn.text() == "💻 ECU Info":
-                btn.clicked.connect(self.show_ecu_info)
-
-        actions_layout.addWidget(btn1, 0, 0)
-        actions_layout.addWidget(btn2, 0, 1)
-        actions_layout.addWidget(btn3, 0, 2)
-        actions_layout.addWidget(btn4, 0, 3)
-
-        # DACOS title
-        actions_title = QLabel("⚡ Quick Actions")
-        actions_title.setStyleSheet("font-size: 18pt; color: #21F5C1; font-weight: bold; padding: 10px;")
-        actions_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # === ASSEMBLE EVERYTHING ===
-        layout.addLayout(top_grid)
-        layout.addWidget(actions_title)
-        layout.addWidget(actions_frame)
-        layout.addStretch()
-
-        # === LIVE UPDATES ===
-        self.dashboard_timer = QTimer()
-        self.dashboard_timer.timeout.connect(self.update_dashboard_data)
-        self.dashboard_timer.start(3000)
-
-        # Live data streaming timer
-        self.live_data_timer = QTimer()
-        self.live_data_timer.timeout.connect(self.update_live_data_table)
-
-    def update_dashboard_data(self):
-        """Update dashboard with demo data"""
-        self.system_health_card.update_value(random.randint(94, 99))
-        self.connection_card.update_value(random.randint(72, 98))
-        self.dtc_card.update_value(random.randint(0, 3))
-
-    def create_enhanced_diagnostics_tab(self):
-        """Enhanced diagnostics tab with real functionality"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        
-        # Header
-        header = QLabel("🔍 Advanced Diagnostics")
-        header.setProperty("class", "tab-title")
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # Control Panel
-        control_frame = QFrame()
-        control_frame.setProperty("class", "glass-card")
-        control_layout = QHBoxLayout(control_frame)
-        
-        self.scan_btn = QPushButton("🚀 Full System Scan")
-        self.scan_btn.setProperty("class", "primary")
-        self.scan_btn.clicked.connect(self.run_full_scan)
-        
-        self.dtc_btn = QPushButton("📋 Read DTCs")
-        self.dtc_btn.setProperty("class", "success")
-        self.dtc_btn.clicked.connect(self.read_dtcs)
-        
-        self.clear_btn = QPushButton("🧹 Clear DTCs")
-        self.clear_btn.setProperty("class", "warning")
-        self.clear_btn.clicked.connect(self.clear_dtcs)
-        
-        control_layout.addWidget(self.scan_btn)
-        control_layout.addWidget(self.dtc_btn)
-        control_layout.addWidget(self.clear_btn)
-        control_layout.addStretch()
-
-        # Results Area
-        results_frame = QFrame()
-        results_frame.setProperty("class", "glass-card")
-        results_layout = QVBoxLayout(results_frame)
-        
-        results_title = QLabel("Scan Results")
-        results_title.setProperty("class", "section-title")
-        
-        self.results_text = QTextEdit()
-        self.results_text.setReadOnly(True)
-        self.results_text.setPlainText(
-            "System ready for diagnostics.\n\n"
-            "Select a vehicle brand and click 'Full System Scan' to begin."
-        )
-        
-        results_layout.addWidget(results_title)
-        results_layout.addWidget(self.results_text)
-
-        # Assemble
-        layout.addWidget(header)
-        layout.addWidget(control_frame)
-        layout.addWidget(results_frame)
-        
-        self.tab_widget.addTab(tab, "🔍 Diagnostics")
 
     def create_live_data_tab(self):
         """Create live data streaming tab"""
@@ -603,98 +496,6 @@ class AutoDiagPro(QMainWindow):
         
         self.tab_widget.addTab(tab, "📊 Live Data")
 
-    def create_special_functions_tab(self):
-        """Create enhanced special functions tab with full functionality"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
-
-        # Header
-        header = QLabel("🔧 Special Functions")
-        header.setProperty("class", "tab-title")
-        header.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(header)
-
-        # Main content area
-        content_frame = QFrame()
-        content_frame.setProperty("class", "glass-card")
-        content_layout = QVBoxLayout(content_frame)
-
-        # Brand info display
-        self.brand_info_label = QLabel("Select a vehicle brand from the header to view available special functions.")
-        self.brand_info_label.setProperty("class", "section-title")
-        self.brand_info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        content_layout.addWidget(self.brand_info_label)
-
-        # Functions list
-        functions_group = QGroupBox("Available Functions")
-        functions_layout = QVBoxLayout(functions_group)
-
-        # Create scroll area for functions list
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setMinimumHeight(200)
-        scroll_area.setMaximumHeight(300)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-
-        self.functions_list = QListWidget()
-        self.functions_list.setMinimumHeight(200)
-        self.functions_list.setProperty("class", "glass-card")
-        self.functions_list.itemSelectionChanged.connect(self.show_function_details)
-        self.functions_list.itemDoubleClicked.connect(self.execute_selected_function)
-
-        scroll_area.setWidget(self.functions_list)
-        functions_layout.addWidget(scroll_area)
-
-        # Function details area
-        details_group = QGroupBox("Function Details")
-        details_layout = QVBoxLayout(details_group)
-
-        self.function_details = QTextEdit()
-        self.function_details.setReadOnly(True)
-        self.function_details.setMaximumHeight(150)
-        self.function_details.setPlainText("Select a function to view details and parameters.")
-        details_layout.addWidget(self.function_details)
-
-        # Control buttons
-        buttons_layout = QHBoxLayout()
-
-        self.execute_btn = QPushButton("⚡ Execute Function")
-        self.execute_btn.setProperty("class", "primary")
-        self.execute_btn.clicked.connect(self.execute_selected_function)
-        self.execute_btn.setEnabled(False)
-
-        self.refresh_btn = QPushButton("🔄 Refresh Functions")
-        self.refresh_btn.setProperty("class", "success")
-        self.refresh_btn.clicked.connect(self.refresh_functions_list)
-
-        buttons_layout.addWidget(self.execute_btn)
-        buttons_layout.addWidget(self.refresh_btn)
-        buttons_layout.addStretch()
-
-        # Results area
-        results_group = QGroupBox("Execution Results")
-        results_layout = QVBoxLayout(results_group)
-
-        self.results_text = QTextEdit()
-        self.results_text.setReadOnly(True)
-        self.results_text.setPlainText("Function execution results will appear here.")
-        results_layout.addWidget(self.results_text)
-
-        # Assemble everything
-        content_layout.addWidget(functions_group)
-        content_layout.addWidget(details_group)
-        content_layout.addLayout(buttons_layout)
-        content_layout.addWidget(results_group)
-
-        layout.addWidget(content_frame)
-
-        self.tab_widget.addTab(tab, "🔧 Special Functions")
-
-        # Connect to brand changes
-        self.header.brand_combo.currentTextChanged.connect(self.on_brand_changed_special_functions)
 
     def create_calibrations_resets_tab(self):
         """Create enhanced calibrations and resets tab with full functionality"""
@@ -1061,7 +862,7 @@ class AutoDiagPro(QMainWindow):
         try:
             # Try DACOS theme first
             if DACOS_AVAILABLE:
-                success = apply_theme(QApplication.instance())
+                success = apply_dacos_theme(QApplication.instance())
                 if success:
                     logger.info("DACOS Unified theme applied successfully")
                     return
@@ -1169,277 +970,6 @@ class AutoDiagPro(QMainWindow):
     def on_brand_changed(self, brand):
         """Handle brand change"""
         self.status_label.setText(f"🚗 Vehicle brand: {brand}")
-
-    def on_brand_changed_special_functions(self, brand):
-        """Handle brand change for special functions tab"""
-        self.refresh_functions_list()
-        self.brand_info_label.setText(f"Selected Brand: {brand}")
-        self.status_label.setText(f"🔧 Special functions loaded for {brand}")
-
-    def refresh_functions_list(self):
-        """Refresh the functions list based on selected brand"""
-        brand = self.header.brand_combo.currentText()
-        self.functions_list.clear()
-
-        try:
-            functions = special_functions_manager.get_brand_functions(brand)
-            if functions:
-                for func in functions:
-                    item_text = f"{func.name} (Level {func.security_level})"
-                    item = QListWidgetItem(item_text)
-                    item.setData(Qt.ItemDataRole.UserRole, func)
-                    self.functions_list.addItem(item)
-
-                self.brand_info_label.setText(f"Found {len(functions)} functions for {brand}")
-            else:
-                self.brand_info_label.setText(f"No special functions available for {brand}")
-                self.functions_list.addItem("No functions available")
-
-        except Exception as e:
-            logger.error(f"Error loading functions for {brand}: {e}")
-            self.brand_info_label.setText(f"Error loading functions for {brand}")
-            self.functions_list.addItem("Error loading functions")
-
-        # Update function details
-        self.function_details.setPlainText("Select a function to view details and parameters.")
-        self.execute_btn.setEnabled(False)
-
-    def show_function_details(self):
-        """Show details of selected function"""
-        current_item = self.functions_list.currentItem()
-        if not current_item:
-            self.function_details.setPlainText("Select a function to view details and parameters.")
-            self.execute_btn.setEnabled(False)
-            return
-
-        func = current_item.data(Qt.ItemDataRole.UserRole)
-        if not func:
-            self.function_details.setPlainText("Invalid function selected.")
-            self.execute_btn.setEnabled(False)
-            return
-
-        # Build details text
-        details = f"Function: {func.name}\n"
-        details += f"ID: {func.function_id}\n"
-        details += f"Category: {func.category.value.title()}\n"
-        details += f"Security Level: {func.security_level}\n\n"
-        details += f"Description:\n{func.description}\n\n"
-
-        if func.prerequisites:
-            details += "Prerequisites:\n"
-            for pre in func.prerequisites:
-                details += f"• {pre}\n"
-            details += "\n"
-
-        if func.risks:
-            details += "Risks:\n"
-            for risk in func.risks:
-                details += f"⚠️ {risk}\n"
-            details += "\n"
-
-        if func.parameters:
-            details += "Parameters:\n"
-            for param_name, param_config in func.parameters.items():
-                required = "Required" if param_config['required'] else "Optional"
-                param_type = param_config['type']
-                validation = f" ({param_config['validation']})" if param_config.get('validation') else ""
-                details += f"• {param_name} ({param_type}) - {required}{validation}\n"
-        else:
-            details += "No parameters required."
-
-        self.function_details.setPlainText(details)
-        self.execute_btn.setEnabled(True)
-
-    def execute_selected_function(self):
-        """Execute the selected special function"""
-        current_item = self.functions_list.currentItem()
-        if not current_item:
-            return
-
-        func = current_item.data(Qt.ItemDataRole.UserRole)
-        if not func:
-            return
-
-        # Check if function requires parameters
-        if func.parameters:
-            # Show parameter input dialog
-            params = self.get_function_parameters(func)
-            if params is None:  # User cancelled
-                return
-        else:
-            params = {}
-
-        # Execute function
-        self.execute_btn.setEnabled(False)
-        self.status_label.setText(f"⚡ Executing {func.name}...")
-
-        # Simulate execution with mock results
-        QTimer.singleShot(2000, lambda: self.show_execution_result(func, params))
-
-    def get_function_parameters(self, func):
-        """Get parameters for function execution via dialog"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle(f"Parameters for {func.name}")
-        dialog.setModal(True)
-
-        layout = QVBoxLayout(dialog)
-
-        # Function description
-        desc_label = QLabel(f"Description: {func.description}")
-        desc_label.setWordWrap(True)
-        layout.addWidget(desc_label)
-
-        # Prerequisites
-        if func.prerequisites:
-            pre_label = QLabel("Prerequisites:")
-            pre_label.setStyleSheet("font-weight: bold;")
-            layout.addWidget(pre_label)
-
-            for pre in func.prerequisites:
-                pre_item = QLabel(f"• {pre}")
-                pre_item.setStyleSheet("margin-left: 10px;")
-                layout.addWidget(pre_item)
-
-        # Risks
-        if func.risks:
-            risk_label = QLabel("Risks:")
-            risk_label.setStyleSheet("font-weight: bold; color: #ff6b6b;")
-            layout.addWidget(risk_label)
-
-            for risk in func.risks:
-                risk_item = QLabel(f"⚠️ {risk}")
-                risk_item.setStyleSheet("margin-left: 10px; color: #ff6b6b;")
-                layout.addWidget(risk_item)
-
-        # Parameter inputs
-        param_inputs = {}
-        if func.parameters:
-            params_label = QLabel("Parameters:")
-            params_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
-            layout.addWidget(params_label)
-
-            for param_name, param_config in func.parameters.items():
-                param_layout = QHBoxLayout()
-
-                label = QLabel(f"{param_name}:")
-                label.setMinimumWidth(120)
-
-                if param_config['type'] == 'bool':
-                    input_field = QCheckBox()
-                elif param_config['type'] == 'int':
-                    input_field = QSpinBox()
-                    if 'validation' in param_config and param_config['validation'] == '1-8':
-                        input_field.setRange(1, 8)
-                    elif 'validation' in param_config and param_config['validation'] == '70-105':
-                        input_field.setRange(70, 105)
-                    else:
-                        input_field.setRange(0, 9999)
-                else:  # string
-                    input_field = QLineEdit()
-                    if param_config.get('validation') == '70-105':
-                        input_field.setPlaceholderText("70-105")
-
-                param_layout.addWidget(label)
-                param_layout.addWidget(input_field)
-                param_layout.addStretch()
-
-                layout.addLayout(param_layout)
-                param_inputs[param_name] = input_field
-
-        # Buttons
-        buttons = QHBoxLayout()
-        execute_btn = QPushButton("Execute")
-        execute_btn.setProperty("class", "primary")
-        cancel_btn = QPushButton("Cancel")
-
-        buttons.addStretch()
-        buttons.addWidget(cancel_btn)
-        buttons.addWidget(execute_btn)
-        layout.addLayout(buttons)
-
-        # Connect buttons
-        def on_execute():
-            params = {}
-            for param_name, input_field in param_inputs.items():
-                if isinstance(input_field, QCheckBox):
-                    params[param_name] = input_field.isChecked()
-                elif isinstance(input_field, QSpinBox):
-                    params[param_name] = input_field.value()
-                else:  # QLineEdit
-                    params[param_name] = input_field.text()
-
-            dialog.accept()
-            dialog._params = params
-
-        def on_cancel():
-            dialog.reject()
-
-        execute_btn.clicked.connect(on_execute)
-        cancel_btn.clicked.connect(on_cancel)
-
-        # Set default values
-        for param_name, param_config in func.parameters.items():
-            if param_name in param_inputs:
-                input_field = param_inputs[param_name]
-                if param_config['type'] == 'bool':
-                    input_field.setChecked(False)
-                elif param_name == 'engine_temperature':
-                    input_field.setValue(85)  # Default temperature
-                elif param_name == 'key_count':
-                    input_field.setValue(1)
-
-        result = dialog.exec()
-        if result == QDialog.DialogCode.Accepted:
-            return getattr(dialog, '_params', {})
-        return None
-
-    def show_execution_result(self, func, params):
-        """Show mock execution result"""
-        brand = self.header.brand_combo.currentText()
-
-        # Generate mock result based on function
-        result_text = f"Function Execution Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        result_text += f"Brand: {brand}\n"
-        result_text += f"Function: {func.name}\n"
-        result_text += f"Function ID: {func.function_id}\n"
-        result_text += f"Security Level: {func.security_level}\n\n"
-
-        if params:
-            result_text += "Parameters Used:\n"
-            for key, value in params.items():
-                result_text += f"  {key}: {value}\n"
-            result_text += "\n"
-
-        # Mock execution results
-        if "throttle" in func.name.lower():
-            result_text += "✅ Throttle Body Learning: SUCCESS\n"
-            result_text += "✅ Adaptation Values Updated\n"
-            result_text += "✅ Idle Quality Optimized\n"
-            result_text += "⚠️  Vehicle restart recommended\n"
-        elif "dpf" in func.name.lower():
-            result_text += "✅ DPF Regeneration: INITIATED\n"
-            result_text += "🔄 Regeneration in progress...\n"
-            result_text += "📊 Soot Level: 45% → 5%\n"
-            result_text += "✅ Filter cleaned successfully\n"
-        elif "immobilizer" in func.name.lower():
-            result_text += "✅ Immobilizer Registration: SUCCESS\n"
-            result_text += "🔑 Keys programmed successfully\n"
-            result_text += "🔐 Security system updated\n"
-        elif "steering" in func.name.lower():
-            result_text += "✅ Steering Angle Calibration: SUCCESS\n"
-            result_text += "📐 Sensor values reset\n"
-            result_text += "🎯 Calibration completed\n"
-        else:
-            result_text += "✅ Function executed successfully\n"
-            result_text += "📋 All operations completed\n"
-            result_text += "🔍 No errors detected\n"
-
-        result_text += "\n⚡ Execution completed successfully"
-
-        self.results_text.setPlainText(result_text)
-        self.status_label.setText(f"✅ {func.name} completed successfully")
-        self.execute_btn.setEnabled(True)
-
     def on_brand_changed_calibrations(self, brand):
         """Handle brand change for calibrations tab"""
         self.refresh_calibrations_list()

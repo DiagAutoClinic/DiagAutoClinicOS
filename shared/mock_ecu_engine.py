@@ -81,6 +81,11 @@ class MockECUEngine:
             }
         }
 
+    def power_on(self) -> bool:
+        """Turn on ECU power"""
+        self.ecu_state["power_status"] = "on"
+        return True
+
     def connect_to_ecu(self, ecu_address: str = "0x7E0") -> bool:
         """Simulate ECU connection"""
         if self.ecu_state["power_status"] == "off":
@@ -102,14 +107,18 @@ class MockECUEngine:
         programming_ready = self.ecu_state["programming_session"] == "active"
 
         # Determine overall readiness
-        start_ready = (
+        readiness_conditions_met = (
             battery_voltage >= 12.0 and
             communication_ok and
             security_unlocked and
             programming_ready
         )
 
-        self.ecu_state["start_ready"] = start_ready
+        # If already start_ready (e.g., from file import or DTC), keep it
+        # Otherwise, set based on conditions
+        if not self.ecu_state["start_ready"]:
+            self.ecu_state["start_ready"] = readiness_conditions_met
+        start_ready = self.ecu_state["start_ready"]
 
         return {
             "start_ready": start_ready,
@@ -143,6 +152,9 @@ class MockECUEngine:
         """
         Simulate security access for ECU programming
         """
+        if self.ecu_state["communication_status"] != "connected":
+            return {"access_granted": False, "error": "ECU not connected"}
+
         if seed is None:
             # Generate mock seed
             seed = f"{random.randint(0x1000, 0xFFFF):04X}"
@@ -164,6 +176,9 @@ class MockECUEngine:
 
     def initiate_programming_session(self) -> bool:
         """Start ECU programming session"""
+        if self.ecu_state["communication_status"] != "connected":
+            return False
+
         if self.ecu_state["security_access"] != "unlocked":
             return False
 
@@ -175,6 +190,9 @@ class MockECUEngine:
         """
         Simulate IMMO (Immobilizer) disable operation
         """
+        if self.ecu_state["communication_status"] != "connected":
+            return {"success": False, "error": "ECU not connected"}
+
         if self.ecu_state["programming_session"] != "active":
             return {"success": False, "error": "Programming session not active"}
 
@@ -194,6 +212,9 @@ class MockECUEngine:
         """
         Simulate EGR-DPF removal/modification
         """
+        if self.ecu_state["communication_status"] != "connected":
+            return {"success": False, "error": "ECU not connected"}
+
         if self.ecu_state["programming_session"] != "active":
             return {"success": False, "error": "Programming session not active"}
 
@@ -280,6 +301,9 @@ class MockECUEngine:
         """
         Simulate ECU flash memory programming
         """
+        if self.ecu_state["communication_status"] != "connected":
+            return {"success": False, "error": "ECU not connected"}
+
         if self.ecu_state["programming_session"] != "active":
             return {"success": False, "error": "Programming session not active"}
 

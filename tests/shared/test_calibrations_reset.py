@@ -13,7 +13,7 @@ from unittest.mock import Mock, MagicMock, patch
 shared_path = os.path.join(os.path.dirname(__file__), '..', 'shared')
 sys.path.insert(0, shared_path)
 
-from calibrations_resets import (
+from calibrations_reset import (
     CalibrationProcedure, CalibrationsResetsManager,
     ResetType, calibrations_resets_manager
 )
