@@ -1,3 +1,4 @@
+
 # main.py - RESPONSIVE KEY PROGRAMMING SUITE
 
 #!/usr/bin/env python3
@@ -66,7 +67,7 @@ except ImportError as e:
         def __init__(self, value=0, max_value=100, label="", unit="%", parent=None):
             super().__init__(parent)
             self.setMinimumSize(120, 120)
-        def set_value(self, val): 
+        def set_value(self, val):
             self.update()
     class StatCard(QFrame):
         def __init__(self, title, value, max_value=100, unit="%"):
@@ -76,8 +77,39 @@ except ImportError as e:
             self.value_label = QLabel(f"{value}{unit}")
             layout.addWidget(self.title_label)
             layout.addWidget(self.value_label)
-        def update_value(self, val): 
+        def update_value(self, val):
             self.value_label.setText(f"{val}%")
+
+# Import separate tab classes
+try:
+    from AutoKey.ui.dashboard_tab import DashboardTab
+    from AutoKey.ui.key_programming_tab import KeyProgrammingTab
+    from AutoKey.ui.transponder_tab import TransponderTab
+    from AutoKey.ui.vehicle_info_tab import VehicleInfoTab
+    from AutoKey.ui.security_tab import SecurityTab
+    logger.info("✅ Successfully imported AutoKey tab classes")
+except ImportError as e:
+    logger.error(f"❌ Failed to import AutoKey tab classes: {e}")
+    # Fallback tab classes
+    class DashboardTab:
+        def __init__(self, parent): pass
+        def create_tab(self): return QWidget(), "Dashboard"
+
+    class KeyProgrammingTab:
+        def __init__(self, parent): pass
+        def create_tab(self): return QWidget(), "Key Programming"
+
+    class TransponderTab:
+        def __init__(self, parent): pass
+        def create_tab(self): return QWidget(), "Transponders"
+
+    class VehicleInfoTab:
+        def __init__(self, parent): pass
+        def create_tab(self): return QWidget(), "Vehicle Info"
+
+    class SecurityTab:
+        def __init__(self, parent): pass
+        def create_tab(self): return QWidget(), "Security"
 
 class ResponsiveGridLayout(QGridLayout):
     """Responsive grid layout that adapts to screen size"""
@@ -141,12 +173,8 @@ class AutoKeyApp(QMainWindow):
         self.tab_widget = ResponsiveTabWidget()
         self.main_layout.addWidget(self.tab_widget)
         
-        # Create tabs
-        self.create_dashboard_tab()
-        self.create_key_programming_tab()
-        self.create_transponder_tab()
-        self.create_vehicle_info_tab()
-        self.create_security_tab()
+        # Create tabs using separated classes
+        self.create_separated_tabs()
         
         # Create status bar
         self.create_status_bar()
@@ -163,16 +191,41 @@ class AutoKeyApp(QMainWindow):
         self.update_responsive_layouts()
         super().resizeEvent(event)
         
+    def create_separated_tabs(self):
+        """Create tabs using separated tab classes"""
+        # Initialize tab classes
+        self.dashboard_tab = DashboardTab(self)
+        self.key_programming_tab = KeyProgrammingTab(self)
+        self.transponder_tab = TransponderTab(self)
+        self.vehicle_info_tab = VehicleInfoTab(self)
+        self.security_tab = SecurityTab(self)
+
+        # Create tabs
+        dashboard_widget, dashboard_title = self.dashboard_tab.create_tab()
+        self.tab_widget.addTab(dashboard_widget, dashboard_title)
+
+        key_programming_widget, key_programming_title = self.key_programming_tab.create_tab()
+        self.tab_widget.addTab(key_programming_widget, key_programming_title)
+
+        transponder_widget, transponder_title = self.transponder_tab.create_tab()
+        self.tab_widget.addTab(transponder_widget, transponder_title)
+
+        vehicle_info_widget, vehicle_info_title = self.vehicle_info_tab.create_tab()
+        self.tab_widget.addTab(vehicle_info_widget, vehicle_info_title)
+
+        security_widget, security_title = self.security_tab.create_tab()
+        self.tab_widget.addTab(security_widget, security_title)
+
     def update_responsive_layouts(self):
         """Update all responsive layouts based on current window size"""
         # Update dashboard stats grid
-        if hasattr(self, 'stats_layout'):
+        if hasattr(self, 'dashboard_tab') and hasattr(self.dashboard_tab, 'stats_layout'):
             columns = self.get_column_count()
-            self.update_stats_layout(columns)
-            
+            self.dashboard_tab.update_stats_layout(columns)
+
         # Update quick actions grid
-        if hasattr(self, 'quick_actions_layout'):
-            self.update_quick_actions_layout()
+        if hasattr(self, 'dashboard_tab') and hasattr(self.dashboard_tab, 'quick_actions_layout'):
+            self.dashboard_tab.update_quick_actions_layout()
         
     def get_column_count(self):
         """Get appropriate column count based on window width"""
@@ -817,19 +870,21 @@ class AutoKeyApp(QMainWindow):
     def update_live_data(self):
         """Update live data for dashboard"""
         try:
-            current_success = random.randint(96, 99)
-            self.success_card.update_value(current_success)
-            
-            keys_today = random.randint(10, 15)
-            self.keys_today_card.update_value(keys_today)
-            
+            if hasattr(self, 'dashboard_tab'):
+                current_success = random.randint(96, 99)
+                self.dashboard_tab.success_card.update_value(current_success)
+
+                keys_today = random.randint(10, 15)
+                self.dashboard_tab.keys_today_card.update_value(keys_today)
+
         except Exception as e:
             logger.error(f"Error updating live data: {e}")
 
     def on_brand_changed(self, brand):
         """Handle brand change"""
         self.selected_brand = brand
-        self.brand_info_label.setText(brand)
+        if hasattr(self, 'dashboard_tab') and hasattr(self.dashboard_tab, 'brand_info_label'):
+            self.dashboard_tab.brand_info_label.setText(brand)
         self.status_label.setText(f"✨ Brand changed to: {brand}")
         
     def scan_transponders(self):
@@ -846,7 +901,8 @@ class AutoKeyApp(QMainWindow):
     def complete_transponder_scan(self):
         """Complete transponder scanning"""
         self.status_label.setText("✅ Transponder scan completed")
-        self.add_sample_transponder_data()
+        if hasattr(self, 'transponder_tab'):
+            self.transponder_tab.add_sample_transponder_data()
         
     def refresh_vehicle_data(self):
         """Refresh vehicle data"""
@@ -919,43 +975,47 @@ class AutoKeyApp(QMainWindow):
         if not self.check_auth():
             self.status_label.setText("❌ Authentication failed")
             return
-            
-        code = self.security_input.text().strip()
-        if not self.validate_security_code(code):
-            self.status_label.setText("❌ Invalid security code (alphanumeric, 4-8 chars)")
-            return
-            
-        logger.info("Initiating key programming")
-        self.status_label.setText("🔑 Programming new key...")
-        self.key_status.setText("🟡 Programming...")
-        self.key_status.setProperty("class", "status-warning")
-        self.key_progress.setVisible(True)
-        self.key_progress.setValue(0)
-        
-        self.program_timer = QTimer()
-        self.program_timer.timeout.connect(self.update_program_progress)
-        self.program_timer.start(100)
+
+        if hasattr(self, 'key_programming_tab'):
+            code = self.key_programming_tab.security_input.text().strip()
+            if not self.validate_security_code(code):
+                self.status_label.setText("❌ Invalid security code (alphanumeric, 4-8 chars)")
+                return
+
+            logger.info("Initiating key programming")
+            self.status_label.setText("🔑 Programming new key...")
+            self.key_programming_tab.key_status.setText("🟡 Programming...")
+            self.key_programming_tab.key_status.setProperty("class", "status-warning")
+            self.key_programming_tab.key_progress.setVisible(True)
+            self.key_programming_tab.key_progress.setValue(0)
+
+            self.program_timer = QTimer()
+            self.program_timer.timeout.connect(self.update_program_progress)
+            self.program_timer.start(100)
         
     def update_program_progress(self):
         """Update programming progress"""
-        current = self.key_progress.value()
-        if current < 100:
-            self.key_progress.setValue(current + 10)
-        else:
-            self.program_timer.stop()
-            self.programming_complete()
+        if hasattr(self, 'key_programming_tab'):
+            current = self.key_programming_tab.key_progress.value()
+            if current < 100:
+                self.key_programming_tab.key_progress.setValue(current + 10)
+            else:
+                self.program_timer.stop()
+                self.programming_complete()
         
     def programming_complete(self):
         """Called when programming completes"""
         logger.info("Key programming completed")
         self.status_label.setText("✅ Key programmed successfully!")
-        self.key_status.setText("🟢 Programmed")
-        self.key_status.setProperty("class", "status-success")
-        self.key_progress.setVisible(False)
+        if hasattr(self, 'key_programming_tab'):
+            self.key_programming_tab.key_status.setText("🟢 Programmed")
+            self.key_programming_tab.key_status.setProperty("class", "status-success")
+            self.key_programming_tab.key_progress.setVisible(False)
         self.last_op_label.setText("Key Programming")
         self.last_op_label.setProperty("class", "status-success")
-        
-        self.keys_today_card.update_value(13)
+
+        if hasattr(self, 'dashboard_tab'):
+            self.dashboard_tab.keys_today_card.update_value(13)
         
     def clone_key(self):
         """Simulate key cloning with auth"""
@@ -975,15 +1035,16 @@ class AutoKeyApp(QMainWindow):
         if not self.check_auth():
             self.status_label.setText("❌ Authentication failed")
             return
-            
+
         logger.info("Initiating system reset")
         self.status_label.setText("🔄 Resetting key system...")
-        self.security_input.clear()
-        self.key_status.setText("🔴 No Key Detected")
-        self.key_status.setProperty("class", "status-error")
+        if hasattr(self, 'key_programming_tab'):
+            self.key_programming_tab.security_input.clear()
+            self.key_programming_tab.key_status.setText("🔴 No Key Detected")
+            self.key_programming_tab.key_status.setProperty("class", "status-error")
         self.last_op_label.setText("System Reset")
         self.last_op_label.setProperty("class", "status-success")
-        
+
         QTimer.singleShot(1500, lambda: self.status_label.setText("✅ System reset completed"))
     
     def closeEvent(self, event):

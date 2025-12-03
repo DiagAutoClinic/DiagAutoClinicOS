@@ -10,10 +10,9 @@ from pathlib import Path
 
 # Add shared path
 project_root = Path(__file__).parent.parent
-shared_path = project_root / 'shared'
-sys.path.insert(0, str(shared_path))
+sys.path.insert(0, str(project_root))
 
-from mock_ecu_engine import MockECUEngine
+from shared.mock_ecu_engine import MockECUEngine
 
 def demo_start_ready_workflow():
     """Demonstrate start-ready checking workflow"""
@@ -23,13 +22,17 @@ def demo_start_ready_workflow():
 
     ecu = MockECUEngine("Volkswagen", "Polo")
 
-    # Step 1: Connect to ECU
-    print("1. Connecting to ECU...")
+    # Step 1: Power on ECU
+    print("1. Powering on ECU...")
+    ecu.power_on()
+
+    # Step 2: Connect to ECU
+    print("2. Connecting to ECU...")
     connected = ecu.connect_to_ecu("0x7E0")
     print(f"   Connection: {'SUCCESS' if connected else 'FAILED'}")
 
-    # Step 2: Check initial start-ready status
-    print("\n2. Checking initial start-ready status...")
+    # Step 3: Check initial start-ready status
+    print("\n3. Checking initial start-ready status...")
     result = ecu.check_start_ready()
     print(f"   Start Ready: {'YES' if result['start_ready'] else 'NO'}")
     print(f"   Battery Voltage: {result['battery_voltage']}V")
@@ -41,21 +44,21 @@ def demo_start_ready_workflow():
         for issue in result['diagnostics']:
             print(f"   - {issue}")
 
-    # Step 3: Request security access
-    print("\n3. Requesting security access...")
+    # Step 4: Request security access
+    print("\n4. Requesting security access...")
     security_result = ecu.request_security_access()
     print(f"   Security Access: {'GRANTED' if security_result['access_granted'] else 'DENIED'}")
     if security_result['access_granted']:
         print(f"   Seed: {security_result['seed']}")
         print(f"   Key Required: {security_result['key_required']}")
 
-    # Step 4: Start programming session
-    print("\n4. Starting programming session...")
+    # Step 5: Start programming session
+    print("\n5. Starting programming session...")
     session_started = ecu.initiate_programming_session()
     print(f"   Session: {'ACTIVE' if session_started else 'FAILED'}")
 
-    # Step 5: Check start-ready again
-    print("\n5. Re-checking start-ready status...")
+    # Step 6: Check start-ready again
+    print("\n6. Re-checking start-ready status...")
     result2 = ecu.check_start_ready()
     print(f"   Start Ready: {'YES' if result2['start_ready'] else 'NO'}")
 
@@ -123,6 +126,7 @@ def demo_modification_operations():
     ecu = MockECUEngine("Toyota", "Corolla")
 
     # Setup ECU for modifications
+    ecu.power_on()
     ecu.connect_to_ecu("0x7E0")
     ecu.request_security_access()
     ecu.initiate_programming_session()

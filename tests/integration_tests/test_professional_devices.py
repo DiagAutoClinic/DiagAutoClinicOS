@@ -73,7 +73,7 @@ class DeviceHandler:
         self.pro_devices = {
             # J2534 Devices
             "Godiag GT101": ProfessionalDevice(
-                "Godiag GT101", "J2534", 
+                "Godiag GT101", "J2534",
                 ["J2534", "ISO15765", "ISO14230", "ISO9141", "J1850"],
                 ["USB"], vendor_id=0x0403, product_id=0x6001
             ),
@@ -83,7 +83,7 @@ class DeviceHandler:
                 ["USB", "Ethernet"]
             ),
             "Mongoose Pro": ProfessionalDevice(
-                "Mongoose Pro", "J2534", 
+                "Mongoose Pro", "J2534",
                 ["J2534", "DOIP", "CAN", "LIN"],
                 ["USB", "Ethernet"]
             ),
@@ -110,11 +110,23 @@ class DeviceHandler:
                 ["USB", "Bluetooth"]
             ),
             
-            # New: GT100+ Breakout Box
+            # GT100+ Breakout Box
             "Godiag GT100+": ProfessionalDevice(
                 "Godiag GT100+", "Breakout",
                 ["ISO15765", "ISO14230", "ISO9141", "J1850", "DOIP", "GPT", "CAN", "K-Line"],
                 ["USB", "OBDII", "ENET"], vendor_id=0x1a86, product_id=0x7523  # CH340 USB-UART common in Godiag
+            ),
+            
+            # OBDLink MX+ Devices (NEW)
+            "OBDLink MX+": ProfessionalDevice(
+                "OBDLink MX+", "CANSniffer",
+                ["ISO15765", "ISO14230", "ISO9141", "J1850", "CAN"],
+                ["Bluetooth", "USB"]
+            ),
+            "OBDLink MX+ Sniffer": ProfessionalDevice(
+                "OBDLink MX+ Sniffer", "CANSniffer",
+                ["ISO15765", "CAN"],
+                ["Bluetooth", "USB"]
             ),
         }
         
@@ -214,7 +226,9 @@ class DeviceHandler:
                 self.pro_devices["Godiag GT101"],
                 self.pro_devices["ELM327 USB"],
                 self.pro_devices["Mongoose Pro"],
-                self.pro_devices["Godiag GT100+"]  # Added mock GT100+
+                self.pro_devices["Godiag GT100+"],
+                self.pro_devices["OBDLink MX+"],  # Added OBDLink MX+
+                self.pro_devices["OBDLink MX+ Sniffer"]
             ]
             logger.info("Added mock devices for testing")
 
@@ -320,8 +334,10 @@ class DeviceHandler:
                 return self._connect_j2534(device, protocol)
             elif device.device_type == "ELM327":
                 return self._connect_elm327(device, protocol)
-            elif device.device_type == "Breakout":  # New: GT100+ handling
+            elif device.device_type == "Breakout":  # GT100+ handling
                 return self._connect_gt100(device, protocol)
+            elif device.device_type == "CANSniffer":  # OBDLink MX+ handling
+                return self._connect_obdlink_mxplus(device, protocol)
             else:
                 logger.error(f"Unsupported device type: {device.device_type}")
                 return False
@@ -501,7 +517,29 @@ class DeviceHandler:
             logger.error(f"Serial GT100+ failed: {e}")
             return False
 
-    def enable_bench_mode(self, enable: bool = True) -> bool:  # New method
+    def _connect_obdlink_mxplus(self, device: ProfessionalDevice, protocol: str) -> bool:
+        """Connect to OBDLink MX+ for CAN sniffing"""
+        try:
+            if self.mock_mode:
+                logger.info(f"[MOCK] Connected to {device.name}")
+                self.is_connected = True
+                self.current_device = device
+                self.current_protocol = Protocol(protocol)
+                return True
+            
+            # For real implementation, would use the OBDLink MX+ handler
+            # For now, simulate connection
+            logger.info(f"Connecting to {device.name} (simulated)")
+            self.is_connected = True
+            self.current_device = device
+            self.current_protocol = Protocol(protocol)
+            return True
+            
+        except Exception as e:
+            logger.error(f"OBDLink MX+ connection failed: {e}")
+            return False
+
+    def enable_bench_mode(self, enable: bool = True) -> bool:  # GT100+ bench operations
         """Enable bench mode with GT100+ (stable power check for GD101 routing)"""
         if self.current_device and self.current_device.name == "Godiag GT100+":
             status = self.get_breakout_status()
@@ -774,8 +812,8 @@ class DeviceHandler:
 
     def enable_can_sniffing(self, protocol: str = "ISO15765") -> bool:
         """Enable CAN bus sniffing mode for OBDLink MX+"""
-        if not self.is_connected or self.current_device.device_type != "ELM327":
-            logger.error("Not connected to ELM327 device")
+        if not self.is_connected or self.current_device.device_type not in ["ELM327", "CANSniffer"]:
+            logger.error("Not connected to ELM327 or CANSniffer device")
             return False
 
         if self.mock_mode:
@@ -830,8 +868,8 @@ class DeviceHandler:
 
     def start_can_monitor(self) -> bool:
         """Start monitoring CAN bus traffic"""
-        if not self.is_connected or self.current_device.device_type != "ELM327":
-            logger.error("Not connected to ELM327 device")
+        if not self.is_connected or self.current_device.device_type not in ["ELM327", "CANSniffer"]:
+            logger.error("Not connected to ELM327 or CANSniffer device")
             return False
 
         if self.mock_mode:
@@ -850,7 +888,7 @@ class DeviceHandler:
 
     def read_can_messages(self, timeout_ms: int = 1000) -> List[str]:
         """Read CAN messages from the bus"""
-        if not self.is_connected or self.current_device.device_type != "ELM327":
+        if not self.is_connected or self.current_device.device_type not in ["ELM327", "CANSniffer"]:
             return []
 
         if self.mock_mode:
@@ -917,11 +955,11 @@ def test_professional_devices():
         print(f"    Protocols: {', '.join(device.protocols)}")
         print(f"    Interfaces: {', '.join(device.interfaces)}")
     
-    # Test connection to each device type (Added GT100+)
-    test_devices = ["Godiag GT101", "ELM327 USB", "Mongoose Pro", "Godiag GT100+"]
+    # Test connection to each device type (Added GT100+ and OBDLink MX+)
+    test_devices = ["Godiag GT101", "ELM327 USB", "Mongoose Pro", "Godiag GT100+", "OBDLink MX+", "OBDLink MX+ Sniffer"]
     for device_name in test_devices:
         if handler.connect_to_device(device_name):
-            print(f"✓ Connected to {device_name}")
+            print(f"[OK] Connected to {device_name}")
             # Test advanced features
             ecu_info = handler.read_ecu_identification_advanced()
             print(f"  ECU Info: {ecu_info.get('part_number', 'N/A')}")
@@ -932,13 +970,19 @@ def test_professional_devices():
                 status = handler.get_breakout_status()
                 print(f"  GT100+ Status: {status.get('voltage', 'N/A')}V")
             
+            # Test CAN sniffing for OBDLink MX+
+            if "OBDLink" in device_name:
+                print("  CAN Sniffer: Ready for CAN bus monitoring")
+                if handler.enable_can_sniffing():
+                    print("  [OK] CAN sniffing enabled")
+            
             # Test advanced diagnostics
             system_scan = handler.perform_advanced_diagnostic('system_scan')
             print(f"  System Scan: {len(system_scan.get('engine_systems', []))} engine systems")
             
             handler.disconnect()
         else:
-            print(f"✗ Failed to connect to {device_name}")
+            print(f"[FAIL] Failed to connect to {device_name}")
 
 if __name__ == "__main__":
     test_professional_devices()
