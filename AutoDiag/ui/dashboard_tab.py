@@ -19,6 +19,10 @@ class DashboardTab:
         self.security_card = None
         self.dashboard_timer = None
         self.live_data_timer = None
+        self.ai_health_monitor = None
+        self.ai_prediction_widget = None
+        self.ai_activity_indicator = None
+        self.ai_maintenance_widget = None
 
     def create_tab(self):
         """Create the dashboard tab and return the widget"""
@@ -125,3 +129,31 @@ class DashboardTab:
         self.system_health_card.update_value(random.randint(94, 99))
         self.connection_card.update_value(random.randint(72, 98))
         self.dtc_card.update_value(random.randint(0, 3))
+
+        # Update AI widgets with demo data
+        if self.ai_health_monitor:
+            self.ai_health_monitor.update_health_score(random.uniform(0.7, 0.95))
+            self.ai_health_monitor.update_activity("Analyzing diagnostic data")
+
+        if self.ai_activity_indicator:
+            self.ai_activity_indicator.set_activity_level(random.randint(1, 4))
+            self.ai_activity_indicator.update_activity_text("Processing live data")
+
+        if self.ai_prediction_widget:
+            demo_predictions = [
+                {
+                    'type': 'normal_operation',
+                    'description': 'System operating within normal parameters',
+                    'severity': 'info',
+                    'confidence': 0.92,
+                    'suggested_action': 'Continue normal operation'
+                }
+            ]
+            self.ai_prediction_widget.update_predictions(demo_predictions)
+
+        if self.ai_maintenance_widget:
+            demo_recommendations = [
+                "RECOMMENDED: Perform routine maintenance check",
+                "INFO: System health is optimal"
+            ]
+            self.ai_maintenance_widget.update_recommendations(demo_recommendations)

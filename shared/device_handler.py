@@ -7,7 +7,7 @@ import importlib
 logger = logging.getLogger(__name__)
 
 class DeviceHandler:
-    def __init__(self, mock_mode=False):
+    def __init__(self, mock_mode=False, ai_data_collector=None):
         self.mock_mode = mock_mode
         if self.mock_mode:
             logger.warning("DeviceHandler running in mock mode (no real hardware required)")
@@ -16,6 +16,7 @@ class DeviceHandler:
         self.socketcan_available = False
         self.usb_available = False
         self.bluetooth_available = False
+        self.ai_data_collector = ai_data_collector  # AI data collection integration
         self.detect_devices()
 
     def detect_devices(self):
