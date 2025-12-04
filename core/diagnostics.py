@@ -32,10 +32,11 @@ except ImportError:
 class DiagnosticsManager:
     """Manages diagnostic operations like VIN reading and DTC handling"""
 
-    def __init__(self, device_manager):
+    def __init__(self, device_manager, ai_engine=None):
         self.device_manager = device_manager
         self.dtc_database = DTCDatabase() if DTC_DATABASE_AVAILABLE else None
         self.vin_decoder = VINDecoder() if VIN_DECODER_AVAILABLE else None
+        self.ai_engine = ai_engine  # AI engine integration
 
     def read_vin(self, parent_window):
         """Read the VIN from the identified ECU."""

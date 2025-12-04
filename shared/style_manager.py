@@ -52,6 +52,10 @@ class StyleManager:
         else:
             logger.warning(f"Theme '{theme_name}' not supported. Only DACOS Unified theme is available.")
             return False
+    
+    def get_theme_names(self):
+        """Get list of available theme names"""
+        return ["dacos_unified"]
 
 # Global singleton - imported everywhere
 style_manager = StyleManager()

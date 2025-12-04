@@ -18,6 +18,16 @@ from ui.calibrations_tab import CalibrationsTab
 from ui.security_tab import SecurityTab
 from ui.vehicle_info_tab import VehicleInfoTab
 
+# Import AI components
+try:
+    from ai.ai_engine import AIEngine
+    from ai.data_processor import DataProcessor
+    from ai.dashboard_widgets import AIHealthMonitor, AIPredictionWidget, AIActivityIndicator, AIMaintenanceWidget
+    AI_AVAILABLE = True
+except ImportError:
+    AI_AVAILABLE = False
+    print("AI components not available, running in standard mode")
+
 class AutoDiagMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -32,6 +42,13 @@ class AutoDiagMainWindow(QMainWindow):
         self.calibrations_tab = None
         self.security_tab = None
         self.vehicle_info_tab = None
+
+        # Initialize AI components
+        self.ai_engine = None
+        self.data_processor = None
+        if AI_AVAILABLE:
+            self.data_processor = DataProcessor()
+            self.ai_engine = AIEngine(self.data_processor)
         
         self.init_ui()
         
@@ -94,6 +111,22 @@ class AutoDiagMainWindow(QMainWindow):
         # Dashboard Tab
         self.dashboard_tab = DashboardTab(self)
         self.tab_widget.addTab(self.dashboard_tab, "📊 Dashboard")
+
+        # Initialize AI widgets if available
+        if AI_AVAILABLE and self.dashboard_tab:
+            self.dashboard_tab.ai_health_monitor = AIHealthMonitor()
+            self.dashboard_tab.ai_prediction_widget = AIPredictionWidget()
+            self.dashboard_tab.ai_activity_indicator = AIActivityIndicator()
+            self.dashboard_tab.ai_maintenance_widget = AIMaintenanceWidget()
+
+            # Add AI widgets to dashboard layout
+            dashboard_layout = self.dashboard_tab.tab_widget.layout()
+            if dashboard_layout:
+                # Add AI widgets after the quick actions section
+                dashboard_layout.addWidget(self.dashboard_tab.ai_health_monitor)
+                dashboard_layout.addWidget(self.dashboard_tab.ai_prediction_widget)
+                dashboard_layout.addWidget(self.dashboard_tab.ai_activity_indicator)
+                dashboard_layout.addWidget(self.dashboard_tab.ai_maintenance_widget)
         
         # Diagnostics Tab
         self.diagnostics_tab = DiagnosticsTab(self)

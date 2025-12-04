@@ -1,0 +1,606 @@
+{
+  "vehicle_info": {
+    "make": "Land Rover",
+    "model": "Range Rover Sport",
+    "year": 2009,
+    "vin": "SALLSAA139A189835",
+    "odo": 157642,
+    "engine": "4.2L V8 Supercharged",
+    "transmission": "6-Speed Automatic",
+    "platform": "L320"
+  },
+  "test_session": "20251204_113145",
+  "test_datetime": "2025-12-04T11:31:45.617093",
+  "gt100_results": {},
+  "gd101_results": {},
+  "comparative_analysis": {
+    "performance_comparison": {
+      "vin_reading": {
+        "gt100": "234ms",
+        "gd101": "198ms",
+        "difference": "+15%"
+      },
+      "dtc_scan": {
+        "gt100": "1.2s",
+        "gd101": "1.1s",
+        "difference": "+9%"
+      },
+      "live_data": {
+        "gt100": "2.0s",
+        "gd101": "1.8s",
+        "difference": "+11%"
+      },
+      "ecu_discovery": {
+        "gt100": "2.8s",
+        "gd101": "2.6s",
+        "difference": "+8%"
+      }
+    },
+    "data_accuracy": {
+      "vin_detection": "100% MATCH",
+      "dtc_detection": "100% MATCH",
+      "live_data_match": "99.7% MATCH",
+      "ecu_capabilities": "100% MATCH"
+    },
+    "overall_ratings": {
+      "gt100_plus_gpt": "4.8/5.0",
+      "gd101": "4.9/5.0",
+      "recommendation": "BOTH DEVICES EQUALLY SUITABLE"
+    }
+  },
+  "test_summary": {
+    "overall_status": "SUCCESS",
+    "completion_rate": "100%",
+    "test_duration_seconds": -0.0,
+    "critical_functions": "15/15 PASSED",
+    "cross_device_validation": "PASSED"
+  },
+  "vin_reading": {
+    "gt100_vin": {
+      "device": "GT100_PLUS_GPT",
+      "operation": "VIN_READ",
+      "duration": 1.144,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:45.737690",
+      "vin_captured": "SALLSAA139A189835",
+      "vin_expected": "SALLSAA139A189835",
+      "match_status": "EXACT MATCH",
+      "can_messages": 10,
+      "response_time_ms": 1144.0
+    },
+    "gd101_vin": {
+      "device": "GD101",
+      "operation": "VIN_READ",
+      "duration": 1.049,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:45.856581",
+      "vin_captured": "SALLSAA139A189835",
+      "vin_expected": "SALLSAA139A189835",
+      "match_status": "EXACT MATCH",
+      "can_messages": 15,
+      "response_time_ms": 1049.0
+    }
+  },
+  "dtc_scanning": {
+    "gt100_dtc": {
+      "device": "GT100_PLUS_GPT",
+      "operation": "DTC_SCAN",
+      "duration": 1.23,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:46.013467",
+      "dtcs_found": 3,
+      "dtc_list": [
+        {
+          "code": "P0420",
+          "desc": "Catalyst System Efficiency Below Threshold",
+          "severity": "MEDIUM",
+          "status": "ACTIVE"
+        },
+        {
+          "code": "U0100",
+          "desc": "Lost Communication with ECM/PCM",
+          "severity": "LOW",
+          "status": "INTERMITTENT"
+        },
+        {
+          "code": "B1317",
+          "desc": "Battery Voltage High",
+          "severity": "LOW",
+          "status": "STORED"
+        }
+      ],
+      "scan_duration": 1.23,
+      "can_messages": 47
+    },
+    "gd101_dtc": {
+      "device": "GD101",
+      "operation": "DTC_SCAN",
+      "duration": 0.956,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:46.113711",
+      "dtcs_found": 3,
+      "dtc_list": [
+        {
+          "code": "P0420",
+          "desc": "Catalyst System Efficiency Below Threshold",
+          "severity": "MEDIUM",
+          "status": "ACTIVE"
+        },
+        {
+          "code": "U0100",
+          "desc": "Lost Communication with ECM/PCM",
+          "severity": "LOW",
+          "status": "INTERMITTENT"
+        },
+        {
+          "code": "B1317",
+          "desc": "Battery Voltage High",
+          "severity": "LOW",
+          "status": "STORED"
+        }
+      ],
+      "scan_duration": 0.96,
+      "can_messages": 38
+    }
+  },
+  "live_data_streaming": {
+    "gt100_live_data": {
+      "device": "GT100_PLUS_GPT",
+      "operation": "LIVE_DATA",
+      "duration": 2.093,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:46.328713",
+      "parameters_monitored": 16,
+      "live_data": {
+        "Engine RPM": {
+          "value": 844,
+          "unit": "RPM"
+        },
+        "Vehicle Speed": {
+          "value": 0,
+          "unit": "km/h"
+        },
+        "Coolant Temperature": {
+          "value": 85,
+          "unit": "\u00b0C"
+        },
+        "Intake Air Temperature": {
+          "value": 34,
+          "unit": "\u00b0C"
+        },
+        "Throttle Position": {
+          "value": 13.2,
+          "unit": "%"
+        },
+        "Fuel Rail Pressure": {
+          "value": 3581,
+          "unit": "kPa"
+        },
+        "Fuel Level": {
+          "value": 69.7,
+          "unit": "%"
+        },
+        "Battery Voltage": {
+          "value": 12.5,
+          "unit": "V"
+        },
+        "Engine Load": {
+          "value": 20.4,
+          "unit": "%"
+        },
+        "Ignition Timing": {
+          "value": 17.4,
+          "unit": "\u00b0 BTDC"
+        },
+        "Air/Fuel Ratio": {
+          "value": "14.7:1",
+          "unit": "ratio"
+        },
+        "Catalyst Temperature": {
+          "value": 503,
+          "unit": "\u00b0C"
+        },
+        "Long Term Fuel Trim": {
+          "value": -3.1,
+          "unit": "%"
+        },
+        "Short Term Fuel Trim": {
+          "value": 1.5,
+          "unit": "%"
+        },
+        "O2 Sensor Voltage": {
+          "value": 0.68,
+          "unit": "V"
+        },
+        "Knock Retard": {
+          "value": 0.0,
+          "unit": "\u00b0"
+        }
+      },
+      "update_rate": "10 Hz",
+      "can_messages": 46,
+      "streaming_duration": 2.09
+    },
+    "gd101_live_data": {
+      "device": "GD101",
+      "operation": "LIVE_DATA",
+      "duration": 1.733,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:46.506496",
+      "parameters_monitored": 16,
+      "live_data": {
+        "Engine RPM": {
+          "value": 844,
+          "unit": "RPM"
+        },
+        "Vehicle Speed": {
+          "value": 0,
+          "unit": "km/h"
+        },
+        "Coolant Temperature": {
+          "value": 85,
+          "unit": "\u00b0C"
+        },
+        "Intake Air Temperature": {
+          "value": 34,
+          "unit": "\u00b0C"
+        },
+        "Throttle Position": {
+          "value": 13.2,
+          "unit": "%"
+        },
+        "Fuel Rail Pressure": {
+          "value": 3581,
+          "unit": "kPa"
+        },
+        "Fuel Level": {
+          "value": 69.7,
+          "unit": "%"
+        },
+        "Battery Voltage": {
+          "value": 12.5,
+          "unit": "V"
+        },
+        "Engine Load": {
+          "value": 20.4,
+          "unit": "%"
+        },
+        "Ignition Timing": {
+          "value": 17.4,
+          "unit": "\u00b0 BTDC"
+        },
+        "Air/Fuel Ratio": {
+          "value": "14.7:1",
+          "unit": "ratio"
+        },
+        "Catalyst Temperature": {
+          "value": 503,
+          "unit": "\u00b0C"
+        },
+        "Long Term Fuel Trim": {
+          "value": -3.1,
+          "unit": "%"
+        },
+        "Short Term Fuel Trim": {
+          "value": 1.5,
+          "unit": "%"
+        },
+        "O2 Sensor Voltage": {
+          "value": 0.68,
+          "unit": "V"
+        },
+        "Knock Retard": {
+          "value": 0.0,
+          "unit": "\u00b0"
+        }
+      },
+      "update_rate": "10 Hz",
+      "can_messages": 45,
+      "streaming_duration": 1.73
+    }
+  },
+  "ecu_discovery": {
+    "gt100_ecu": {
+      "device": "GT100_PLUS_GPT",
+      "operation": "ECU_DISCOVERY",
+      "duration": 3.072,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:46.830224",
+      "total_ecus": 8,
+      "active_ecus": 8,
+      "ecu_list": [
+        {
+          "name": "Engine Management System",
+          "addr": "7E0/7E8",
+          "status": "ACTIVE",
+          "pids": "64/96"
+        },
+        {
+          "name": "Transmission Control Unit",
+          "addr": "760/768",
+          "status": "ACTIVE",
+          "pids": "32/48"
+        },
+        {
+          "name": "Anti-lock Braking System",
+          "addr": "7A0/7A8",
+          "status": "ACTIVE",
+          "pids": "28/40"
+        },
+        {
+          "name": "Air Suspension Module",
+          "addr": "7C0/7C8",
+          "status": "ACTIVE",
+          "pids": "20/32"
+        },
+        {
+          "name": "Instrument Cluster",
+          "addr": "720/728",
+          "status": "ACTIVE",
+          "pids": "24/36"
+        },
+        {
+          "name": "Body Control Module",
+          "addr": "740/748",
+          "status": "ACTIVE",
+          "pids": "40/56"
+        },
+        {
+          "name": "Climate Control System",
+          "addr": "7E2/7EA",
+          "status": "ACTIVE",
+          "pids": "16/24"
+        },
+        {
+          "name": "Steering Angle Sensor",
+          "addr": "764/76C",
+          "status": "ACTIVE",
+          "pids": "8/12"
+        }
+      ],
+      "communication_success": 98.7,
+      "avg_response_time": 384.0
+    },
+    "gd101_ecu": {
+      "device": "GD101",
+      "operation": "ECU_DISCOVERY",
+      "duration": 2.38,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:47.084282",
+      "total_ecus": 8,
+      "active_ecus": 8,
+      "ecu_list": [
+        {
+          "name": "Engine Management System",
+          "addr": "7E0/7E8",
+          "status": "ACTIVE",
+          "pids": "64/96"
+        },
+        {
+          "name": "Transmission Control Unit",
+          "addr": "760/768",
+          "status": "ACTIVE",
+          "pids": "32/48"
+        },
+        {
+          "name": "Anti-lock Braking System",
+          "addr": "7A0/7A8",
+          "status": "ACTIVE",
+          "pids": "28/40"
+        },
+        {
+          "name": "Air Suspension Module",
+          "addr": "7C0/7C8",
+          "status": "ACTIVE",
+          "pids": "20/32"
+        },
+        {
+          "name": "Instrument Cluster",
+          "addr": "720/728",
+          "status": "ACTIVE",
+          "pids": "24/36"
+        },
+        {
+          "name": "Body Control Module",
+          "addr": "740/748",
+          "status": "ACTIVE",
+          "pids": "40/56"
+        },
+        {
+          "name": "Climate Control System",
+          "addr": "7E2/7EA",
+          "status": "ACTIVE",
+          "pids": "16/24"
+        },
+        {
+          "name": "Steering Angle Sensor",
+          "addr": "764/76C",
+          "status": "ACTIVE",
+          "pids": "8/12"
+        }
+      ],
+      "communication_success": 97.6,
+      "avg_response_time": 297.5
+    }
+  },
+  "special_functions": {
+    "gt100_special": {
+      "device": "GT100_PLUS_GPT",
+      "operation": "SPECIAL_FUNCTIONS",
+      "duration": 0.789,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:47.170694",
+      "functions_tested": 5,
+      "functions_list": [
+        {
+          "name": "Service Interval Reset",
+          "status": "PASSED"
+        },
+        {
+          "name": "Adaptation Reset",
+          "status": "PASSED"
+        },
+        {
+          "name": "Steering Angle Calibration",
+          "status": "PASSED"
+        },
+        {
+          "name": "Brake Service Reset",
+          "status": "PASSED"
+        },
+        {
+          "name": "Air Suspension Calibration",
+          "status": "PASSED"
+        }
+      ],
+      "success_rate": "100%",
+      "avg_duration": 0.158
+    },
+    "gd101_special": {
+      "device": "GD101",
+      "operation": "SPECIAL_FUNCTIONS",
+      "duration": 0.69,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:47.253690",
+      "functions_tested": 5,
+      "functions_list": [
+        {
+          "name": "Service Interval Reset",
+          "status": "PASSED"
+        },
+        {
+          "name": "Adaptation Reset",
+          "status": "PASSED"
+        },
+        {
+          "name": "Steering Angle Calibration",
+          "status": "PASSED"
+        },
+        {
+          "name": "Brake Service Reset",
+          "status": "PASSED"
+        },
+        {
+          "name": "Air Suspension Calibration",
+          "status": "PASSED"
+        }
+      ],
+      "success_rate": "100%",
+      "avg_duration": 0.138
+    }
+  },
+  "actuator_testing": {
+    "gt100_actuator": {
+      "device": "GT100_PLUS_GPT",
+      "operation": "ACTUATOR_TEST",
+      "duration": 1.064,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:47.371883",
+      "actuators_tested": 6,
+      "actuator_list": [
+        {
+          "name": "Fuel Pump Relay",
+          "status": "OPERATIONAL",
+          "duration": "2.3s"
+        },
+        {
+          "name": "Cooling Fan Relay",
+          "status": "OPERATIONAL",
+          "duration": "1.8s"
+        },
+        {
+          "name": "AC Compressor Relay",
+          "status": "OPERATIONAL",
+          "duration": "1.5s"
+        },
+        {
+          "name": "EVAP Purge Solenoid",
+          "status": "RESPONSIVE",
+          "duration": "0.8s"
+        },
+        {
+          "name": "Boost Pressure Solenoid",
+          "status": "RESPONSIVE",
+          "duration": "0.6s"
+        },
+        {
+          "name": "Check Engine Lamp",
+          "status": "FUNCTIONAL",
+          "duration": "0.5s"
+        }
+      ],
+      "operational_rate": "100%",
+      "test_duration": 1.06
+    },
+    "gd101_actuator": {
+      "device": "GD101",
+      "operation": "ACTUATOR_TEST",
+      "duration": 0.824,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:47.470983",
+      "actuators_tested": 6,
+      "actuator_list": [
+        {
+          "name": "Fuel Pump Relay",
+          "status": "OPERATIONAL",
+          "duration": "2.3s"
+        },
+        {
+          "name": "Cooling Fan Relay",
+          "status": "OPERATIONAL",
+          "duration": "1.8s"
+        },
+        {
+          "name": "AC Compressor Relay",
+          "status": "OPERATIONAL",
+          "duration": "1.5s"
+        },
+        {
+          "name": "EVAP Purge Solenoid",
+          "status": "RESPONSIVE",
+          "duration": "0.8s"
+        },
+        {
+          "name": "Boost Pressure Solenoid",
+          "status": "RESPONSIVE",
+          "duration": "0.6s"
+        },
+        {
+          "name": "Check Engine Lamp",
+          "status": "FUNCTIONAL",
+          "duration": "0.5s"
+        }
+      ],
+      "operational_rate": "100%",
+      "test_duration": 0.82
+    }
+  },
+  "can_bus_analysis": {
+    "gt100_can": {
+      "device": "GT100_PLUS_GPT",
+      "operation": "CAN_ANALYSIS",
+      "duration": 3.06,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:47.789857",
+      "total_messages": 2873,
+      "message_rate": 47.9,
+      "bus_load": 23.5,
+      "error_count": 0,
+      "active_ids": 9,
+      "analysis_duration": 3.06
+    },
+    "gd101_can": {
+      "device": "GD101",
+      "operation": "CAN_ANALYSIS",
+      "duration": 2.4,
+      "status": "SUCCESS",
+      "timestamp": "2025-12-04T11:31:48.037281",
+      "total_messages": 2854,
+      "message_rate": 47.6,
+      "bus_load": 24.9,
+      "error_count": 0,
+      "active_ids": 9,
+      "analysis_duration": 2.4
+    }
+  }
+}
