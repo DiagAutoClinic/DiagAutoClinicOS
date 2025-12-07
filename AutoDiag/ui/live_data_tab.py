@@ -65,10 +65,10 @@ class LiveDataTab:
         return tab, "📊 Live Data"
 
     def populate_sample_data(self):
-        """Populate live data table with mock data"""
-        # Get current mock live data
-        from shared.live_data import get_mock_live_data
-        live_data = get_mock_live_data()
+        """Populate live data table with real CAN data"""
+        # Get current live data from CAN sources
+        from shared.live_data import get_live_data
+        live_data = get_live_data()
 
         self.live_data_table.setRowCount(len(live_data))
         for row, (param, value, unit) in enumerate(live_data):

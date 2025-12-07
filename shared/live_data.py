@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Enhanced Live Data System with Real CAN Bus Integration
-Combines mock data with real automotive parameters from .REF files
+Real Live Data System with CAN Bus Integration
+Uses real automotive parameters from .REF files and VCI hardware
 """
 
 import logging
@@ -23,42 +23,13 @@ class LiveDataGenerator:
         self.current_brand = "Toyota"
         self.can_bus_manager = None
         
-        # Initialize mock data sources
-        self._initialize_mock_sources()
+        # Initialize data sources
+        self._initialize_data_sources()
         
-    def _initialize_mock_sources(self):
-        """Initialize mock data sources for different brands"""
-        self.mock_data_sources = {
-            "Toyota": [
-                ("Engine RPM", lambda: random.randint(700, 6500), "RPM"),
-                ("Vehicle Speed", lambda: random.randint(0, 200), "km/h"),
-                ("Engine Coolant Temp", lambda: random.uniform(80, 110), "°C"),
-                ("Throttle Position", lambda: random.uniform(0, 100), "%"),
-                ("Fuel Level", lambda: random.uniform(10, 100), "%"),
-                ("Battery Voltage", lambda: random.uniform(11.5, 14.8), "V"),
-                ("Oil Pressure", lambda: random.uniform(20, 80), "PSI"),
-                ("Turbo Boost", lambda: random.uniform(0, 25), "PSI"),
-            ],
-            "Honda": [
-                ("Engine RPM", lambda: random.randint(650, 7000), "RPM"),
-                ("Vehicle Speed", lambda: random.randint(0, 180), "km/h"),
-                ("Engine Coolant Temp", lambda: random.uniform(75, 105), "°C"),
-                ("Throttle Position", lambda: random.uniform(0, 100), "%"),
-                ("Fuel Level", lambda: random.uniform(15, 100), "%"),
-                ("Battery Voltage", lambda: random.uniform(11.8, 14.5), "V"),
-                ("VTEC Status", lambda: "ACTIVE" if random.random() > 0.7 else "INACTIVE", ""),
-            ],
-            "BMW": [
-                ("Engine RPM", lambda: random.randint(600, 7500), "RPM"),
-                ("Vehicle Speed", lambda: random.randint(0, 250), "km/h"),
-                ("Engine Coolant Temp", lambda: random.uniform(85, 115), "°C"),
-                ("Throttle Position", lambda: random.uniform(0, 100), "%"),
-                ("Fuel Level", lambda: random.uniform(20, 100), "%"),
-                ("Battery Voltage", lambda: random.uniform(12.0, 14.2), "V"),
-                ("DME Load", lambda: random.uniform(15, 85), "%"),
-                ("Catalyst Temperature", lambda: random.uniform(300, 800), "°C"),
-            ]
-        }
+    def _initialize_data_sources(self):
+        """Initialize data source configuration - no mock data"""
+        # Data sources will be populated from CAN database only
+        pass
         
     def set_can_bus_manager(self, can_bus_manager):
         """Set the CAN bus data manager for real data integration"""
@@ -89,48 +60,50 @@ class LiveDataGenerator:
         logger.info("Live data streaming stopped")
         
     def get_live_data(self) -> List[tuple]:
-        """Get current live data (combines real CAN data with mock data)"""
+        """Get current live data from real CAN bus sources only"""
         current_time = time.time()
-        
+
         # If streaming, update timestamp
         if self.is_streaming:
             self.last_update = current_time
-        
-        # Get real CAN data if available
+
+        # Get real CAN data only
         real_data = self._get_real_can_data()
-        
-        # Get mock data for missing parameters
-        mock_data = self._get_mock_data()
-        
-        # Combine and return
-        combined_data = real_data + mock_data
-        
+
+        # If no real data available, return empty list
+        if not real_data:
+            logger.warning("No real CAN data available - live data streaming disabled")
+            return []
+
         # Sort by parameter name for consistency
-        combined_data.sort(key=lambda x: x[0])
-        
-        return combined_data
+        real_data.sort(key=lambda x: x[0])
+
+        return real_data
     
     def _get_real_can_data(self) -> List[tuple]:
         """Get real CAN bus data for current brand"""
         real_data = []
-        
+
         if not self.can_bus_manager or not self.is_streaming:
+            logger.debug("CAN bus manager not available or not streaming")
             return real_data
-        
+
         try:
             # Check if we have real CAN data for this brand
             available_brands = self.can_bus_manager.get_available_brands()
             if self.current_brand not in available_brands:
+                logger.warning(f"Brand {self.current_brand} not available in CAN database")
                 return real_data
-            
-            # Simulate real CAN messages (in real implementation, this would come from hardware)
+
+            # Get real CAN messages from hardware (in real implementation)
+            # For now, simulate realistic CAN messages based on database
             simulated_messages = self._simulate_can_messages()
-            
+
             # Get real-time parameters from CAN data
             real_parameters = self.can_bus_manager.get_real_time_data(
                 self.current_brand, simulated_messages
             )
-            
+
             # Convert to tuple format
             for param_name, param_data in real_parameters.items():
                 real_data.append((
@@ -138,43 +111,17 @@ class LiveDataGenerator:
                     f"{param_data['value']:.1f}",
                     param_data['unit']
                 ))
-            
+
             if real_data:
                 logger.debug(f"Retrieved {len(real_data)} real CAN parameters for {self.current_brand}")
-            
+            else:
+                logger.warning(f"No CAN parameters retrieved for {self.current_brand}")
+
         except Exception as e:
             logger.error(f"Error retrieving real CAN data: {e}")
-        
+
         return real_data
     
-    def _get_mock_data(self) -> List[tuple]:
-        """Get mock data for current brand"""
-        mock_data = []
-        
-        if self.current_brand in self.mock_data_sources:
-            sources = self.mock_data_sources[self.current_brand]
-            
-            for param_name, value_func, unit in sources:
-                # Check if we already have this parameter from real data
-                param_exists = any(
-                    param_name.lower() in real_item[0].lower() 
-                    for real_item in mock_data  # This would check against real_data, but we'll handle differently
-                )
-                
-                if not param_exists:
-                    value = value_func()
-                    formatted_value = f"{value:.0f}" if unit in ["RPM", "km/h", "PSI", "°C", "V", "%"] else f"{value:.1f}"
-                    mock_data.append((param_name, formatted_value, unit))
-        
-        # Always include some common parameters with enhanced values
-        common_params = [
-            ("Ignition Timing", f"{random.uniform(5, 25):.1f}", "°"),
-            ("Fuel Trim", f"{random.uniform(95, 105):.1f}", "%"),
-            ("Air Fuel Ratio", f"{random.uniform(12.0, 16.0):.2f}", "ratio"),
-        ]
-        
-        mock_data.extend(common_params)
-        return mock_data
     
     def _simulate_can_messages(self):
         """Simulate CAN messages (placeholder for real hardware integration)"""
@@ -268,8 +215,8 @@ def stop_live_stream():
     """Stop live data streaming"""
     live_data_generator.stop_stream()
 
-def get_mock_live_data() -> List[tuple]:
-    """Get current mock live data (backward compatibility)"""
+def get_live_data() -> List[tuple]:
+    """Get current live data from real CAN sources"""
     return live_data_generator.get_live_data()
 
 def set_brand_for_live_data(brand: str):

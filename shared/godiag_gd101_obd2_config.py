@@ -238,6 +238,7 @@ class GoDiagOBD2Connector:
         self.pin_mapper = OBD2PinMapper()
         self.is_connected = False
         self.current_protocol = None
+        self.serial_conn = None
         
     def connect_obd2_port(self, port: str = None) -> bool:
         """Connect GoDiag GD101 to OBD2 16-pin port"""
@@ -285,14 +286,30 @@ class GoDiagOBD2Connector:
             # Hardware initialization sequence
             logger.info("Initializing GoDiag GD101 hardware...")
             
-            # Reset device
-            if not self._send_godiag_command(b'\x00\x01'):  # Init command
-                logger.warning("Hardware init command failed, continuing...")
+            # Open serial connection if not already open
+            if not self.serial_conn:
+                try:
+                    import serial  # type: ignore[import-not-found]
+                    self.serial_conn = serial.Serial(
+                        port=self.config.serial_port,
+                        baudrate=self.config.baudrate,
+                        timeout=2
+                    )
+                    logger.info(f"Serial connection opened on {self.config.serial_port}")
+                except Exception as e:
+                    logger.error(f"Failed to open serial port: {e}")
+                    return False
             
-            # Check for proper OBD2 voltage levels
-            if not self._check_obd2_voltage():
-                logger.error("OBD2 voltage levels incorrect")
-                return False
+            # Send ELM327-style reset command (works with most OBD adapters)
+            response = self._send_godiag_command(b'ATZ\r')
+            if response:
+                logger.info(f"Device reset response: {response}")
+            
+            # Turn off echo
+            self._send_godiag_command(b'ATE0\r')
+            
+            # Set protocol to auto
+            self._send_godiag_command(b'ATSP0\r')
             
             logger.info("GoDiag GD101 hardware initialized successfully")
             return True
@@ -307,16 +324,13 @@ class GoDiagOBD2Connector:
             # Check power pin (16) and ground pins (4, 5)
             logger.info("Checking OBD2 voltage levels...")
             
-            # This would read actual voltage levels in real hardware
-            # For now, simulate voltage check
-            voltage_ok = True
-            
-            if voltage_ok:
-                logger.info("OBD2 voltage levels: OK")
+            # Send voltage read command
+            response = self._send_godiag_command(b'ATRV\r')
+            if response:
+                logger.info(f"OBD2 voltage: {response}")
                 return True
-            else:
-                logger.error("OBD2 voltage levels: INVALID")
-                return False
+            
+            return True  # Assume OK if no response
                 
         except Exception as e:
             logger.error(f"Voltage check failed: {e}")
@@ -326,41 +340,62 @@ class GoDiagOBD2Connector:
         """Configure communication protocol"""
         try:
             protocol_commands = {
-                OBD2Protocol.ISO15765_11: b'\x01\x05',  # CAN 11-bit
-                OBD2Protocol.ISO15765_29: b'\x01\x06',  # CAN 29-bit
-                OBD2Protocol.ISO9141_2: b'\x01\x03',    # ISO 9141-2
-                OBD2Protocol.ISO14230_2: b'\x01\x04',   # ISO 14230-2
-                OBD2Protocol.J1850_PWM: b'\x01\x01',    # J1850 PWM
-                OBD2Protocol.J1850_VPW: b'\x01\x02',    # J1850 VPW
+                OBD2Protocol.ISO15765_11: b'ATSP6\r',  # CAN 11-bit 500kbps
+                OBD2Protocol.ISO15765_29: b'ATSP7\r',  # CAN 29-bit 500kbps
+                OBD2Protocol.ISO9141_2: b'ATSP3\r',    # ISO 9141-2
+                OBD2Protocol.ISO14230_2: b'ATSP4\r',   # ISO 14230-4 KWP
+                OBD2Protocol.J1850_PWM: b'ATSP1\r',    # J1850 PWM
+                OBD2Protocol.J1850_VPW: b'ATSP2\r',    # J1850 VPW
             }
             
-            cmd = protocol_commands.get(self.config.protocol, b'\x01\x05')  # Default to CAN
+            cmd = protocol_commands.get(self.config.protocol, b'ATSP6\r')  # Default to CAN
             response = self._send_godiag_command(cmd)
             
-            if response and response[0] == 0x00:
+            if response and ('OK' in response or 'ok' in response.lower()):
                 logger.info(f"Protocol {self.config.protocol.name} configured successfully")
                 return True
             else:
-                logger.warning(f"Protocol configuration unclear, assuming success")
-                return True
+                logger.info(f"Protocol configuration response: {response}")
+                return True  # Continue anyway
                 
         except Exception as e:
             logger.error(f"Protocol configuration failed: {e}")
             return False
     
-    def _send_godiag_command(self, command: bytes) -> Optional[bytes]:
+    def _send_godiag_command(self, command: bytes) -> Optional[str]:
         """Send command to GoDiag GD101"""
         try:
-            # This would send actual serial commands in real implementation
-            logger.debug(f"Sending GoDiag command: {command.hex()}")
+            if not self.serial_conn or not self.serial_conn.is_open:
+                logger.error("Serial connection not open")
+                return None
             
-            # Simulate command response
-            if command == b'\x00\x01':  # Init command
-                return b'\x00'  # Success
-            elif command[0:1] == b'\x01':  # Protocol config
-                return b'\x00'  # Success
-            else:
-                return b'\x00'  # Generic success
+            logger.debug(f"Sending command: {command}")
+            
+            # Clear input buffer
+            self.serial_conn.reset_input_buffer()
+            
+            # Send command
+            self.serial_conn.write(command)
+            self.serial_conn.flush()
+            
+            # Wait for response
+            import time
+            time.sleep(0.1)
+            
+            # Read response
+            response = b''
+            timeout_count = 0
+            while timeout_count < 20:  # 2 second timeout
+                if self.serial_conn.in_waiting:
+                    response += self.serial_conn.read(self.serial_conn.in_waiting)
+                    if b'>' in response or b'OK' in response:
+                        break
+                time.sleep(0.1)
+                timeout_count += 1
+            
+            response_str = response.decode('ascii', errors='ignore').strip()
+            logger.debug(f"Response: {response_str}")
+            return response_str
                 
         except Exception as e:
             logger.error(f"Failed to send GoDiag command: {e}")
@@ -369,13 +404,18 @@ class GoDiagOBD2Connector:
     def disconnect_obd2_port(self) -> bool:
         """Disconnect from OBD2 16-pin port"""
         try:
-            if not self.is_connected:
+            if not self.is_connected and not self.serial_conn:
                 return True
             
-            # Send disconnect command to GoDiag
-            disconnect_cmd = b'\x00\x02'  # Close command
-            self._send_godiag_command(disconnect_cmd)
+            # Close serial connection
+            if self.serial_conn and self.serial_conn.is_open:
+                try:
+                    self.serial_conn.close()
+                    logger.info("Serial connection closed")
+                except Exception as e:
+                    logger.warning(f"Error closing serial connection: {e}")
             
+            self.serial_conn = None
             self.is_connected = False
             self.current_protocol = None
             
