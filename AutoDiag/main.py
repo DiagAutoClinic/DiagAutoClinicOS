@@ -65,12 +65,14 @@ from PyQt6.QtGui import QFont, QPalette, QColor, QLinearGradient, QPainter, QPen
 
 # Import other modules
 try:
-    from ui.login_dialog import LoginDialog
+    from AutoDiag.ui.login_dialog import LoginDialog
+    from AutoDiag.ui.account_management_dialog import AccountManagementDialog
     from shared.special_functions import special_functions_manager
     from shared.calibrations_reset import calibrations_resets_manager
-    from shared.live_data import live_data_generator, start_live_stream, stop_live_stream, get_mock_live_data
+    from shared.live_data import live_data_generator, start_live_stream, stop_live_stream, get_live_data
     from shared.advance import get_advanced_functions, simulate_function_execution, get_mock_advanced_data
     from shared.circular_gauge import CircularGauge, StatCard
+    from shared.user_database import user_database
     # Import separate tab classes
     from AutoDiag.ui.dashboard_tab import DashboardTab
     from AutoDiag.ui.diagnostics_tab import DiagnosticsTab
@@ -79,21 +81,30 @@ try:
     from AutoDiag.ui.calibrations_tab import CalibrationsTab
     from AutoDiag.ui.advanced_tab import AdvancedTab
     from AutoDiag.ui.security_tab import SecurityTab
+    from AutoDiag.ui.can_bus_tab import CANBusDataTab
 except ImportError as e:
     logging.warning(f"Some modules not available: {e}")
 
 class ResponsiveHeader(QFrame):
     """Responsive header that adapts to screen size with DACOS styling"""
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, current_user_info=None):
         super().__init__(parent)
         self.setProperty("class", "glass-card")
         self.setMinimumHeight(130)
         self.setMaximumHeight(150)
-        
+
+        # Store current user information
+        self.current_user_info = current_user_info or {
+            'username': 'guest',
+            'full_name': 'Guest User',
+            'tier': 'BASIC',
+            'permissions': []
+        }
+
         self.main_layout = QHBoxLayout(self)
         self.main_layout.setContentsMargins(20, 15, 20, 15)
         self.main_layout.setSpacing(15)
-        
+
         self.setup_ui()
         
     def setup_ui(self):
@@ -114,9 +125,12 @@ class ResponsiveHeader(QFrame):
         # Theme selector (simplified - DACOS only)
         self.theme_layout = self.create_theme_selector()
         
+        # Account management button (for super user)
+        self.account_btn = self.create_account_management_button()
+
         # Logout button
         self.logout_btn = self.create_logout_button()
-        
+
         # Initial layout setup
         self.update_layout()
         
@@ -146,7 +160,20 @@ class ResponsiveHeader(QFrame):
         self.brand_combo = QComboBox()
         self.brand_combo.setMinimumWidth(120)
         self.brand_combo.setMaximumWidth(150)
-        self.brand_combo.addItems(["Toyota", "Honda", "Ford", "BMW", "Mercedes", "Audi", "Volkswagen"])
+
+        # Initialize with available manufacturers from REF files
+        try:
+            from AutoDiag.core.diagnostics import DiagnosticsController
+            temp_controller = DiagnosticsController()
+            manufacturers = temp_controller.get_available_manufacturers()
+            if manufacturers:
+                self.brand_combo.addItems(manufacturers)
+            else:
+                # Fallback
+                self.brand_combo.addItems(["Toyota", "Honda", "Ford", "BMW", "Mercedes", "Audi", "Volkswagen"])
+        except Exception as e:
+            logger.warning(f"Failed to load manufacturers from REF files: {e}")
+            self.brand_combo.addItems(["Toyota", "Honda", "Ford", "BMW", "Mercedes", "Audi", "Volkswagen"])
         
         brand_layout.addWidget(brand_label)
         brand_layout.addWidget(self.brand_combo)
@@ -170,6 +197,17 @@ class ResponsiveHeader(QFrame):
         
         return theme_layout
         
+    def create_account_management_button(self):
+        """Create account management button (super user only)"""
+        account_btn = QPushButton("👥 Accounts")
+        account_btn.setProperty("class", "primary")
+        account_btn.setMinimumHeight(45)
+        account_btn.setMaximumWidth(120)
+        account_btn.setToolTip("Account Management (Super User Only)")
+        account_btn.clicked.connect(self.open_account_management)
+        # Will be shown/hidden based on permissions
+        return account_btn
+
     def create_logout_button(self):
         """Create logout button with DACOS danger styling"""
         logout_btn = QPushButton("🚪 Logout")
@@ -179,6 +217,28 @@ class ResponsiveHeader(QFrame):
         logout_btn.setToolTip("Logout")
         return logout_btn
         
+    def update_user_display(self):
+        """Update the user information display"""
+        if self.current_user_info:
+            self.user_name.setText(f"👤 {self.current_user_info['full_name']}")
+            tier_display = self.current_user_info['tier']
+            if tier_display == "SUPER_USER":
+                tier_display = "SUPER USER"
+            self.user_role.setText(f"🔐 {tier_display} • {self.current_user_info['username']}")
+        else:
+            self.user_name.setText("👤 Guest User")
+            self.user_role.setText("🔐 BASIC • guest")
+
+    def open_account_management(self):
+        """Open account management dialog (super user only)"""
+        if not self.current_user_info or 'user_management' not in self.current_user_info.get('permissions', []):
+            QMessageBox.warning(self, "Access Denied",
+                              "You do not have permission to access account management.")
+            return
+
+        dialog = AccountManagementDialog(self.current_user_info['username'], self)
+        dialog.exec()
+
     def update_layout(self):
         """Update layout based on available width - FIXED VERSION"""
         # Clear existing layout
@@ -186,9 +246,9 @@ class ResponsiveHeader(QFrame):
             child = self.main_layout.takeAt(0)
             if child.widget():
                 child.widget().setParent(None)
-                
+
         width = self.parent().width() if self.parent() else 1000
-        
+
         if width < 700:
             # Ultra-compact layout
             self.main_layout.addWidget(self.title_label, 1)
@@ -204,21 +264,63 @@ class ResponsiveHeader(QFrame):
             self.main_layout.addWidget(self.title_label, 1)
             self.main_layout.addLayout(self.brand_layout, 0)
             self.main_layout.addLayout(self.theme_layout, 0)
+            # Add account management button if user has permission
+            if self.current_user_info and 'user_management' in self.current_user_info.get('permissions', []):
+                self.main_layout.addWidget(self.account_btn, 0)
             self.main_layout.addWidget(self.logout_btn, 0)
 
 class AutoDiagPro(QMainWindow):
-    def __init__(self):
+    def __init__(self, current_user_info=None):
         super().__init__()
-        
+
+        # Store current user information
+        self.current_user_info = current_user_info or {
+            'username': 'guest',
+            'full_name': 'Guest User',
+            'tier': 'BASIC',
+            'permissions': []
+        }
+
         # Apply DACOS theme first
         self.apply_dacos_theme()
-        
+
+        # Initialize diagnostics controller
+        self.diagnostics_controller = None
+        self._init_diagnostics_controller()
+
         # Initialize UI
         self.init_ui()
-        
-        # Simulate login for demo
-        self.status_label.setText("✨ System Ready - Demo Mode")
-        
+
+        # Update UI with user information
+        self.header.update_user_display()
+        self.status_label.setText("✨ System Ready")
+
+    def _init_diagnostics_controller(self):
+        """Initialize the diagnostics controller with UI callbacks"""
+        try:
+            from AutoDiag.core.diagnostics import DiagnosticsController
+
+            ui_callbacks = {
+                'set_button_enabled': self._set_button_enabled,
+                'set_status': self._set_status_text,
+                'set_results_text': self._set_results_text,
+                'update_card_value': self._update_card_value,
+                'switch_to_tab': self._switch_to_tab,
+                'show_message': self._show_message_dialog,
+                'update_live_data_table': self._update_live_data_table,
+                'populate_live_data_table': self._populate_live_data_table,
+                'vci_status_changed': self._on_vci_status_changed,
+                'update_vci_status_display': self._update_vci_status_display,
+                'update_can_bus_data': self._update_can_bus_data
+            }
+
+            self.diagnostics_controller = DiagnosticsController(ui_callbacks)
+            logger.info("Diagnostics controller initialized successfully")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize diagnostics controller: {e}")
+            self.diagnostics_controller = None
+
     def apply_dacos_theme(self):
         """Apply DACOS unified theme using your existing theme file"""
         try:
@@ -345,7 +447,7 @@ class AutoDiagPro(QMainWindow):
         main_layout.setSpacing(15)
 
         # Responsive header
-        self.header = ResponsiveHeader()
+        self.header = ResponsiveHeader(current_user_info=self.current_user_info)
         main_layout.addWidget(self.header)
 
         # Tab Widget 
@@ -370,6 +472,7 @@ class AutoDiagPro(QMainWindow):
         dashboard_tab = DashboardTab(self)
         diagnostics_tab = DiagnosticsTab(self)
         live_data_tab = LiveDataTab(self)
+        can_bus_tab = CANBusDataTab(self)
         special_functions_tab = SpecialFunctionsTab(self)
         calibrations_tab = CalibrationsTab(self)
         advanced_tab = AdvancedTab(self)
@@ -384,6 +487,10 @@ class AutoDiagPro(QMainWindow):
 
         live_data_widget, live_data_title = live_data_tab.create_tab()
         self.tab_widget.addTab(live_data_widget, live_data_title)
+
+        # Add CAN Bus tab with REF file support
+        can_bus_widget, can_bus_title = can_bus_tab.create_tab()
+        self.tab_widget.addTab(can_bus_widget, can_bus_title)
 
         special_functions_widget, special_functions_title = special_functions_tab.create_tab()
         self.tab_widget.addTab(special_functions_widget, special_functions_title)
@@ -401,6 +508,7 @@ class AutoDiagPro(QMainWindow):
         self.dashboard_tab = dashboard_tab
         self.diagnostics_tab = diagnostics_tab
         self.live_data_tab = live_data_tab
+        self.can_bus_tab = can_bus_tab
         self.special_functions_tab = special_functions_tab
         self.calibrations_tab = calibrations_tab
         self.advanced_tab = advanced_tab
@@ -420,6 +528,69 @@ class AutoDiagPro(QMainWindow):
         self.status_label.setProperty("class", "status-label")
         self.statusBar().addPermanentWidget(self.status_label)
 
+        # Add voltage indicator
+        self.voltage_label = QLabel("🔋 12.6V")
+        self.voltage_label.setProperty("class", "status-label")
+        self.voltage_label.setStyleSheet("color: #21F5C1; font-weight: bold;")
+        self.voltage_label.setToolTip("Battery voltage reading")
+        self.statusBar().addPermanentWidget(self.voltage_label)
+
+        # Start voltage monitoring timer
+        self.voltage_timer = QTimer()
+        self.voltage_timer.timeout.connect(self.update_voltage_display)
+        self.voltage_timer.start(5000)  # Update every 5 seconds
+
+    def update_voltage_display(self):
+        """Update the voltage display from diagnostics controller"""
+        try:
+            if self.diagnostics_controller:
+                voltage = self.diagnostics_controller.get_current_voltage()
+                # Update voltage reading
+                self.diagnostics_controller.update_voltage_reading()
+
+                # Get updated voltage
+                updated_voltage = self.diagnostics_controller.get_current_voltage()
+
+                # Update display with color coding
+                if updated_voltage < 11.5:
+                    # Low voltage - red
+                    self.voltage_label.setText(f"🔋 {updated_voltage:.1f}V")
+                    self.voltage_label.setStyleSheet("color: #FF4D4D; font-weight: bold;")
+                    self.voltage_label.setToolTip(f"LOW VOLTAGE: {updated_voltage:.1f}V - Check battery/charging system")
+                elif updated_voltage < 12.0:
+                    # Warning voltage - yellow
+                    self.voltage_label.setText(f"🔋 {updated_voltage:.1f}V")
+                    self.voltage_label.setStyleSheet("color: #F59E0B; font-weight: bold;")
+                    self.voltage_label.setToolTip(f"LOW VOLTAGE WARNING: {updated_voltage:.1f}V")
+                elif updated_voltage > 14.8:
+                    # High voltage - orange
+                    self.voltage_label.setText(f"🔋 {updated_voltage:.1f}V")
+                    self.voltage_label.setStyleSheet("color: #F59E0B; font-weight: bold;")
+                    self.voltage_label.setToolTip(f"HIGH VOLTAGE: {updated_voltage:.1f}V - Check alternator/regulator")
+                else:
+                    # Normal voltage - green
+                    self.voltage_label.setText(f"🔋 {updated_voltage:.1f}V")
+                    self.voltage_label.setStyleSheet("color: #21F5C1; font-weight: bold;")
+                    self.voltage_label.setToolTip(f"Normal voltage: {updated_voltage:.1f}V")
+
+                # Also update dashboard voltage card if it exists
+                if hasattr(self, 'dashboard_tab') and self.dashboard_tab and hasattr(self.dashboard_tab, 'voltage_card'):
+                    self.dashboard_tab.voltage_card.update_value(updated_voltage)
+
+            else:
+                # Fallback voltage simulation
+                simulated_voltage = 12.0 + random.uniform(0, 2.8)
+                self.voltage_label.setText(f"🔋 {simulated_voltage:.1f}V")
+                self.voltage_label.setStyleSheet("color: #21F5C1; font-weight: bold;")
+                self.voltage_label.setToolTip(f"Simulated voltage: {simulated_voltage:.1f}V")
+
+        except Exception as e:
+            logger.error(f"Error updating voltage display: {e}")
+            # Fallback to default
+            self.voltage_label.setText("🔋 12.6V")
+            self.voltage_label.setStyleSheet("color: #21F5C1; font-weight: bold;")
+            self.voltage_label.setToolTip("Voltage reading unavailable")
+
     def change_theme(self, theme_name):
         """Theme change handler - DACOS only"""
         self.status_label.setText("✨ DACOS Unified Theme Active")
@@ -427,6 +598,162 @@ class AutoDiagPro(QMainWindow):
     def on_brand_changed(self, brand):
         """Handle brand change"""
         self.status_label.setText(f"🚗 Vehicle brand: {brand}")
+
+        # Update diagnostics controller with new brand
+        if self.diagnostics_controller:
+            self.diagnostics_controller.set_brand(brand)
+
+    # UI Callback methods for diagnostics controller
+    def _set_button_enabled(self, button_name, enabled):
+        """Enable/disable buttons"""
+        if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+            if button_name == 'dtc_btn' and hasattr(self.diagnostics_tab, 'dtc_btn'):
+                self.diagnostics_tab.dtc_btn.setEnabled(enabled)
+            elif button_name == 'clear_btn' and hasattr(self.diagnostics_tab, 'clear_btn'):
+                self.diagnostics_tab.clear_btn.setEnabled(enabled)
+
+    def _set_status_text(self, text):
+        """Set status text"""
+        if hasattr(self, 'status_label'):
+            self.status_label.setText(text)
+
+    def _set_results_text(self, text):
+        """Set results text in diagnostics tab"""
+        if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'results_text'):
+            self.diagnostics_tab.results_text.setPlainText(text)
+
+    def _update_card_value(self, card_name, value):
+        """Update card values (placeholder)"""
+        pass
+
+    def _switch_to_tab(self, index):
+        """Switch to specific tab"""
+        if hasattr(self, 'tab_widget'):
+            self.tab_widget.setCurrentIndex(index)
+
+    def _show_message_dialog(self, title, text, msg_type="info"):
+        """Show message dialog"""
+        if msg_type == "error":
+            QMessageBox.critical(self, title, text)
+        elif msg_type == "warning":
+            QMessageBox.warning(self, title, text)
+        else:
+            QMessageBox.information(self, title, text)
+
+    def _update_live_data_table(self, data):
+        """Update live data table"""
+        if hasattr(self, 'live_data_tab') and self.live_data_tab:
+            self.live_data_tab.update_live_data_table(data)
+
+    def _populate_live_data_table(self, data):
+        """Populate live data table"""
+        if hasattr(self, 'live_data_tab') and self.live_data_tab:
+            self.live_data_tab.populate_live_data_table(data)
+
+    def _on_vci_status_changed(self, event, data):
+        """Handle VCI status change events"""
+        try:
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                self.diagnostics_tab.update_vci_status_display({"status": "connected" if event == "connected" else "disconnected"})
+        except Exception as e:
+            logger.error(f"Error handling VCI status change: {e}")
+
+    def _update_vci_status_display(self, status_info):
+        """Update VCI status display"""
+        try:
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                self.diagnostics_tab.update_vci_status_display(status_info)
+        except Exception as e:
+            logger.error(f"Error updating VCI status display: {e}")
+
+    def _update_can_bus_data(self, can_data):
+        """Update CAN bus data in CAN bus tab"""
+        try:
+            if hasattr(self, 'can_bus_tab') and self.can_bus_tab:
+                self.can_bus_tab.update_realtime_data(can_data)
+        except Exception as e:
+            logger.error(f"Error updating CAN bus data: {e}")
+
+    # Fallback methods for when diagnostics controller is not available
+    def _fallback_full_scan(self):
+        """Fallback full scan implementation"""
+        if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'scan_btn'):
+            self.diagnostics_tab.scan_btn.setEnabled(False)
+        self.status_label.setText("🔄 Running full system scan...")
+
+        # Simulate scan progress
+        progress = 0
+        def update_scan():
+            nonlocal progress
+            progress += 10
+            if progress <= 100:
+                self.status_label.setText(f"🔄 Scanning... {progress}%")
+                QTimer.singleShot(100, update_scan)
+            else:
+                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'scan_btn'):
+                    self.diagnostics_tab.scan_btn.setEnabled(True)
+                self.status_label.setText("✅ Full scan completed")
+                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'results_text'):
+                    self.diagnostics_tab.results_text.setPlainText(
+                        f"Full System Scan Results - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                        "✅ ECU Communication: ESTABLISHED\n"
+                        "✅ CAN Bus: NORMAL\n"
+                        "✅ LIN Bus: ACTIVE\n"
+                        "✅ Sensor Network: OK\n"
+                        "⚠️  2 DTCs found\n"
+                        "✅ System Voltage: 13.8V\n"
+                        "✅ Communication Speed: 500kbps\n\n"
+                        "Scan completed successfully."
+                    )
+
+        update_scan()
+
+    def _fallback_read_dtcs(self):
+        """Fallback DTC read implementation"""
+        if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'dtc_btn'):
+            self.diagnostics_tab.dtc_btn.setEnabled(False)
+        self.status_label.setText("📋 Reading DTCs...")
+
+        QTimer.singleShot(1500, lambda: [
+            (self.diagnostics_tab.dtc_btn.setEnabled(True) if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'dtc_btn') else None),
+            self.status_label.setText("✅ DTCs retrieved"),
+            (self.diagnostics_tab.results_text.setPlainText(
+                f"DTC Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                "P0301 - Cylinder 1 Misfire Detected\n"
+                "   Status: Confirmed\n"
+                "   Priority: Medium\n"
+                "   Freeze Frame: RPM=2450, Load=65%\n\n"
+                "U0121 - Lost Communication With ABS Control Module\n"
+                "   Status: Pending\n"
+                "   Priority: Low\n"
+                "   First Occurrence: 2024-01-15\n\n"
+                "Total DTCs: 2"
+            ) if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'results_text') else None)
+        ])
+
+    def _fallback_clear_dtcs(self):
+        """Fallback DTC clear implementation"""
+        reply = QMessageBox.question(self, "Clear DTCs",
+                                   "Are you sure you want to clear all diagnostic trouble codes?",
+                                   QMessageBox.StandardButton.Yes |
+                                   QMessageBox.StandardButton.No)
+
+        if reply == QMessageBox.StandardButton.Yes:
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'clear_btn'):
+                self.diagnostics_tab.clear_btn.setEnabled(False)
+            self.status_label.setText("🧹 Clearing DTCs...")
+
+            QTimer.singleShot(2000, lambda: [
+                (self.diagnostics_tab.clear_btn.setEnabled(True) if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'clear_btn') else None),
+                self.status_label.setText("✅ DTCs cleared successfully"),
+                (self.diagnostics_tab.results_text.setPlainText(
+                    f"DTC Clearance Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                    "✅ All diagnostic trouble codes have been cleared\n"
+                    "✅ System memory reset\n"
+                    "✅ Ready for new diagnostics\n\n"
+                    "Note: Some codes may reappear if underlying issues persist."
+                ) if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'results_text') else None)
+            ])
 
     def secure_logout(self):
         """Enhanced logout dialog with DACOS styling"""
@@ -713,112 +1040,116 @@ class AutoDiagPro(QMainWindow):
     # ========== ALL MISSING METHOD IMPLEMENTATIONS ==========
 
     def run_full_scan(self):
-        """Execute full system scan"""
-        self.scan_btn.setEnabled(False)
-        self.status_label.setText("🔄 Running full system scan...")
-        
-        # Simulate scan progress
-        progress = 0
-        def update_scan():
-            nonlocal progress
-            progress += 10
-            if progress <= 100:
-                self.status_label.setText(f"🔄 Scanning... {progress}%")
-                QTimer.singleShot(100, update_scan)
-            else:
-                self.scan_btn.setEnabled(True)
-                self.status_label.setText("✅ Full scan completed")
-                self.results_text.setPlainText(
-                    f"Full System Scan Results - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                    "✅ ECU Communication: ESTABLISHED\n"
-                    "✅ CAN Bus: NORMAL\n"
-                    "✅ LIN Bus: ACTIVE\n"
-                    "✅ Sensor Network: OK\n"
-                    "⚠️  2 DTCs found\n"
-                    "✅ System Voltage: 13.8V\n"
-                    "✅ Communication Speed: 500kbps\n\n"
-                    "Scan completed successfully."
-                )
-        
-        update_scan()
+        """Execute full system scan using diagnostics controller"""
+        if self.diagnostics_controller:
+            result = self.diagnostics_controller.run_quick_scan()
+            logger.info(f"Full scan initiated: {result}")
+        else:
+            # Fallback to old implementation
+            self._fallback_full_scan()
 
     def read_dtcs(self):
-        """Read diagnostic trouble codes"""
-        self.dtc_btn.setEnabled(False)
-        self.status_label.setText("📋 Reading DTCs...")
-        
-        QTimer.singleShot(1500, lambda: [
-            self.dtc_btn.setEnabled(True),
-            self.status_label.setText("✅ DTCs retrieved"),
-            self.results_text.setPlainText(
-                f"DTC Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                "P0301 - Cylinder 1 Misfire Detected\n"
-                "   Status: Confirmed\n"
-                "   Priority: Medium\n"
-                "   Freeze Frame: RPM=2450, Load=65%\n\n"
-                "U0121 - Lost Communication With ABS Control Module\n"
-                "   Status: Pending\n"
-                "   Priority: Low\n"
-                "   First Occurrence: 2024-01-15\n\n"
-                "Total DTCs: 2"
-            )
-        ])
+        """Read diagnostic trouble codes using diagnostics controller"""
+        if self.diagnostics_controller:
+            result = self.diagnostics_controller.read_dtcs()
+            logger.info(f"DTC read initiated: {result}")
+        else:
+            # Fallback to old implementation
+            self._fallback_read_dtcs()
 
     def clear_dtcs(self):
-        """Clear diagnostic trouble codes"""
-        reply = QMessageBox.question(self, "Clear DTCs", 
-                                   "Are you sure you want to clear all diagnostic trouble codes?",
-                                   QMessageBox.StandardButton.Yes | 
-                                   QMessageBox.StandardButton.No)
-        
-        if reply == QMessageBox.StandardButton.Yes:
-            self.clear_btn.setEnabled(False)
-            self.status_label.setText("🧹 Clearing DTCs...")
-            
-            QTimer.singleShot(2000, lambda: [
-                self.clear_btn.setEnabled(True),
-                self.status_label.setText("✅ DTCs cleared successfully"),
-                self.results_text.setPlainText(
-                    f"DTC Clearance Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                    "✅ All diagnostic trouble codes have been cleared\n"
-                    "✅ System memory reset\n"
-                    "✅ Ready for new diagnostics\n\n"
-                    "Note: Some codes may reappear if underlying issues persist."
-                ),
-                self.dtc_card.update_value(0)
-            ])
+        """Clear diagnostic trouble codes using diagnostics controller"""
+        if self.diagnostics_controller:
+            result = self.diagnostics_controller.clear_dtcs()
+            logger.info(f"DTC clear initiated: {result}")
+        else:
+            # Fallback to old implementation
+            self._fallback_clear_dtcs()
 
     def start_live_stream(self):
-        """Start live data streaming"""
-        self.status_label.setText("📊 Starting live data stream...")
-        start_live_stream()  # Start the mock data generator
-        self.live_data_timer.start(1000)  # Update every second
-        QTimer.singleShot(1000, lambda: self.status_label.setText("📊 Live data streaming active"))
+        """Start live data streaming using diagnostics controller with realtime CAN bus integration"""
+        if self.diagnostics_controller:
+            result = self.diagnostics_controller.start_live_stream()
+            logger.info(f"Live stream started: {result}")
+
+            # Start realtime CAN bus monitoring
+            if hasattr(self, 'can_bus_tab') and self.can_bus_tab:
+                self.can_bus_tab.start_realtime_monitoring()
+
+            # Update status with realtime connection info
+            vci_status = self.diagnostics_controller.get_vci_status()
+            if vci_status.get('status') == 'connected':
+                self.status_label.setText("📊 Live data streaming active - Connected to CAN bus")
+            else:
+                self.status_label.setText("📊 Live data streaming active - Using simulated data")
+        else:
+            # Fallback with enhanced realtime simulation
+            self.status_label.setText("📊 Starting live data stream...")
+            try:
+                start_live_stream()  # Start the mock data generator
+                self.live_data_timer.start(1000)  # Update every second
+                QTimer.singleShot(1000, lambda: self.status_label.setText("📊 Live data streaming active - Simulation mode"))
+            except:
+                self.status_label.setText("⚠️ Live data stream not available")
 
     def stop_live_stream(self):
-        """Stop live data streaming"""
-        self.live_data_timer.stop()
-        stop_live_stream()  # Stop the mock data generator
-        self.status_label.setText("⏹ Live data stream stopped")
+        """Stop live data streaming using diagnostics controller with realtime cleanup"""
+        if self.diagnostics_controller:
+            result = self.diagnostics_controller.stop_live_stream()
+            logger.info(f"Live stream stopped: {result}")
+
+            # Stop realtime CAN bus monitoring
+            if hasattr(self, 'can_bus_tab') and self.can_bus_tab:
+                self.can_bus_tab.stop_realtime_monitoring()
+
+            self.status_label.setText("⏹ Live data stream stopped - Realtime monitoring disabled")
+        else:
+            # Fallback with enhanced cleanup
+            try:
+                self.live_data_timer.stop()
+                stop_live_stream()  # Stop the mock data generator
+                self.status_label.setText("⏹ Live data stream stopped - Simulation mode ended")
+            except:
+                self.status_label.setText("⚠️ Live data stream stop failed")
 
     def populate_sample_data(self):
-        """Populate live data table with mock data"""
-        # Get current mock live data
-        live_data = get_mock_live_data()
+        """Populate live data table with sample data using diagnostics controller"""
+        if self.diagnostics_controller:
+            sample_data = self.diagnostics_controller.populate_sample_data()
+            logger.info(f"Populated sample data: {len(sample_data)} items")
+        else:
+            # Fallback to old implementation
+            try:
+                # Get current mock live data
+                live_data = get_mock_live_data()
 
-        self.live_data_table.setRowCount(len(live_data))
-        for row, (param, value, unit) in enumerate(live_data):
-            self.live_data_table.setItem(row, 0, QTableWidgetItem(param))
-            self.live_data_table.setItem(row, 1, QTableWidgetItem(value))
-            self.live_data_table.setItem(row, 2, QTableWidgetItem(unit))
+                if hasattr(self, 'live_data_table'):
+                    self.live_data_table.setRowCount(len(live_data))
+                    for row, (param, value, unit) in enumerate(live_data):
+                        self.live_data_table.setItem(row, 0, QTableWidgetItem(param))
+                        self.live_data_table.setItem(row, 1, QTableWidgetItem(value))
+                        self.live_data_table.setItem(row, 2, QTableWidgetItem(unit))
+            except Exception as e:
+                logger.error(f"Failed to populate sample data: {e}")
 
-    def update_live_data_table(self):
-        """Update the live data table with current mock values"""
-        if live_data_generator.is_streaming:
-            live_data = get_mock_live_data()
-            for row, (param, value, unit) in enumerate(live_data):
-                if row < self.live_data_table.rowCount():
+    def update_live_data_table(self, data=None):
+        """Update the live data table with current values"""
+        if data:
+            # Data provided by diagnostics controller
+            for row, (param, value, unit) in enumerate(data):
+                if hasattr(self, 'live_data_table') and row < self.live_data_table.rowCount():
                     self.live_data_table.setItem(row, 1, QTableWidgetItem(value))
+        else:
+            # Fallback to old implementation
+            try:
+                if live_data_generator.is_streaming:
+                    live_data = get_mock_live_data()
+                    if hasattr(self, 'live_data_table'):
+                        for row, (param, value, unit) in enumerate(live_data):
+                            if row < self.live_data_table.rowCount():
+                                self.live_data_table.setItem(row, 1, QTableWidgetItem(value))
+            except Exception as e:
+                logger.error(f"Failed to update live data table: {e}")
 
     def run_quick_scan(self):
         """Quick scan demo"""
@@ -1484,8 +1815,9 @@ def main():
         # Show login dialog first
         login_dialog = LoginDialog()
         if login_dialog.exec() == QDialog.DialogCode.Accepted:
-            # Login successful, show main window
-            window = AutoDiagPro()
+            # Login successful, show main window with user info
+            user_info = getattr(login_dialog, 'user_info', None)
+            window = AutoDiagPro(user_info)
             window.show()
             sys.exit(app.exec())
         else:

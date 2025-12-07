@@ -45,6 +45,7 @@ class DashboardTab:
         self.connection_card = StatCard("Connection Quality", 85, 100, "%")
         self.dtc_card = StatCard("Active DTCs", 0, 50, "")
         self.security_card = StatCard("Security Level", 5, 5, "/5")
+        self.voltage_card = StatCard("Battery Voltage", 12.6, 15.0, "V")
 
         # Shared StatCard handles sizing responsively
 
@@ -52,6 +53,7 @@ class DashboardTab:
         top_grid.addWidget(self.connection_card, 0, 1)
         top_grid.addWidget(self.dtc_card, 0, 2)
         top_grid.addWidget(self.security_card, 0, 3)
+        top_grid.addWidget(self.voltage_card, 1, 0, 1, 4)  # Span across bottom row
 
         # === QUICK ACTIONS ROW ===
         actions_frame = QFrame()
@@ -129,6 +131,10 @@ class DashboardTab:
         self.system_health_card.update_value(random.randint(94, 99))
         self.connection_card.update_value(random.randint(72, 98))
         self.dtc_card.update_value(random.randint(0, 3))
+
+        # Update voltage with realistic values (12.0V - 14.8V range)
+        base_voltage = 12.0 + random.uniform(0, 2.8)  # 12.0V to 14.8V
+        self.voltage_card.update_value(round(base_voltage, 1))
 
         # Update AI widgets with demo data
         if self.ai_health_monitor:
