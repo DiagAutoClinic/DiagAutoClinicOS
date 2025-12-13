@@ -1,0 +1,33 @@
+AutoDiag Pro - Installation Information
+=====================================
+
+Thank you for installing AutoDiag Pro!
+
+SYSTEM REQUIREMENTS:
+- Windows 10/11 (64-bit)
+- Python 3.10 or higher
+- Administrator privileges
+- SQL Server Express (will be installed if needed)
+
+WHAT WILL BE INSTALLED:
+- AutoDiag Pro diagnostic suite
+- Python dependencies (PyQt6, serial, CAN libraries)
+- Desktop shortcuts and start menu entries
+- File associations for .py files (optional)
+- SQL Server Express database (if not present)
+
+INSTALLATION NOTES:
+- The installer requires administrator privileges
+- If SQL Server is not detected, you'll be prompted to download and install it
+- The installation may take several minutes depending on your internet speed
+- A desktop shortcut will be created for easy access
+
+AFTER INSTALLATION:
+- Run AutoDiag Pro from the desktop shortcut or start menu
+- First-time setup will guide you through user registration
+- Connect your OBD-II adapter to begin diagnostics
+
+For support and documentation, visit:
+https://diagautoclinic.co.za
+
+Enjoy using AutoDiag Pro!
