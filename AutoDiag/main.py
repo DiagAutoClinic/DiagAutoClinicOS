@@ -79,7 +79,7 @@ try:
     from shared.live_data import live_data_generator, start_live_stream, stop_live_stream, get_live_data
     from shared.advance import get_advanced_functions, simulate_function_execution, get_mock_advanced_data
     from shared.circular_gauge import CircularGauge, StatCard
-    from shared.user_database import user_database
+    from shared.user_database_sqlite import user_database
     # Import separate tab classes
     from AutoDiag.ui.dashboard_tab import DashboardTab
     from AutoDiag.ui.diagnostics_tab import DiagnosticsTab

@@ -27,7 +27,7 @@ class AccountManagementDialog(QDialog):
         self.resize(1000, 800)
 
         # Check if user has permission
-        from shared.user_database import user_database
+        from shared.user_database_sqlite import user_database
         if not user_database.has_permission(current_user, "user_management"):
             QMessageBox.critical(self, "Access Denied",
                                "You do not have permission to access account management.")
@@ -283,9 +283,9 @@ class AccountManagementDialog(QDialog):
 
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                # Set force password change flag using SQL Server
-                import pyodbc
-                with pyodbc.connect(self.user_db.connection_string) as conn:
+                # Set force password change flag using SQLite
+                import sqlite3
+                with sqlite3.connect(self.user_db.db_path) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         UPDATE users SET force_password_change = 1, status = 'active'
@@ -335,7 +335,7 @@ class CreateUserDialog(QDialog):
         self.setMinimumSize(400, 500)
         self.resize(450, 550)
 
-        from shared.user_database import user_database
+        from shared.user_database_sqlite import user_database
         self.user_db = user_database
 
         self.init_ui()
@@ -417,7 +417,7 @@ class CreateUserDialog(QDialog):
             return
 
         # Convert tier name to enum
-        from shared.user_database import UserTier
+        from shared.user_database_sqlite import UserTier
         tier = UserTier[tier_name]
 
         # Create user
@@ -442,7 +442,7 @@ class EditUserDialog(QDialog):
         self.setMinimumSize(400, 400)
         self.resize(450, 450)
 
-        from shared.user_database import user_database
+        from shared.user_database_sqlite import user_database
         self.user_db = user_database
 
         # Get current user info
@@ -525,9 +525,9 @@ class EditUserDialog(QDialog):
             return
 
         try:
-            # Update user info in database using SQL Server
-            import pyodbc
-            with pyodbc.connect(self.user_db.connection_string) as conn:
+            # Update user info in database using SQLite
+            import sqlite3
+            with sqlite3.connect(self.user_db.db_path) as conn:
                 cursor = conn.cursor()
 
                 # Update basic info
@@ -538,7 +538,7 @@ class EditUserDialog(QDialog):
 
                 # Update tier if not superuser
                 if self.username != "superuser" and hasattr(self, 'tier_combo'):
-                    from shared.user_database import UserTier
+                    from shared.user_database_sqlite import UserTier
                     tier_name = self.tier_combo.currentText()
                     tier = UserTier[tier_name]
                     cursor.execute('UPDATE users SET tier = ? WHERE username = ?',
@@ -546,7 +546,7 @@ class EditUserDialog(QDialog):
 
                 # Update status
                 status_name = self.status_combo.currentText()
-                from shared.user_database import UserStatus
+                from shared.user_database_sqlite import UserStatus
                 status = UserStatus[status_name]
                 cursor.execute('UPDATE users SET status = ? WHERE username = ?',
                              (status.value, self.username))

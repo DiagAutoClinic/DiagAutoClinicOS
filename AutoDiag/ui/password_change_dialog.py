@@ -239,7 +239,7 @@ class PasswordChangeDialog(QDialog):
 
         # Attempt to change password
         try:
-            from shared.user_database import user_database
+            from shared.user_database_sqlite import user_database
             success, message = user_database.force_password_change(self.username, new_password)
 
             if success:

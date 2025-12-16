@@ -25,7 +25,7 @@ class LoginDialog(QDialog):
         self.resize(550, 450)
 
         # User database
-        from shared.user_database import user_database
+        from shared.user_database_sqlite import user_database
         self.user_db = user_database
 
         self.init_ui()

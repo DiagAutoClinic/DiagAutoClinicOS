@@ -49,6 +49,7 @@ Developed by **Shaun Smit** and the **DiagAutoClinic (DACOS)** team, it integrat
 - 🖥️ **Cross-platform:** Linux, Windows (Android support planned)
 - 🎯 **Real J2534 diagnostics** for live Ford and GM vehicle testing
 - 📚 **Comprehensive documentation** for Global conditions
+- 🗄️ **SQLite CAN Database** — 1,197 vehicles, 8,481 messages, 20,811 signals
 
 ---
 
@@ -396,8 +397,8 @@ See the [LICENSE](LICENSE) file for complete terms.
 For commercial licensing inquiries, contact: **dacos@diagautoclinic.co.za**
 
 ------
+### ✅ Latest Testing Achievements - December 16, 2025
 
-### ✅ Latest Testing Achievements - December 12, 2025
 
 **INSTALLER VALIDATION COMPLETED SUCCESSFULLY**
 

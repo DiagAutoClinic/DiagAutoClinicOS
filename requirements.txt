@@ -1,5 +1,5 @@
 # DiagAutoClinicOS - Core Dependencies
-# Updated: 2025-11-23
+# Updated: 2025-12-16
 # Complete automotive diagnostic suite requirements
 
 # ============================================================================
@@ -38,7 +38,7 @@ rsa>=4.9
 # DATABASE CONNECTIVITY
 # ============================================================================
 
-pyodbc>=4.0.39,<5.0.0
+# SQLite is used (built-in to Python, no additional dependencies required)
 
 # ============================================================================
 # DATA PROCESSING & ANALYSIS
