@@ -1,0 +1,29 @@
+DiagAutoClinicOS - AutoDiag Suite Installation Notes
+==============================================
+
+Thank you for installing DiagAutoClinicOS AutoDiag Suite v0.0.1 (Alpha Release).
+
+IMPORTANT NOTES:
+- This is an ALPHA release intended for testing purposes only.
+- Features may be incomplete or unstable.
+- Not recommended for production use.
+
+System Requirements:
+- Windows 10 or later
+- 4GB RAM minimum
+- 2GB free disk space
+- Diagnostic hardware (OBDLink MX+, GoDiag, etc.)
+
+Installation will include:
+- AutoDiag diagnostic dashboard
+- Embedded Python runtime
+- Required libraries and dependencies
+- Hardware drivers (optional)
+
+After installation:
+1. Connect your diagnostic hardware
+2. Launch AutoDiag from the desktop shortcut
+3. Refer to the Quick Start Guide
+
+Support: dacos@diagautoclinic.co.za
+Website: https://diagautoclinic.co.za/dacos

@@ -283,9 +283,9 @@ class AccountManagementDialog(QDialog):
 
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                # Set force password change flag
-                import sqlite3
-                with sqlite3.connect(self.user_db.db_path) as conn:
+                # Set force password change flag using SQL Server
+                import pyodbc
+                with pyodbc.connect(self.user_db.connection_string) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         UPDATE users SET force_password_change = 1, status = 'active'
@@ -525,9 +525,9 @@ class EditUserDialog(QDialog):
             return
 
         try:
-            # Update user info in database
-            import sqlite3
-            with sqlite3.connect(self.user_db.db_path) as conn:
+            # Update user info in database using SQL Server
+            import pyodbc
+            with pyodbc.connect(self.user_db.connection_string) as conn:
                 cursor = conn.cursor()
 
                 # Update basic info

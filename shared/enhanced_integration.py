@@ -116,31 +116,39 @@ class LoginDialog(QDialog):
 
 class AutoDiagPro(QMainWindow):
     """Enhanced AutoDiag Professional with complete feature set"""
-    
-    def __init__(self):
+
+    def __init__(self, current_user_info=None):
         super().__init__()
-        
+
+        # Store current user information
+        self.current_user_info = current_user_info or {
+            'username': 'guest',
+            'full_name': 'Guest User',
+            'tier': 'BASIC',
+            'permissions': []
+        }
+
         # Security first - require login
         if not self.secure_login():
             sys.exit(1)  # Exit if login failed
-        
+
         # Initialize managers
         self.dtc_database = DTCDatabase()
         self.vin_decoder = VINDecoder()
         self.special_functions_manager = special_functions_manager
         self.calibrations_resets_manager = calibrations_resets_manager
-        
+
         # Connect security managers
         self.special_functions_manager.security_manager = security_manager
         self.calibrations_resets_manager.security_manager = security_manager
-        
+
         # UI State
         self.selected_brand = "Toyota"
         self.connected = False
-        
+
         # Initialize UI
         self.init_ui()
-        
+
         # Apply security theme
         try:
             self.style_manager.set_theme("security")
@@ -195,13 +203,13 @@ class AutoDiagPro(QMainWindow):
         header_widget = QWidget()
         header_widget.setMaximumHeight(80)
         header_layout = QHBoxLayout(header_widget)
-        
-        # User info
-        user_info = security_manager.get_user_info()
+
+        # User info - use self.current_user_info
+        user_info = self.current_user_info
         user_label = QLabel(f"👤 {user_info.get('full_name', 'Unknown')} "
-                          f"| 🔐 {user_info.get('security_level', 'BASIC')}")
+                          f"| 🔐 {user_info.get('tier', 'BASIC')}")
         user_label.setProperty("class", "user-info")
-        
+
         # Title
         title_label = QLabel("AutoDiag Pro - Secure Diagnostics")
         title_label.setProperty("class", "title")
@@ -209,12 +217,12 @@ class AutoDiagPro(QMainWindow):
         title_font.setPointSize(18)
         title_font.setBold(True)
         title_label.setFont(title_font)
-        
+
         # Brand selector
         brand_layout = QHBoxLayout()
         brand_label = QLabel("Vehicle Brand:")
         self.brand_combo = QComboBox()
-        
+
         try:
             brands = get_brand_list()
             self.brand_combo.addItems(brands)
@@ -222,21 +230,21 @@ class AutoDiagPro(QMainWindow):
             self.brand_combo.currentTextChanged.connect(self.on_brand_changed)
         except Exception as e:
             logger.error(f"Failed to load brands: {e}")
-        
+
         brand_layout.addWidget(brand_label)
         brand_layout.addWidget(self.brand_combo)
-        
+
         # Logout button
         logout_btn = QPushButton("Logout")
         logout_btn.setProperty("class", "danger")
         logout_btn.clicked.connect(self.secure_logout)
-        
+
         header_layout.addWidget(user_label)
         header_layout.addWidget(title_label)
         header_layout.addStretch()
         header_layout.addLayout(brand_layout)
         header_layout.addWidget(logout_btn)
-        
+
         layout.addWidget(header_widget)
     
     def create_special_functions_tab(self):
@@ -446,67 +454,67 @@ class AutoDiagPro(QMainWindow):
         """Create security management and audit tab"""
         security_tab = QWidget()
         layout = QVBoxLayout(security_tab)
-        
+
         # Header
         header_label = QLabel("🔒 Security & Audit")
         header_label.setProperty("class", "tab-header")
-        
+
         # Security status
         status_group = QGroupBox("Security Status")
         status_layout = QVBoxLayout(status_group)
-        
-        user_info = security_manager.get_user_info()
+
+        user_info = self.current_user_info
         status_text = f"""
         Current User: {user_info.get('full_name', 'Unknown')}
         Username: {user_info.get('username', 'Unknown')}
-        Security Level: {user_info.get('security_level', 'BASIC')}
-        Role: {user_info.get('role', 'technician')}
-        Session Expires: {self.format_timestamp(user_info.get('session_expiry', 0))}
+        Security Level: {user_info.get('tier', 'BASIC')}
+        Role: technician
+        Session: Active
         """
-        
+
         self.security_status = QTextEdit()
         self.security_status.setPlainText(status_text.strip())
         self.security_status.setReadOnly(True)
-        
+
         status_layout.addWidget(self.security_status)
-        
+
         # Security controls
         controls_group = QGroupBox("Security Controls")
         controls_layout = QHBoxLayout(controls_group)
-        
+
         refresh_btn = QPushButton("Refresh Security Status")
         refresh_btn.clicked.connect(self.update_security_status)
-        
+
         audit_btn = QPushButton("View Audit Log")
         audit_btn.clicked.connect(self.show_audit_log)
-        
+
         elevate_btn = QPushButton("Elevate Security")
         elevate_btn.clicked.connect(self.elevate_security)
-        
+
         controls_layout.addWidget(refresh_btn)
         controls_layout.addWidget(audit_btn)
         controls_layout.addWidget(elevate_btn)
         controls_layout.addStretch()
-        
+
         # Quick security check
         check_group = QGroupBox("Quick Security Check")
         check_layout = QVBoxLayout(check_group)
-        
+
         self.security_check_result = QTextEdit()
         self.security_check_result.setReadOnly(True)
-        
+
         check_btn = QPushButton("Run Security Check")
         check_btn.clicked.connect(self.run_security_check)
-        
+
         check_layout.addWidget(self.security_check_result)
         check_layout.addWidget(check_btn)
-        
+
         layout.addWidget(header_label)
         layout.addWidget(status_group)
         layout.addWidget(controls_group)
         layout.addWidget(check_group)
         layout.addStretch()
-        
+
         self.tab_widget.addTab(security_tab, "🔒 Security")
     
     def update_special_functions_list(self):
@@ -738,13 +746,13 @@ class AutoDiagPro(QMainWindow):
     
     def update_security_status(self):
         """Update security status display"""
-        user_info = security_manager.get_user_info()
+        user_info = self.current_user_info
         status_text = f"""
         Current User: {user_info.get('full_name', 'Unknown')}
         Username: {user_info.get('username', 'Unknown')}
-        Security Level: {user_info.get('security_level', 'BASIC')}
-        Role: {user_info.get('role', 'technician')}
-        Session Expires: {self.format_timestamp(user_info.get('session_expiry', 0))}
+        Security Level: {user_info.get('tier', 'BASIC')}
+        Role: technician
+        Session: Active
         """
         self.security_status.setPlainText(status_text.strip())
     
