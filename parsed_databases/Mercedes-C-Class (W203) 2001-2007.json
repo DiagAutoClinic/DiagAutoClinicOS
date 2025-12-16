@@ -1,0 +1,9 @@
+{
+  "manufacturer": "Mercedes",
+  "model": "C-Class",
+  "year_range": "2001-2007",
+  "serial_number": "00000000",
+  "messages": {},
+  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Mercedes-C-Class (W203) 2001-2007.REF",
+  "parse_date": "2025-12-16T06:34:43.296776"
+}

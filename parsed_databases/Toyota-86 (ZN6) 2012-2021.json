@@ -1,0 +1,9 @@
+{
+  "manufacturer": "Toyota",
+  "model": "86",
+  "year_range": "2012-2021",
+  "serial_number": "00000000",
+  "messages": {},
+  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Toyota-86 (ZN6) 2012-2021.REF",
+  "parse_date": "2025-12-16T06:34:43.342970"
+}

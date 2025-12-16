@@ -1,0 +1,9 @@
+{
+  "manufacturer": "BMW",
+  "model": "3 Series",
+  "year_range": "2012-2020",
+  "serial_number": "00000000",
+  "messages": {},
+  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\BMW-3 Series (F30 F31 F34) 2012-2020.REF",
+  "parse_date": "2025-12-16T06:34:43.177880"
+}

@@ -1,0 +1,9 @@
+{
+  "manufacturer": "Porsche",
+  "model": "911",
+  "year_range": "2015-2019",
+  "serial_number": "00000000",
+  "messages": {},
+  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Porsche-911 (991.2) 2015-2019.REF",
+  "parse_date": "2025-12-16T06:34:43.318604"
+}

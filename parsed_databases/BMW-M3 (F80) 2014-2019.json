@@ -1,0 +1,9 @@
+{
+  "manufacturer": "BMW",
+  "model": "M3",
+  "year_range": "2014-2019",
+  "serial_number": "00000000",
+  "messages": {},
+  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\BMW-M3 (F80) 2014-2019.REF",
+  "parse_date": "2025-12-16T06:34:43.181869"
+}

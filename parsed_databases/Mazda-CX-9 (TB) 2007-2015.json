@@ -1,0 +1,9 @@
+{
+  "manufacturer": "Mazda",
+  "model": "CX-9",
+  "year_range": "2007-2015",
+  "serial_number": "00000000",
+  "messages": {},
+  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Mazda-CX-9 (TB) 2007-2015.REF",
+  "parse_date": "2025-12-16T06:34:43.290563"
+}
