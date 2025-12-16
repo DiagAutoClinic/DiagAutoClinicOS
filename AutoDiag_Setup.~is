@@ -1,0 +1,366 @@
+; ================================================================================
+; AutoDiag Pro - Inno Setup Installation Script (FIXED)
+; ================================================================================
+; This script creates a Windows installer for the AutoDiag diagnostic suite
+; including the launcher and all necessary components.
+; ================================================================================
+
+#define MyAppName "AutoDiag Pro"
+#define MyAppVersion "3.2.0"
+#define MyAppPublisher "DACOS - Diagnostic Auto Clinic OS"
+#define MyAppURL "https://diagautoclinic.co.za"
+#define MyAppExeName "launcher.py"
+
+; Application information
+[Setup]
+; Note: Using curly braces {} for Inno Setup constants, not square brackets []
+AppId={{A1B2C3D4-E5F6-7890-ABCD-123456789012}}
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
+; Get the version from the file if possible, otherwise use the defined version
+VersionInfoVersion={#MyAppVersion}
+AppVerName={#MyAppName} {#MyAppVersion}
+AppPublisher={#MyAppPublisher}
+AppPublisherURL={#MyAppURL}
+AppSupportURL={#MyAppURL}/support
+AppUpdatesURL={#MyAppURL}/updates
+AppCopyright=Copyright (C) 2025 DACOS
+DefaultDirName={autopf}\AutoDiag Pro
+DefaultGroupName={#MyAppName}
+AllowNoIcons=yes
+LicenseFile=LICENSE
+InfoBeforeFile=Files\Installation_Info.txt
+OutputDir=Output
+OutputBaseFilename=AutoDiag_Pro_Setup_v{#MyAppVersion}
+SetupIconFile=assets\favicon.ico
+Compression=lzma2
+SolidCompression=yes
+WizardStyle=modern
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
+PrivilegesRequired=admin
+PrivilegesRequiredOverridesAllowed=dialog
+
+; Interface settings
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 6.1
+Name: "startup"; Description: "Run AutoDiag Pro when Windows starts"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "associatepython"; Description: "Associate .py files with AutoDiag Pro"; GroupDescription: "File Associations:"; Flags: unchecked
+Name: "createdocumentation"; Description: "Create desktop shortcuts for documentation"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "installsqlserver"; Description: "Install SQL Server Express (required for user database)"; GroupDescription: "Prerequisites:"; Flags: unchecked
+Name: "installvcidrivers"; Description: "Install common VCI device drivers (J2534, ELM327)"; GroupDescription: "Prerequisites:"; Flags: unchecked
+
+
+[Files]
+; Main launcher script
+Source: "launcher.py"; DestDir: "{app}"; Flags: ignoreversion
+Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+
+; AutoDiag application directory
+Source: "AutoDiag\*"; DestDir: "{app}\AutoDiag"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Shared modules directory
+Source: "shared\*"; DestDir: "{app}\shared"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Assets directory
+Source: "assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; CAN bus data directory (if exists)
+Source: "can_bus_data\*"; DestDir: "{app}\can_bus_data"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; VCI drivers directory
+Source: "drivers\*"; DestDir: "{app}\drivers"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; SQL Server Express installer (if present)
+Source: "drivers\SQLEXPR_x64_ENU.exe"; DestDir: "{app}\drivers"; Flags: ignoreversion external skipifsourcedoesntexist; Tasks: installsqlserver
+
+; Python launcher batch file (to be created)
+Source: "Files\AutoDiag_Launcher.bat"; DestDir: "{app}"; Flags: ignoreversion
+
+; Documentation files
+Source: "Files\Python_Installation_Guide.txt"; DestDir: "{app}\Documentation"; Flags: ignoreversion
+Source: "Files\Troubleshooting_Guide.txt"; DestDir: "{app}\Documentation"; Flags: ignoreversion
+Source: "Files\VCI_Installation_Guide.txt"; DestDir: "{app}\Documentation"; Flags: ignoreversion
+
+; Create empty log files
+Source: "dummy.log"; DestDir: "{app}\logs"; Flags: ignoreversion
+Source: "dummy.log"; DestDir: "{app}\cache"; Flags: ignoreversion
+
+[Icons]
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
+Name: "{group}\AutoDiag Pro Documentation"; Filename: "{app}\README.md"
+Name: "{group}\AutoDiag Pro License"; Filename: "{app}\LICENSE"
+Name: "{group}\Python Installation Guide"; Filename: "{app}\Documentation\Python_Installation_Guide.txt"
+Name: "{group}\Troubleshooting Guide"; Filename: "{app}\Documentation\Troubleshooting_Guide.txt"
+Name: "{group}\VCI Installation Guide"; Filename: "{app}\Documentation\VCI_Installation_Guide.txt"
+Name: "{group}\VCI Drivers Folder"; Filename: "{app}\drivers"
+
+; Desktop icons (conditional)
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\favicon.ico"; IconIndex: 0; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon
+
+; Startup entry (conditional)
+Name: "{autostartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: startup; WorkingDir: "{app}"
+
+; Documentation shortcuts (conditional)
+Name: "{group}\AutoDiag Documentation"; Filename: "{app}\README.md"; Tasks: createdocumentation
+Name: "{autodesktop}\AutoDiag Documentation"; Filename: "{app}\README.md"; Tasks: createdocumentation
+
+[Registry]
+; Registry operations are now handled in code for better error handling
+
+[Run]
+Filename: "{cmd}"; Parameters: "/c ""{app}\AutoDiag_Launcher.bat"""; Description: "Run AutoDiag Pro now"; Flags: nowait postinstall skipifsilent
+
+[Code]
+var
+  PythonCheck: Boolean;
+  iResultCode: Integer;
+
+function GetUninstallString(): String;
+var
+  sUnInstPath: String;
+  sUnInstallString: String;
+begin
+  sUnInstPath := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{A1B2C3D4-E5F6-7890-ABCD-123456789012}_is1';
+  sUnInstallString := '';
+  if not RegQueryStringValue(HKLM, sUnInstPath, 'UninstallString', sUnInstallString) then
+    RegQueryStringValue(HKCU, sUnInstPath, 'UninstallString', sUnInstallString);
+  result := sUnInstallString;
+end;
+
+function IsUpgrade(): Boolean;
+begin
+  result := (GetUninstallString() <> '');
+end;
+
+function InitializeSetup(): Boolean;
+var
+  V: Integer;
+  iResultCode: Integer;
+  sUnInstallString: String;
+begin
+  Result := True;
+
+  // Check if running with administrator privileges
+  if not IsAdmin() then
+  begin
+    MsgBox('This installer requires administrator privileges to modify the system registry and install properly. Please run the installer as an administrator.', mbError, MB_OK);
+    Result := False;
+    exit;
+  end;
+  
+  // Check if Python is installed
+  if not Exec('python', '--version', '', SW_HIDE, ewWaitUntilTerminated, iResultCode) then
+  begin
+    V := MsgBox('Python is required to run AutoDiag Pro but does not appear to be installed. Would you like to open the Python download page?', mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
+    if V = IDYES then
+    begin
+      ShellExec('open', 'https://www.python.org/downloads/', '', '', SW_SHOWNORMAL, ewNoWait, iResultCode);
+    end;
+    MsgBox('Please install Python and run this installer again.', mbInformation, MB_OK);
+    Result := False;
+    exit;
+  end;
+  
+  // Check if required packages can be imported
+  if not Exec('python', '-c "import PyQt6, serial, can, obd"', '', SW_HIDE, ewWaitUntilTerminated, iResultCode) then
+  begin
+    MsgBox('Some required Python packages are missing. They will be installed automatically during the installation process.', mbInformation, MB_OK);
+  end;
+  
+  // Check if SQL Server is installed by looking for sqlcmd.exe
+  if not (FileExists('C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe') or
+          FileExists('C:\Program Files (x86)\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe') or
+          Exec('where', 'sqlcmd', '', SW_HIDE, ewWaitUntilTerminated, iResultCode)) then
+  begin
+    V := MsgBox('SQL Server is recommended for the user database but does not appear to be installed. Would you like to open the SQL Server Express installation page?', mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
+    if V = IDYES then
+    begin
+      ShellExec('open', 'https://www.microsoft.com/en-us/download/details.aspx?id=104781', '', '', SW_SHOWNORMAL, ewNoWait, iResultCode);
+      MsgBox('You can continue with the installation and install SQL Server later if needed.', mbInformation, MB_OK);
+    end;
+  end;
+
+  // If this is an upgrade
+  if IsUpgrade() then
+  begin
+    V := MsgBox(ExpandConstant('A previous version of {#MyAppName} is already installed. Would you like to remove it before continuing?'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2);
+    if V = IDYES then
+    begin
+      sUnInstallString := GetUninstallString();
+      sUnInstallString := RemoveQuotes(sUnInstallString);
+      if Exec(ExpandConstant(sUnInstallString), '/SILENT /NORESTART /SUPPRESSMSGBOXES', '', SW_HIDE, ewWaitUntilTerminated, iResultCode) then
+      begin
+        // Wait for uninstall to complete
+        Sleep(2000);
+      end else
+      begin
+        MsgBox('Failed to uninstall previous version. Please uninstall manually.', mbError, MB_OK);
+        Result := False;
+        exit;
+      end;
+    end else
+    begin
+      Result := False;
+      exit;
+    end;
+  end;
+end;
+
+procedure InitializeWizard();
+begin
+ PythonCheck := True;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+ // Skip custom page logic if needed
+ Result := False;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+ sPath: String;
+ sNewPath: String;
+begin
+ if CurStep = ssPostInstall then
+ begin
+   // Post-installation steps
+   Log('AutoDiag Pro installation completed successfully');
+
+   // Install Python packages if missing
+   if not Exec('python', '-c "import PyQt6, serial, can, obd"', '', SW_HIDE, ewWaitUntilTerminated, iResultCode) then
+   begin
+     Log('Installing required Python packages...');
+     if Exec('python', ExpandConstant('-m pip install -r "{app}\requirements.txt"'), '', SW_SHOW, ewWaitUntilTerminated, iResultCode) then
+     begin
+       Log('Python packages installed successfully');
+     end else
+     begin
+       Log('Warning: Failed to install Python packages');
+       MsgBox('Failed to install required Python packages. Please run: pip install -r requirements.txt', mbError, MB_OK);
+     end;
+   end;
+
+   // Add application directory to system PATH
+   if RegQueryStringValue(HKLM, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', sPath) then
+   begin
+     sNewPath := sPath;
+     if Pos(ExpandConstant('{app}'), sNewPath) = 0 then
+     begin
+       sNewPath := sNewPath + ';' + ExpandConstant('{app}');
+       if not RegWriteStringValue(HKLM, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', sNewPath) then
+       begin
+         Log('Warning: Failed to add application directory to system PATH');
+       end;
+     end;
+   end;
+
+   // Associate .py files with AutoDiag (if task selected)
+   if WizardIsTaskSelected('associatepython') then
+   begin
+     if not RegWriteStringValue(HKCR, '.py', '', 'AutoDiagPro.PythonFile') then
+       Log('Warning: Failed to associate .py files');
+     if not RegWriteStringValue(HKCR, 'AutoDiagPro.PythonFile', '', 'AutoDiag Pro Python File') then
+       Log('Warning: Failed to create file type description');
+     if not RegWriteStringValue(HKCR, 'AutoDiagPro.PythonFile\DefaultIcon', '', ExpandConstant('{app}\{#MyAppExeName},0')) then
+       Log('Warning: Failed to set default icon');
+     if not RegWriteStringValue(HKCR, 'AutoDiagPro.PythonFile\shell\open\command', '', ExpandConstant('"{app}\{#MyAppExeName}" "%1"')) then
+       Log('Warning: Failed to set open command');
+   end;
+
+   // Check for SQL Server installation
+   if WizardIsTaskSelected('installsqlserver') then
+   begin
+     if FileExists(ExpandConstant('{app}\drivers\SQLEXPR_x64_ENU.exe')) then
+     begin
+       if MsgBox('Would you like to install SQL Server Express now? This is required for the user database.', mbConfirmation, MB_YESNO) = IDYES then
+       begin
+         Log('Installing SQL Server Express...');
+         if Exec(ExpandConstant('{app}\drivers\SQLEXPR_x64_ENU.exe'), '/QUIET /IACCEPTSQLSERVERLICENSETERMS', '', SW_SHOW, ewWaitUntilTerminated, iResultCode) then
+         begin
+           MsgBox('SQL Server Express installation completed.', mbInformation, MB_OK);
+         end else
+         begin
+           Log('Warning: SQL Server Express installation failed');
+           MsgBox('SQL Server Express installation failed. Please install it manually.', mbError, MB_OK);
+         end;
+       end;
+     end;
+   end;
+
+   // Check for VCI drivers if requested
+   if WizardIsTaskSelected('installvcidrivers') then
+   begin
+     if MsgBox('Would you like to install the bundled VCI drivers? This will install FTDI, GODIAG J2534, and Mongoose JLR drivers.', mbConfirmation, MB_YESNO) = IDYES then
+     begin
+       // Install FTDI drivers (CDM setup)
+       if FileExists(ExpandConstant('{app}\drivers\CDM2123620_Setup\CDM2123620_Setup.exe')) then
+       begin
+         Log('Installing FTDI drivers...');
+         Exec(ExpandConstant('{app}\drivers\CDM2123620_Setup\CDM2123620_Setup.exe'), '/S', '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
+       end;
+
+       // Install GODIAG J2534 drivers
+       if FileExists(ExpandConstant('{app}\drivers\GODIAG J2534 Driver\GODIAG_J1979TesterSetup_vc_x86_2v3.exe')) then
+       begin
+         Log('Installing GODIAG J2534 drivers...');
+         Exec(ExpandConstant('{app}\drivers\GODIAG J2534 Driver\GODIAG_J1979TesterSetup_vc_x86_2v3.exe'), '/S', '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
+       end;
+
+       // Install Mongoose JLR drivers (try x64 first, then x86)
+       if FileExists(ExpandConstant('{app}\drivers\mongoose jlr\mongoose jlr\J2534_Mongoose_JLR_x64.msi')) then
+       begin
+         Log('Installing Mongoose JLR x64 drivers...');
+         Exec('msiexec.exe', ExpandConstant('/i "{app}\drivers\mongoose jlr\mongoose jlr\J2534_Mongoose_JLR_x64.msi" /quiet /norestart'), '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
+       end else if FileExists(ExpandConstant('{app}\drivers\mongoose jlr\mongoose jlr\J2534_Mongoose_JLR.msi')) then
+       begin
+         Log('Installing Mongoose JLR x86 drivers...');
+         Exec('msiexec.exe', ExpandConstant('/i "{app}\drivers\mongoose jlr\mongoose jlr\J2534_Mongoose_JLR.msi" /quiet /norestart'), '', SW_HIDE, ewWaitUntilTerminated, iResultCode);
+       end;
+
+       MsgBox('VCI drivers installation completed. Please restart your computer if prompted.', mbInformation, MB_OK);
+     end else
+     begin
+       // Open guide instead
+       if FileExists(ExpandConstant('{app}\Documentation\VCI_Installation_Guide.txt')) then
+         Exec('notepad.exe', ExpandConstant('{app}\Documentation\VCI_Installation_Guide.txt'), '', SW_SHOW, ewNoWait, iResultCode);
+     end;
+   end;
+ end;
+end;
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}\logs"
+Type: filesandordirs; Name: "{app}\cache"
+Type: files; Name: "{app}\launcher_debug.log"
+
+[UninstallRun]
+; Run uninstaller for Python packages if requested
+Filename: "{cmd}"; Parameters: "/c python -m pip uninstall -y PyQt6 pyserial python-can obd"; Flags: runascurrentuser
+
+[Messages]
+; Custom welcome message - English
+WelcomeLabel2=This will install [name/ver] on your computer.%n%nIt is recommended that you close all other applications before continuing.
+
+; Custom finish message - English
+FinishedLabel=Setup has finished installing AutoDiag Pro on your computer.%n%nClick "Finish" to close this setup. You can also run AutoDiag Pro from the Start menu or desktop shortcut.
+
+
+[UninstallRestart]
+; Allow the installer to restart without confirmation
+; This is useful when the uninstaller needs to restart the system
+
+[Dirs]
+Name: "{app}\logs"
+Name: "{app}\cache"
+Name: "{app}\Documentation"
+Name: "{app}\temp"

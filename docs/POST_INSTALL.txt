@@ -1,0 +1,36 @@
+DiagAutoClinicOS - AutoDiag Suite Post-Installation Instructions
+=========================================================
+
+Installation completed successfully!
+
+Next Steps:
+1. Connect your diagnostic hardware (OBDLink MX+, GoDiag GT100, etc.)
+2. Launch AutoDiag from the desktop shortcut or Start menu
+3. Configure your vehicle connection in the Dashboard tab
+4. Run diagnostics using the specialized tabs
+
+Key Features Available:
+- Dashboard: System overview and quick actions
+- Diagnostics: Vehicle system diagnostics
+- Live Data: Real-time parameter monitoring
+- Special Functions: Advanced vehicle operations
+- Calibrations: Reset and calibration procedures
+- Advanced: Technical tools and settings
+- Security: Access control and security functions
+
+Alpha Release Notes:
+- This is a testing version with limited features
+- Report any issues to support
+- Check for updates regularly
+
+Hardware Compatibility:
+- OBDLink MX+ / EX
+- GoDiag GT100 / GT100 Plus GPT
+- Scanmatik 2
+- Generic ELM327 interfaces
+
+Focus Brands: Ford and GM vehicles (enhanced support)
+
+Support: dacos@diagautoclinic.co.za
+Website: https://diagautoclinic.co.za/dacos
+GitHub: https://github.com/DiagAutoClinic/DiagAutoClinicOS

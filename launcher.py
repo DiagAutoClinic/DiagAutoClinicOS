@@ -114,6 +114,7 @@ class DiagLauncher(tk.Tk):
             try:
                 if process.poll() is None:  # Still running
                     process.terminate()
+                    process.wait(timeout=2)
                     logger.info(f"Terminated {name}")
             except Exception as e:
                 logger.error(f"Error terminating {name}: {e}")
@@ -191,6 +192,7 @@ class DiagLauncher(tk.Tk):
             "🚗 Vehicle Diagnostics",
             "AutoDiag Pro - Full system scan\nFault codes & live data streaming",
             self.launch_vehicle_diagnostics,
+            is_primary=True
         )
         self.vehicle_card.pack(side="left", padx=15)
         
@@ -309,15 +311,18 @@ class DiagLauncher(tk.Tk):
             if is_primary:
                 title.config(bg=GLOW, fg=BG_MAIN)
                 body.config(bg=GLOW, fg=BG_MAIN)
+                content.config(bg=GLOW)
             else:
                 title.config(bg=GLOW, fg=BG_MAIN)
                 body.config(bg=GLOW, fg=BG_MAIN)
+                content.config(bg=GLOW)
 
         def on_leave(e):
             card.config(bg=card_bg, cursor="")
             border.config(bg=border_color)
             title.config(bg=card_bg, fg=text_color)
             body.config(bg=card_bg, fg=text_color)
+            content.config(bg=card_bg)
 
         def on_click(e):
             # Remove emoji from log message to avoid encoding issues
@@ -584,7 +589,8 @@ class DiagLauncher(tk.Tk):
                 self.after(0, lambda: self.update_status(f"Error monitoring {name}: {str(e)}", True))
             finally:
                 # Clean up process reference
-                self.running_processes.pop(name, None)
+                if name in self.running_processes and self.running_processes[name] == process:
+                    self.running_processes.pop(name, None)
                 logger.info(f"Removed {name} from running processes")
 
         # Start monitoring in daemon thread
@@ -620,7 +626,8 @@ class DiagLauncher(tk.Tk):
                 self.update_status(f"{name} completed successfully")
             else:
                 self.update_status(f"{name} failed with code {return_code}", True)
-            self.running_processes.pop(name, None)
+            if name in self.running_processes and self.running_processes[name] == process:
+                self.running_processes.pop(name, None)
 
     def launch_ecu_programming(self):
         """Launch AutoECU Programming suite with COMPREHENSIVE error handling and better feedback"""
@@ -839,7 +846,6 @@ class DiagLauncher(tk.Tk):
             "• DPF regeneration\n"
             "• EPB service functions"
         )
-
 
     def launch_sensor_monitor(self):
         """Launch Sensor Monitor"""

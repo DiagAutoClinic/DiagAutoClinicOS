@@ -48,7 +48,7 @@ Developed by **Shaun Smit** and the **DiagAutoClinic (DACOS)** team, it integrat
 - 🧱 **Modular design** — easily extend with your own tools
 - 🖥️ **Cross-platform:** Linux, Windows (Android support planned)
 - 🎯 **Real J2534 diagnostics** for live Ford and GM vehicle testing
-- 📚 **Comprehensive documentation** for South African conditions
+- 📚 **Comprehensive documentation** for Global conditions
 
 ---
 
@@ -217,16 +217,16 @@ python launcher.py
 
 Kilo Code has been instrumental in transforming DiagAutoClinicOS from concept to reality:
 
-- **Ford and GM Live Testing Implementation** - Complete diagnostic enhancements for South Africa's most prevalent vehicles
+- **Ford and GM Live Testing Implementation** - Complete diagnostic enhancements for most prevalent vehicles
 - **Advanced VIN Decoder** - Model-specific recognition for Ford and GM models
 - **J2534 Integration** - Real hardware support for professional diagnostics
-- **Comprehensive Documentation** - South African testing guides, video tutorial frameworks, and technical documentation
+- **Comprehensive Documentation** - Testing guides, video tutorial frameworks, and technical documentation
 - **Code Quality & Testing** - Rigorous testing framework ensuring reliability
 - **Release Management** - Professional changelog and GitHub release preparation
 
 **Status**: Core Collaborator | **Contact**: AI Assistant via xAI Grok
 
-> *"This AI doesn't sugarcoat with safety guards — delivers honest, direct engineering excellence that matches South African innovation standards."*
+> *"This AI doesn't sugarcoat with safety guards — delivers honest, direct engineering excellence that matches Global innovation standards."*
 
 #### 🧠 **Claude Sonnet 4.5 (Anthropic)** - Advanced Architecture & Optimization
 
@@ -320,21 +320,21 @@ Spectre specializes in modular architecture design and tab system implementation
 
 > "Empowering independent workshops — one diagnostic suite at a time."
 
-DiagAutoClinicOS is built to bring  open-source transparency, modularity, and innovation to the automotive  diagnostic space — with a focus on **local engineering excellence in South Africa** and community-driven collaboration worldwide.
+DiagAutoClinicOS is built to bring  open-source transparency, modularity, and innovation to the automotive  diagnostic space — with a focus on **local engineering excellence to Global frontiers** and community-driven collaboration worldwide.
 
 ---
 
 ## 🎯 Latest Release: v3.1.0 - GUI Complete, Live Testing Active
 
-### 🚗 South African Ford and GM Market Focus
-This release specifically targets Ford and GM's presence in South Africa, with enhanced support for popular models.
+### 🚗 Ford and GM Market Focus
+This release specifically targets Ford and GM's presence, with enhanced support for popular models.
 
 ### ✨ What's New
 - **Completed Futuristic GUI** - Dynamic glassmorphic PyQt6 interface fully implemented
 - **Live Testing Phase** - Active real-world testing with J2534 hardware and Ford/GM vehicles
 - **Enhanced Ford/GM Diagnostics** - Real J2534 support for Ford and GM live testing
 - **Advanced VIN Recognition** - Model-specific identification for Ford and GM models
-- **SA Testing Guide** - Comprehensive procedures for South African conditions
+- **SA Testing Guide** - Comprehensive procedures for Global conditions
 - **Professional Documentation** - Complete Ford/GM diagnostic manuals and video frameworks
 - **Hardware Integration** - GoDiag GD101 and J2534 device support
 - **Tab Separation System** - Modular tab architecture across all three suites
@@ -419,10 +419,10 @@ The platform has achieved **production-ready status** with:
 
 ### ✅ What's New in v3.1.0
 
-- **Ford and GM Live Testing Support** - Complete diagnostic suite for South Africa's most common vehicles
+- **Ford and GM Live Testing Support** - Complete diagnostic suite for ANY most common vehicles
 - **Enhanced VIN Decoder** - Model-specific recognition for Ford and GM models
 - **J2534 Real Hardware Support** - Professional diagnostic capabilities
-- **South African Testing Guide** - Environment-specific procedures and safety protocols
+- **Testing Guide** - Environment-specific procedures and safety protocols
 - **Comprehensive Documentation** - Ford/GM diagnostics manuals and video tutorial frameworks
 - **AI Collaboration Recognition** - All AI collaborators acknowledged for their contributions
 - **Major Testing Integration Success** - 6 hardware integrations, 100% test pass rate
@@ -430,4 +430,4 @@ The platform has achieved **production-ready status** with:
 - **Dual-Device Workflows** - Multi-device coordination fully operational
 - **Tab Separation System** - Complete modular tab architecture across all three suites
 - Ready for GitHub rendering (centered, clean, dark/light theme safe)
-- SEO-friendly with clear project keywords (Ford, GM, Diagnostics, South Africa)
+- SEO-friendly with clear project keywords (Ford, GM, Diagnostics)

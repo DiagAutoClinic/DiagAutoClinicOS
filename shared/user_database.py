@@ -1,9 +1,9 @@
 """
-DiagAutoClinicOS - User Account Database
+DiagAutoClinicOS - User Account Database (SQL Server Version)
 Professional user management system with 4-tier accounts and super user
 """
 
-import sqlite3
+import pyodbc
 import logging
 import hashlib
 import os
@@ -30,67 +30,88 @@ class UserStatus(Enum):
     PASSWORD_EXPIRED = "password_expired"
 
 class UserDatabase:
-    """SQLite-based user account database"""
+    """SQL Server-based user account database"""
 
-    def __init__(self, db_path: str = None):
-        if db_path is None:
-            # Default to project root
-            project_root = Path(__file__).parent.parent
-            db_path = str(project_root / "users.db")
+    def __init__(self, connection_string: str = None):
+        """
+        Initialize user database with SQL Server connection
+        """
+        if connection_string is None:
+            # Default SQL Server connection - same as DTC database
+            connection_string = "Driver={ODBC Driver 18 for SQL Server};Server=localhost;Database=DiagAutoClinicDB;Trusted_Connection=yes;TrustServerCertificate=yes;Encrypt=no;"
 
-        self.db_path = db_path
+        self.connection_string = connection_string
         self._init_database()
 
     def _init_database(self):
         """Initialize the database and create tables"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
 
-                # Create users table
+                # Create users table if it doesn't exist
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS users (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        username TEXT UNIQUE NOT NULL,
-                        password_hash TEXT NOT NULL,
-                        full_name TEXT NOT NULL,
-                        email TEXT,
-                        tier INTEGER NOT NULL,
-                        status TEXT NOT NULL DEFAULT 'active',
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        last_login TIMESTAMP,
-                        password_changed_at TIMESTAMP,
-                        force_password_change BOOLEAN DEFAULT 1,
-                        login_attempts INTEGER DEFAULT 0,
-                        locked_until TIMESTAMP,
-                        created_by TEXT,
-                        notes TEXT
+                    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='users' AND xtype='U')
+                    CREATE TABLE users (
+                        id INT IDENTITY(1,1) PRIMARY KEY,
+                        username NVARCHAR(50) UNIQUE NOT NULL,
+                        password_hash NVARCHAR(256) NOT NULL,
+                        full_name NVARCHAR(100) NOT NULL,
+                        email NVARCHAR(100),
+                        tier INT NOT NULL,
+                        status NVARCHAR(20) NOT NULL DEFAULT 'active',
+                        created_at DATETIME2 DEFAULT GETDATE(),
+                        last_login DATETIME2,
+                        password_changed_at DATETIME2,
+                        force_password_change BIT DEFAULT 1,
+                        login_attempts INT DEFAULT 0,
+                        locked_until DATETIME2,
+                        created_by NVARCHAR(50),
+                        notes NVARCHAR(500)
                     )
                 ''')
 
-                # Create user_permissions table
+                # Create user_permissions table if it doesn't exist
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS user_permissions (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        username TEXT NOT NULL,
-                        permission TEXT NOT NULL,
-                        granted_by TEXT,
-                        granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='user_permissions' AND xtype='U')
+                    CREATE TABLE user_permissions (
+                        id INT IDENTITY(1,1) PRIMARY KEY,
+                        username NVARCHAR(50) NOT NULL,
+                        permission NVARCHAR(50) NOT NULL,
+                        granted_by NVARCHAR(50),
+                        granted_at DATETIME2 DEFAULT GETDATE(),
                         FOREIGN KEY (username) REFERENCES users(username)
                     )
                 ''')
 
-                # Create audit_log table
+                # Create audit_log table if it doesn't exist
                 cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS audit_log (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        username TEXT,
-                        action TEXT NOT NULL,
-                        details TEXT,
-                        ip_address TEXT,
-                        user_agent TEXT
+                    IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='audit_log' AND xtype='U')
+                    CREATE TABLE audit_log (
+                        id INT IDENTITY(1,1) PRIMARY KEY,
+                        timestamp DATETIME2 DEFAULT GETDATE(),
+                        username NVARCHAR(50),
+                        action NVARCHAR(50) NOT NULL,
+                        details NVARCHAR(500),
+                        ip_address NVARCHAR(45),
+                        user_agent NVARCHAR(200)
                     )
+                ''')
+
+                # Create indexes for better performance
+                cursor.execute('''
+                    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='idx_users_username' AND object_id = OBJECT_ID('users'))
+                    CREATE INDEX idx_users_username ON users(username)
+                ''')
+
+                cursor.execute('''
+                    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='idx_permissions_username' AND object_id = OBJECT_ID('user_permissions'))
+                    CREATE INDEX idx_permissions_username ON user_permissions(username)
+                ''')
+
+                cursor.execute('''
+                    IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='idx_audit_timestamp' AND object_id = OBJECT_ID('audit_log'))
+                    CREATE INDEX idx_audit_timestamp ON audit_log(timestamp DESC)
                 ''')
 
                 conn.commit()
@@ -113,7 +134,7 @@ class UserDatabase:
                 default_password = "ChangeMe123!"  # Will be forced to change on first login
                 password_hash = self._hash_password(default_password)
 
-                with sqlite3.connect(self.db_path) as conn:
+                with pyodbc.connect(self.connection_string) as conn:
                     cursor = conn.cursor()
                     cursor.execute('''
                         INSERT INTO users (
@@ -168,7 +189,7 @@ class UserDatabase:
             return False
 
     def create_user(self, username: str, password: str, full_name: str, tier: UserTier,
-                   email: str = None, created_by: str = "system") -> bool:
+                    email: str = None, created_by: str = "system") -> bool:
         """Create a new user account"""
         try:
             if self.user_exists(username):
@@ -177,7 +198,7 @@ class UserDatabase:
 
             password_hash = self._hash_password(password)
 
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO users (
@@ -217,20 +238,20 @@ class UserDatabase:
             permissions = ["basic_diagnostics", "read_data", "write_data", "standard_functions"]
         elif tier == UserTier.ADVANCED:
             permissions = ["basic_diagnostics", "read_data", "write_data", "standard_functions",
-                         "advanced_diagnostics", "calibrations"]
+                          "advanced_diagnostics", "calibrations"]
         elif tier == UserTier.PROFESSIONAL:
             permissions = ["basic_diagnostics", "read_data", "write_data", "standard_functions",
-                         "advanced_diagnostics", "calibrations", "programming", "coding"]
+                          "advanced_diagnostics", "calibrations", "programming", "coding"]
         elif tier == UserTier.SUPER_USER:
             permissions = ["user_management", "system_admin", "full_diagnostics",
-                         "advanced_functions", "security_settings", "audit_logs"]
+                          "advanced_functions", "security_settings", "audit_logs"]
 
         return permissions
 
     def authenticate_user(self, username: str, password: str) -> Tuple[bool, str, Dict]:
         """Authenticate a user and return user info"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT password_hash, tier, status, force_password_change, login_attempts, locked_until
@@ -257,20 +278,20 @@ class UserDatabase:
                     attempts += 1
                     if attempts >= 3:  # Lock account after 3 failed attempts
                         cursor.execute('''
-                            UPDATE users SET status = ?, locked_until = datetime('now', '+1 hour')
+                            UPDATE users SET status = ?, locked_until = DATEADD(HOUR, 1, GETDATE())
                             WHERE username = ?
                         ''', (UserStatus.LOCKED.value, username))
                         conn.commit()
                         return False, "Account locked due to too many failed attempts", {}
 
                     cursor.execute('UPDATE users SET login_attempts = ? WHERE username = ?',
-                                 (attempts, username))
+                                  (attempts, username))
                     conn.commit()
                     return False, f"Invalid password ({3-attempts} attempts remaining)", {}
 
                 # Reset login attempts on successful login
                 cursor.execute('''
-                    UPDATE users SET login_attempts = 0, last_login = CURRENT_TIMESTAMP
+                    UPDATE users SET login_attempts = 0, last_login = GETDATE()
                     WHERE username = ?
                 ''', (username,))
                 conn.commit()
@@ -307,12 +328,12 @@ class UserDatabase:
             # Hash new password
             new_hash = self._hash_password(new_password)
 
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     UPDATE users SET
                         password_hash = ?,
-                        password_changed_at = CURRENT_TIMESTAMP,
+                        password_changed_at = GETDATE(),
                         force_password_change = 0
                     WHERE username = ?
                 ''', (new_hash, username))
@@ -333,12 +354,12 @@ class UserDatabase:
 
             new_hash = self._hash_password(new_password)
 
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     UPDATE users SET
                         password_hash = ?,
-                        password_changed_at = CURRENT_TIMESTAMP,
+                        password_changed_at = GETDATE(),
                         force_password_change = 0,
                         status = ?
                     WHERE username = ?
@@ -355,7 +376,7 @@ class UserDatabase:
     def user_exists(self, username: str) -> bool:
         """Check if a user exists"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('SELECT 1 FROM users WHERE username = ?', (username,))
                 return cursor.fetchone() is not None
@@ -365,7 +386,7 @@ class UserDatabase:
     def get_user_info(self, username: str) -> Optional[Dict]:
         """Get user information"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT username, full_name, email, tier, status, created_at,
@@ -381,7 +402,7 @@ class UserDatabase:
 
                 # Get permissions
                 cursor.execute('SELECT permission FROM user_permissions WHERE username = ?',
-                             (username,))
+                              (username,))
                 permissions = [row[0] for row in cursor.fetchall()]
 
                 return {
@@ -392,8 +413,8 @@ class UserDatabase:
                     'tier_value': tier,
                     'status': status,
                     'permissions': permissions,
-                    'created_at': created_at,
-                    'last_login': last_login,
+                    'created_at': str(created_at) if created_at else None,
+                    'last_login': str(last_login) if last_login else None,
                     'force_password_change': bool(force_change)
                 }
 
@@ -404,7 +425,7 @@ class UserDatabase:
     def get_all_users(self) -> List[Dict]:
         """Get all users (super user only)"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT username, full_name, email, tier, status, created_at, last_login
@@ -420,8 +441,8 @@ class UserDatabase:
                         'email': email,
                         'tier': UserTier(tier).name,
                         'status': status,
-                        'created_at': created_at,
-                        'last_login': last_login
+                        'created_at': str(created_at) if created_at else None,
+                        'last_login': str(last_login) if last_login else None
                     })
 
                 return users
@@ -433,14 +454,14 @@ class UserDatabase:
     def update_user_status(self, username: str, status: UserStatus, updated_by: str) -> bool:
         """Update user status"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('UPDATE users SET status = ? WHERE username = ?',
-                             (status.value, username))
+                              (status.value, username))
                 conn.commit()
 
             self._audit_log(updated_by, "user_status_updated",
-                          f"Updated {username} status to {status.value}")
+                           f"Updated {username} status to {status.value}")
             return True
 
         except Exception as e:
@@ -450,7 +471,7 @@ class UserDatabase:
     def delete_user(self, username: str, deleted_by: str) -> bool:
         """Delete a user account"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 # Delete permissions first (foreign key constraint)
                 cursor.execute('DELETE FROM user_permissions WHERE username = ?', (username,))
@@ -467,7 +488,7 @@ class UserDatabase:
     def has_permission(self, username: str, permission: str) -> bool:
         """Check if user has a specific permission"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT 1 FROM user_permissions
@@ -480,7 +501,7 @@ class UserDatabase:
     def _audit_log(self, username: str, action: str, details: str = ""):
         """Log an audit event"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO audit_log (username, action, details)
@@ -493,26 +514,25 @@ class UserDatabase:
     def get_audit_logs(self, limit: int = 100) -> List[Dict]:
         """Get audit logs (super user only)"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with pyodbc.connect(self.connection_string) as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     SELECT timestamp, username, action, details
                     FROM audit_log
                     ORDER BY timestamp DESC
-                    LIMIT ?
-                ''', (limit,))
+                ''')
 
                 logs = []
                 for row in cursor.fetchall():
                     timestamp, username, action, details = row
                     logs.append({
-                        'timestamp': timestamp,
+                        'timestamp': str(timestamp) if timestamp else None,
                         'username': username or 'system',
                         'action': action,
                         'details': details or ''
                     })
 
-                return logs
+                return logs[:limit]  # Limit results
 
         except Exception as e:
             logger.error(f"Failed to get audit logs: {e}")
