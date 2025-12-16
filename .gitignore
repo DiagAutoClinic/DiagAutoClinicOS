@@ -50,4 +50,11 @@ dacos_ai.sh
 dacos_ai.sh
 
 # Auto-approve configuration (should never be committed)
+# Large binaries and installers
+*.exe
+*.msi
+*.dmg
+Installer/
+drivers/*.exe
+drivers/*.msi
 auto_approve_config/
