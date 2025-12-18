@@ -1,37 +1,5 @@
 <!-- HEADER -->
 <p align="center">
-  <img src="https://diagautoclinic.co.za/assets/logo.png" alt="DiagAutoClinicOS Logo" width="1366"/>
-</p>
-
-<h1 align="center">🚗 DiagAutoClinicOS</h1>
-<h3 align="center">Futuristic Automotive Diagnostic Operating Suite</h3>
-
-<p align="center">
-  <strong>Open Source • Modular • Secure • Designed for Professionals</strong><br/>
-  Empowering independent workshops with intelligent diagnostic tools.
-</p>
-
-<p align="center">
-  <a href="https://github.com/DiagAutoClinic/DiagAutoClinicOS">
-    <img src="https://img.shields.io/github/v/release/DiagAutoClinic/DiagAutoClinicOS?color=14b8a6&style=for-the-badge" alt="Latest Release">
-  </a>
-  <a href="https://www.python.org/">
-    <img src="https://img.shields.io/badge/python-3.10%2B-blue?style=for-the-badge&logo=python" alt="Python Version">
-  </a>
-  <a href="https://github.com/DiagAutoClinic/DiagAutoClinicOS/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/DiagAutoClinic/DiagAutoClinicOS?color=14b8a6&style=for-the-badge" alt="License">
-  </a>
-  <a href="https://github.com/DiagAutoClinic/DiagAutoClinicOS/commits/main">
-    <img src="https://img.shields.io/github/last-commit/DiagAutoClinic/DiagAutoClinicOS?color=orange&style=for-the-badge" alt="Last Commit">
-  </a>
-  <a href="https://github.com/DiagAutoClinic/DiagAutoClinicOS/stargazers">
-    <img src="https://img.shields.io/github/stars/DiagAutoClinic/DiagAutoClinicOS?color=yellow&style=for-the-badge" alt="GitHub Stars">
-  </a>
-</p>
-
----
-
-<p align="center">
   <img src="https://diagautoclinic.co.za/assets/logo.png" alt="DiagAutoClinic Logo" width="900"/>
 </p>
 
