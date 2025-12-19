@@ -1,0 +1,96 @@
+/* DACOS Theme - Futuristic Glassmorphism */
+
+:root {
+    --bg-main: #0A1A1A;
+    --bg-panel: #0D2323;
+    --bg-card: rgba(19, 79, 74, 0.6); /* Glass effect */
+    --accent: #21F5C1;
+    --glow: #2AF5D1;
+    --text-main: #E8F4F2;
+    --text-muted: #9ED9CF;
+    --border-color: rgba(33, 245, 193, 0.4);
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Navbar */
+.navbar {
+    background: rgba(10, 26, 26, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.navbar-brand, .nav-link {
+    color: var(--text-main) !important;
+}
+
+.nav-link:hover {
+    color: var(--accent) !important;
+}
+
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(to bottom, var(--bg-main), var(--bg-panel));
+    padding: 10rem 0;
+}
+
+.hero-section h1 {
+    color: var(--accent);
+    font-weight: bold;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg-main);
+    font-weight: bold;
+}
+
+.btn-primary:hover {
+    background-color: var(--glow);
+    border-color: var(--glow);
+}
+
+/* Glass Card Effect */
+.glass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    padding: 2rem;
+    color: var(--text-main);
+}
+
+/* Sections */
+section {
+    padding: 4rem 0;
+}
+
+section h2 {
+    color: var(--accent);
+}
+
+/* Forms */
+.form-control {
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+}
+
+.form-control:focus {
+    background-color: var(--bg-panel);
+    border-color: var(--accent);
+    color: var(--text-main);
+    box-shadow: 0 0 0 0.25rem rgba(33, 245, 193, 0.25);
+}
+
+/* Footer */
+footer {
+    background-color: var(--bg-panel);
+    border-top: 1px solid var(--border-color);
+}
