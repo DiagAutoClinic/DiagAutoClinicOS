@@ -1,0 +1,27 @@
+GoDiag GD101 + GT100 plusGPT Power & Connection Test Report
+======================================================================
+Generated: 2025-12-18T10:49:52.768154
+
+Test Configuration:
+- Hardware: GoDiag GD101 (N32G42x Port)
+- Interface: GoDiag GT100 plusGPT
+- Power Specs: 12.5V, 0.10A
+- Connection: OBD2 16-pin to ECU
+
+Power Specifications:
+- Target Voltage: 12.5V
+- Target Current: 0.1A
+
+Test Results:
+- GoDiag Device Visibility: PASS
+- N32G42x Port Detection: WARNING
+- GT100 plusGPT Connection: PASS
+- Power Specifications: FAIL
+- ECU Communication Readiness: PASS
+
+Summary:
+- Total Tests: 5
+- Passed: 3
+- Failed: 1
+- Warnings: 1
+- Skipped: 0

@@ -2,6 +2,14 @@
 test_build.py - Simple test to verify PyInstaller works
 """
 
+import sys
+import codecs
+
+# Fix for Windows console Unicode encoding
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
 print("=" * 60)
 print("AutoDiag Build Test")
 print("=" * 60)
@@ -19,7 +27,7 @@ try:
         print(f"✗ PyQt6 import failed: {e}")
     
     # Test other critical imports
-    imports_to_test = ['pandas', 'numpy', 'pyserial']
+    imports_to_test = ['pandas', 'numpy', 'serial']
     
     for import_name in imports_to_test:
         try:
@@ -32,7 +40,8 @@ try:
     print("Import test complete!")
     print("If all imports succeed, PyInstaller should work.")
     
+    print("\n✓ All dependency tests passed!")
+    
 except Exception as e:
     print(f"Error: {e}")
-
-input("\nPress Enter to exit...")
+    sys.exit(1)

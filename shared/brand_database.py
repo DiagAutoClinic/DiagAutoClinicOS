@@ -1,18 +1,40 @@
 #!/usr/bin/env python3
 """
-Enhanced Global Automotive Brand Database - Complete 25-Brand Coverage
+Enhanced Global Automotive Brand Database - Complete 40+ -Brand Coverage
 Security-focused implementation with comprehensive diagnostic protocols
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from enum import Enum
 
 logger = logging.getLogger(__name__)
 
+# Import tier system
+try:
+    from .tier_system import TierSystem, Tier, tier_system
+except ImportError:
+    # Fallback for testing
+    class Tier(Enum):
+        FREE = 1
+        BASIC = 2
+        INTERMEDIATE = 3
+        PROFESSIONAL = 4
+        ADVANCED = 5
+
+    class TierSystem:
+        @staticmethod
+        def determine_tier(brand_data): return Tier.FREE, "Fallback"
+        @staticmethod
+        def get_brand_tier_explanation(brand, data): return f"{brand} - Tier 1"
+        @staticmethod
+        def get_pricing_table(): return {}
+
+    tier_system = TierSystem()
+
 class SecurityLevel(Enum):
     BASIC = 1
-    STANDARD = 2  
+    STANDARD = 2
     ADVANCED = 3
     DEALER = 4
     FACTORY = 5
@@ -40,7 +62,15 @@ class EnhancedBrandDatabase:
                 "market_share": "10.5%",
                 "special_functions": ["Throttle Learning", "Steering Angle Calibration", "Immobilizer Registration", "Battery Reset"],
                 "requires_security_code": True,
-                "programming_tool": "TechStream"
+                "programming_tool": "TechStream",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM", "TCM", "ABS", "SRS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Honda": {
                 "region": "Japan",
@@ -53,7 +83,15 @@ class EnhancedBrandDatabase:
                 "market_share": "4.9%",
                 "special_functions": ["ECM/PCM Reset", "Electric Power Steering Calibration", "Key Registration"],
                 "requires_security_code": True,
-                "programming_tool": "HDS"
+                "programming_tool": "HDS",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "BCM", "SRS", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Nissan": {
                 "region": "Japan",
@@ -66,7 +104,15 @@ class EnhancedBrandDatabase:
                 "market_share": "4.5%",
                 "special_functions": ["NATS Key Programming", "Steering Angle Learning", "Throttle Valve Learning"],
                 "requires_security_code": True,
-                "programming_tool": "CONSULT"
+                "programming_tool": "CONSULT",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM", "BCM", "NATS", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Mazda": {
                 "region": "Japan",
@@ -79,10 +125,18 @@ class EnhancedBrandDatabase:
                 "market_share": "2.0%",
                 "special_functions": ["Key Learning", "Throttle Body Reset", "Steering Angle Sensor Reset"],
                 "requires_security_code": True,
-                "programming_tool": "Mazda IDS"
+                "programming_tool": "Mazda IDS",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "TCM", "ABS", "Immobilizer"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Subaru": {
-                "region": "Japan", 
+                "region": "Japan",
                 "diagnostic_protocols": ["Subaru Select Monitor", "CAN", "K-Line"],
                 "common_ecus": ["ECM", "TCM", "ABS", "Body Integrated Unit", "Immobilizer"],
                 "key_systems": ["Subaru Keyless", "Smart Key", "Push-to-Start"],
@@ -92,7 +146,15 @@ class EnhancedBrandDatabase:
                 "market_share": "1.8%",
                 "special_functions": ["Immobilizer Registration", "TPMS Reset", "Throttle Learning"],
                 "requires_security_code": True,
-                "programming_tool": "Subaru Select Monitor"
+                "programming_tool": "Subaru Select Monitor",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM", "TCM", "ABS", "Body Integrated Unit"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Mitsubishi": {
                 "region": "Japan",
@@ -105,7 +167,15 @@ class EnhancedBrandDatabase:
                 "market_share": "1.5%",
                 "special_functions": ["Key Programming", "Immobilizer Learning", "TPMS Reset"],
                 "requires_security_code": True,
-                "programming_tool": "MUT-III"
+                "programming_tool": "MUT-III",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM", "TCM", "ABS", "Immobilizer"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Lexus": {
                 "region": "Japan",
@@ -118,7 +188,15 @@ class EnhancedBrandDatabase:
                 "market_share": "1.2%",
                 "special_functions": ["Smart Key Registration", "Air Suspension Calibration", "Advanced Key Programming"],
                 "requires_security_code": True,
-                "programming_tool": "TechStream"
+                "programming_tool": "TechStream",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM", "TCM", "ABS", "Immobilizer"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             
             # German Brands
@@ -133,7 +211,15 @@ class EnhancedBrandDatabase:
                 "market_share": "7.8%",
                 "special_functions": ["DPF Regeneration", "Throttle Adaptation", "Steering Angle Basic Setting", "DSG Adaptation"],
                 "requires_security_code": True,
-                "programming_tool": "VAS-PC"
+                "programming_tool": "VAS-PC",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["Engine ECU", "ABS/ESP", "Airbag"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "BMW": {
                 "region": "Germany",
@@ -146,7 +232,15 @@ class EnhancedBrandDatabase:
                 "market_share": "3.5%",
                 "special_functions": ["Battery Registration", "VANOS Adaptation", "Transmission Adaptation", "Injector Coding"],
                 "requires_security_code": True,
-                "programming_tool": "ISTA"
+                "programming_tool": "ISTA",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS", "PT-CAN"],
+                    "reachable_ecus_without_gateway": ["DME"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Mercedes-Benz": {
                 "region": "Germany",
@@ -159,7 +253,15 @@ class EnhancedBrandDatabase:
                 "market_share": "3.8%",
                 "special_functions": ["SBC Brake Calibration", "Steering Angle Learning", "Key Programming", "Air Suspension Calibration"],
                 "requires_security_code": True,
-                "programming_tool": "XENTRY"
+                "programming_tool": "XENTRY",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ESM", "DAS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Audi": {
                 "region": "Germany",
@@ -172,7 +274,15 @@ class EnhancedBrandDatabase:
                 "market_share": "2.9%",
                 "special_functions": ["Component Protection", "Steering Limit Stop", "Throttle Body Adaptation", "Air Suspension Calibration"],
                 "requires_security_code": True,
-                "programming_tool": "ODIS"
+                "programming_tool": "ODIS",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["Engine"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Porsche": {
                 "region": "Germany",
@@ -185,7 +295,15 @@ class EnhancedBrandDatabase:
                 "market_share": "0.8%",
                 "special_functions": ["PDK Adaptation", "Air Suspension Calibration", "Sport Chrono Programming", "Key Learning"],
                 "requires_security_code": True,
-                "programming_tool": "PIWIS"
+                "programming_tool": "PIWIS",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["DME"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             
             # American Brands
@@ -200,7 +318,15 @@ class EnhancedBrandDatabase:
                 "market_share": "5.1%",
                 "special_functions": ["PATS Key Programming", "Module Programming", "TPMS Reset", "Steering Angle Reset"],
                 "requires_security_code": True,
-                "programming_tool": "IDS/FDRS"
+                "programming_tool": "IDS/FDRS",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "GEM", "IC", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Chevrolet": {
                 "region": "USA",
@@ -213,7 +339,15 @@ class EnhancedBrandDatabase:
                 "market_share": "4.3%",
                 "special_functions": ["Passlock Relearn", "TPMS Reset", "Theft System Reset", "Crank Learn"],
                 "requires_security_code": True,
-                "programming_tool": "GDS2/MDI"
+                "programming_tool": "GDS2/MDI",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "BCM", "TCM", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Jeep": {
                 "region": "USA",
@@ -226,7 +360,15 @@ class EnhancedBrandDatabase:
                 "market_share": "2.1%",
                 "special_functions": ["SKIM Key Programming", "TPMS Reset", "Steering Angle Reset", "Transfer Case Calibration"],
                 "requires_security_code": True,
-                "programming_tool": "WiTECH"
+                "programming_tool": "WiTECH",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "TCM", "BCM", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Cadillac": {
                 "region": "USA",
@@ -239,7 +381,15 @@ class EnhancedBrandDatabase:
                 "market_share": "1.5%",
                 "special_functions": ["Magnetic Ride Calibration", "HUD Calibration", "Key Programming", "Theft System Reset"],
                 "requires_security_code": True,
-                "programming_tool": "GDS2/MDI"
+                "programming_tool": "GDS2/MDI",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "BCM", "TCM", "Magnetic Ride"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "GMC": {
                 "region": "USA",
@@ -252,7 +402,15 @@ class EnhancedBrandDatabase:
                 "market_share": "1.8%",
                 "special_functions": ["TPMS Reset", "Theft System Reset", "Trailer Brake Calibration", "Key Programming"],
                 "requires_security_code": True,
-                "programming_tool": "GDS2/MDI"
+                "programming_tool": "GDS2/MDI",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "BCM", "TCM", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Tesla": {
                 "region": "USA",
@@ -265,7 +423,15 @@ class EnhancedBrandDatabase:
                 "market_share": "2.2%",
                 "special_functions": ["Battery Calibration", "Sensor Calibration", "Autopilot Calibration", "Key Card Programming"],
                 "requires_security_code": True,
-                "programming_tool": "Tesla Toolbox"
+                "programming_tool": "Tesla Toolbox",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "Ethernet"],
+                    "reachable_ecus_without_gateway": ["PCS", "BMS", "Gateway"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             
             # Korean Brands
@@ -280,7 +446,15 @@ class EnhancedBrandDatabase:
                 "market_share": "7.2%",
                 "special_functions": ["Immobilizer Key Learning", "TPMS Reset", "Steering Angle Reset", "Throttle Learning"],
                 "requires_security_code": True,
-                "programming_tool": "GDS"
+                "programming_tool": "GDS",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "TCM", "ABS", "Immobilizer"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Kia": {
                 "region": "South Korea",
@@ -293,7 +467,15 @@ class EnhancedBrandDatabase:
                 "market_share": "4.1%",
                 "special_functions": ["Key Learning", "Immobilizer Reset", "TPMS Reset", "Steering Angle Learning"],
                 "requires_security_code": True,
-                "programming_tool": "GDS"
+                "programming_tool": "GDS",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "TCM", "Immobilizer", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             
             # European Brands (Non-German)
@@ -308,7 +490,15 @@ class EnhancedBrandDatabase:
                 "market_share": "2.1%",
                 "special_functions": ["Key Programming", "TPMS Reset", "Suspension Calibration", "Throttle Adaptation"],
                 "requires_security_code": True,
-                "programming_tool": "VIDA"
+                "programming_tool": "VIDA",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["CEM", "ECM", "DEM", "BCM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Land Rover": {
                 "region": "UK",
@@ -321,7 +511,15 @@ class EnhancedBrandDatabase:
                 "market_share": "1.3%",
                 "special_functions": ["Air Suspension Calibration", "Key Programming", "TPMS Reset", "Steering Angle Reset"],
                 "requires_security_code": True,
-                "programming_tool": "JLR SDD/Pathfinder"
+                "programming_tool": "JLR SDD/Pathfinder",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Jaguar": {
                 "region": "UK",
@@ -334,7 +532,15 @@ class EnhancedBrandDatabase:
                 "market_share": "0.9%",
                 "special_functions": ["Key Programming", "TPMS Reset", "Suspension Calibration", "Throttle Adaptation"],
                 "requires_security_code": True,
-                "programming_tool": "JLR SDD/Pathfinder"
+                "programming_tool": "JLR SDD/Pathfinder",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Renault": {
                 "region": "France",
@@ -347,7 +553,15 @@ class EnhancedBrandDatabase:
                 "market_share": "2.7%",
                 "special_functions": ["Key Card Programming", "UCH Initialization", "TPMS Reset", "Throttle Learning"],
                 "requires_security_code": True,
-                "programming_tool": "CAN Clip"
+                "programming_tool": "CAN Clip",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["UCH", "Engine ECU", "BSI", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Peugeot": {
                 "region": "France",
@@ -360,7 +574,15 @@ class EnhancedBrandDatabase:
                 "market_share": "2.5%",
                 "special_functions": ["BSI Initialization", "Key Programming", "TPMS Reset", "Steering Angle Reset"],
                 "requires_security_code": True,
-                "programming_tool": "Diagbox"
+                "programming_tool": "Diagbox",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["BSI", "Engine ECU", "ABS", "Airbag"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             },
             "Fiat": {
                 "region": "Italy",
@@ -373,7 +595,439 @@ class EnhancedBrandDatabase:
                 "market_share": "2.3%",
                 "special_functions": ["Proxi Alignment", "Key Programming", "TPMS Reset", "Throttle Learning"],
                 "requires_security_code": True,
-                "programming_tool": "Examiner/MultiECUScan"
+                "programming_tool": "Examiner/MultiECUScan",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["Body Computer", "Engine ECU", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+
+            # Additional Brands
+            "Chrysler": {
+                "region": "USA",
+                "diagnostic_protocols": ["CAN", "UDS", "J1850 PWM"],
+                "common_ecus": ["PCM", "TCM", "BCM", "ABS", "RF Hub"],
+                "key_systems": ["Smart Key", "Keyless Entry", "Remote Start"],
+                "pin_codes": ["Dealer PIN", "Security Code", "SKIM Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 4,
+                "market_share": "1.2%",
+                "special_functions": ["SKIM Key Programming", "TPMS Reset", "Steering Angle Reset", "Transfer Case Calibration"],
+                "requires_security_code": True,
+                "programming_tool": "WiTECH",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "TCM", "BCM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Dodge": {
+                "region": "USA",
+                "diagnostic_protocols": ["CAN", "UDS", "J1850 PWM"],
+                "common_ecus": ["PCM", "TCM", "BCM", "ABS", "RF Hub", "SKIM"],
+                "key_systems": ["SKIM", "Smart Key", "Keyless Go"],
+                "pin_codes": ["PIN Code", "Dealer Code", "SKIM Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 4,
+                "market_share": "2.8%",
+                "special_functions": ["SKIM Key Programming", "TPMS Reset", "Steering Angle Reset", "Transfer Case Calibration"],
+                "requires_security_code": True,
+                "programming_tool": "WiTECH",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "TCM", "BCM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "RAM": {
+                "region": "USA",
+                "diagnostic_protocols": ["CAN", "UDS", "J1850 PWM"],
+                "common_ecus": ["PCM", "TCM", "BCM", "ABS", "Trailer Module"],
+                "key_systems": ["Smart Key", "Remote Start", "Keyless Entry"],
+                "pin_codes": ["Security Code", "Dealer PIN", "BCM Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 3,
+                "market_share": "3.1%",
+                "special_functions": ["TPMS Reset", "Trailer Brake Calibration", "Key Programming", "Transfer Case Calibration"],
+                "requires_security_code": True,
+                "programming_tool": "GDS2/MDI",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "TCM", "BCM", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Alfa Romeo": {
+                "region": "Italy",
+                "diagnostic_protocols": ["UDS", "KWP2000", "CAN"],
+                "common_ecus": ["Engine ECU", "Transmission", "ABS", "Airbag", "Gateway"],
+                "key_systems": ["Smart Key", "Keyless Entry", "Advanced Key"],
+                "pin_codes": ["Dealer PIN", "Security Code", "ECU Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 4,
+                "market_share": "0.5%",
+                "special_functions": ["Key Programming", "TPMS Reset", "Suspension Calibration", "Throttle Adaptation"],
+                "requires_security_code": True,
+                "programming_tool": "Alfa Romeo Diagnostic",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["Engine ECU", "Transmission"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Ferrari": {
+                "region": "Italy",
+                "diagnostic_protocols": ["Maserati/Ferrari Protocol", "CAN", "UDS", "KWP2000"],
+                "common_ecus": ["ECM", "TCM", "ABS", "Airbag", "Gateway", "Manettino"],
+                "key_systems": ["Smart Key", "Keyless Entry", "Advanced Key"],
+                "pin_codes": ["Dealer PIN", "Security Code", "ECU Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 5,
+                "market_share": "0.2%",
+                "special_functions": ["Manettino Calibration", "Suspension Calibration", "Throttle Adaptation", "Key Programming"],
+                "requires_security_code": True,
+                "programming_tool": "Maserati/Ferrari Diagnostic",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+
+            # Additional Major Brands
+            "Acura": {
+                "region": "USA",
+                "diagnostic_protocols": ["Honda Protocol", "CAN", "UDS", "K-Line"],
+                "common_ecus": ["PCM", "BCM", "SRS", "ABS", "Immobilizer", "Power Steering ECU"],
+                "key_systems": ["Acura Smart Key", "Intelligent Key", "Remote Control"],
+                "pin_codes": ["PIN Code", "Immobilizer Code", "Dealer Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 3,
+                "market_share": "0.8%",
+                "special_functions": ["ECM/PCM Reset", "Electric Power Steering Calibration", "Key Registration"],
+                "requires_security_code": True,
+                "programming_tool": "HDS",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "BCM", "SRS", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Infiniti": {
+                "region": "Japan",
+                "diagnostic_protocols": ["CONSULT-III", "K-Line", "CAN", "UDS"],
+                "common_ecus": ["ECM", "BCM", "NATS", "ABS", "Airbag", "IPDM"],
+                "key_systems": ["NATS", "Intelligent Key", "Hitag2", "Infiniti Smart Key"],
+                "pin_codes": ["NATS Code", "BCM PIN", "Dealer PIN"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 4,
+                "market_share": "0.6%",
+                "special_functions": ["NATS Key Programming", "Steering Angle Learning", "Throttle Valve Learning"],
+                "requires_security_code": True,
+                "programming_tool": "CONSULT",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM", "BCM", "NATS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Lincoln": {
+                "region": "USA",
+                "diagnostic_protocols": ["MS-CAN", "HS-CAN", "UDS", "J1850 PWM"],
+                "common_ecus": ["PCM", "GEM", "IC", "ABS", "PAT", "BCM"],
+                "key_systems": ["PATS", "Smart Access", "MyKey", "Intelligent Access"],
+                "pin_codes": ["PATS Code", "Dealer PIN", "Security Code"],
+                "obd_protocol": "J1850, ISO 15765-4",
+                "security_level": 4,
+                "market_share": "0.9%",
+                "special_functions": ["PATS Key Programming", "Module Programming", "TPMS Reset", "Steering Angle Reset"],
+                "requires_security_code": True,
+                "programming_tool": "IDS/FDRS",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["PCM", "GEM", "IC", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Mini": {
+                "region": "Germany",
+                "diagnostic_protocols": ["ISTA", "UDS", "KWP2000", "EDIBAS"],
+                "common_ecus": ["DME", "EGS", "CAS", "DSC", "Airbag", "FRM"],
+                "key_systems": ["CAS", "Comfort Access", "Display Key", "Smart Key"],
+                "pin_codes": ["ISN Code", "Dealer PIN", "CPO Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 5,
+                "market_share": "0.4%",
+                "special_functions": ["Battery Registration", "VANOS Adaptation", "Transmission Adaptation", "Injector Coding"],
+                "requires_security_code": True,
+                "programming_tool": "ISTA",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS", "PT-CAN"],
+                    "reachable_ecus_without_gateway": ["DME"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Saab": {
+                "region": "Sweden",
+                "diagnostic_protocols": ["Saab Tech2", "CAN", "KWP2000"],
+                "common_ecus": ["ECM", "TCM", "ABS", "Airbag", "SID"],
+                "key_systems": ["Saab Key", "Immobilizer", "Remote Control"],
+                "pin_codes": ["Dealer PIN", "Security Code", "ECU Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 4,
+                "market_share": "0.1%",
+                "special_functions": ["Key Programming", "TPMS Reset", "Suspension Calibration", "Throttle Adaptation"],
+                "requires_security_code": True,
+                "programming_tool": "Tech2",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM", "TCM", "ABS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Seat": {
+                "region": "Spain",
+                "diagnostic_protocols": ["UDS (ISO 14229)", "KWP2000", "TP 2.0", "ODX"],
+                "common_ecus": ["Engine ECU", "DSG", "ABS/ESP", "Airbag", "Instrument Cluster", "Gateway"],
+                "key_systems": ["VVDI", "Immo 4/5", "Megamos Crypto", "Kessy"],
+                "pin_codes": ["SKC Calculator", "VAG Commander", "Dealer PIN"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 4,
+                "market_share": "0.7%",
+                "special_functions": ["DPF Regeneration", "Throttle Adaptation", "Steering Angle Basic Setting", "DSG Adaptation"],
+                "requires_security_code": True,
+                "programming_tool": "VAS-PC",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["Engine ECU", "ABS/ESP", "Airbag"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Skoda": {
+                "region": "Czech Republic",
+                "diagnostic_protocols": ["UDS (ISO 14229)", "KWP2000", "TP 2.0", "ODX"],
+                "common_ecus": ["Engine ECU", "DSG", "ABS/ESP", "Airbag", "Instrument Cluster", "Gateway"],
+                "key_systems": ["VVDI", "Immo 4/5", "Megamos Crypto", "Kessy"],
+                "pin_codes": ["SKC Calculator", "VAG Commander", "Dealer PIN"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 4,
+                "market_share": "1.1%",
+                "special_functions": ["DPF Regeneration", "Throttle Adaptation", "Steering Angle Basic Setting", "DSG Adaptation"],
+                "requires_security_code": True,
+                "programming_tool": "VAS-PC",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["Engine ECU", "ABS/ESP", "Airbag"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Suzuki": {
+                "region": "Japan",
+                "diagnostic_protocols": ["Suzuki SDT", "CAN", "K-Line"],
+                "common_ecus": ["ECM", "TCM", "ABS", "Immobilizer", "Body ECU"],
+                "key_systems": ["Suzuki Keyless", "Smart Key", "Remote Control"],
+                "pin_codes": ["Security Code", "Dealer PIN", "Immobilizer Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 3,
+                "market_share": "1.0%",
+                "special_functions": ["Key Programming", "Immobilizer Learning", "TPMS Reset", "Throttle Learning"],
+                "requires_security_code": True,
+                "programming_tool": "SDT",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM", "TCM", "ABS", "Immobilizer"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Rivian": {
+                "region": "USA",
+                "diagnostic_protocols": ["Rivian Protocol", "CAN", "Ethernet", "UDS"],
+                "common_ecus": ["PCS", "BMS", "Gateway", "Autopilot", "MCU", "Body Controller"],
+                "key_systems": ["Key Card", "Phone Key", "Smart Key"],
+                "pin_codes": ["Service PIN", "Factory Code", "Master Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 5,
+                "market_share": "0.1%",
+                "special_functions": ["Battery Calibration", "Sensor Calibration", "Autopilot Calibration", "Key Card Programming"],
+                "requires_security_code": True,
+                "programming_tool": "Rivian Toolbox",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "Ethernet"],
+                    "reachable_ecus_without_gateway": ["PCS", "BMS"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Lamborghini": {
+                "region": "Italy",
+                "diagnostic_protocols": ["Lamborghini Protocol", "CAN", "UDS", "KWP2000"],
+                "common_ecus": ["ECM", "TCM", "ABS", "Airbag", "Gateway", "Suspension"],
+                "key_systems": ["Smart Key", "Keyless Entry", "Advanced Key"],
+                "pin_codes": ["Dealer PIN", "Security Code", "ECU Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 5,
+                "market_share": "0.1%",
+                "special_functions": ["Suspension Calibration", "Throttle Adaptation", "Key Programming", "Aerodynamics Calibration"],
+                "requires_security_code": True,
+                "programming_tool": "Lamborghini Diagnostic",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "McLaren": {
+                "region": "UK",
+                "diagnostic_protocols": ["McLaren Protocol", "CAN", "UDS", "KWP2000"],
+                "common_ecus": ["ECM", "TCM", "ABS", "Airbag", "Gateway", "Aerodynamics"],
+                "key_systems": ["Smart Key", "Keyless Entry", "Advanced Key"],
+                "pin_codes": ["Dealer PIN", "Security Code", "ECU Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 5,
+                "market_share": "0.1%",
+                "special_functions": ["Aerodynamics Calibration", "Throttle Adaptation", "Key Programming", "Suspension Calibration"],
+                "requires_security_code": True,
+                "programming_tool": "McLaren Diagnostic",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Lotus": {
+                "region": "UK",
+                "diagnostic_protocols": ["Lotus Protocol", "CAN", "UDS", "KWP2000"],
+                "common_ecus": ["ECM", "TCM", "ABS", "Airbag", "Gateway"],
+                "key_systems": ["Smart Key", "Keyless Entry", "Advanced Key"],
+                "pin_codes": ["Dealer PIN", "Security Code", "ECU Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 5,
+                "market_share": "0.1%",
+                "special_functions": ["Throttle Adaptation", "Key Programming", "Suspension Calibration", "Aerodynamics Calibration"],
+                "requires_security_code": True,
+                "programming_tool": "Lotus Diagnostic",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Aston Martin": {
+                "region": "UK",
+                "diagnostic_protocols": ["JLR", "UDS", "CAN", "KWP2000"],
+                "common_ecus": ["ECM", "TCM", "ABS", "Airbag", "Gateway", "Suspension"],
+                "key_systems": ["Smart Key", "Keyless Entry", "Advanced Key"],
+                "pin_codes": ["Dealer PIN", "Security Code", "ECU Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 5,
+                "market_share": "0.1%",
+                "special_functions": ["Air Suspension Calibration", "Key Programming", "TPMS Reset", "Throttle Adaptation"],
+                "requires_security_code": True,
+                "programming_tool": "JLR SDD/Pathfinder",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "BAC": {
+                "region": "UK",
+                "diagnostic_protocols": ["BAC Protocol", "CAN", "UDS"],
+                "common_ecus": ["ECM", "TCM", "ABS", "Airbag"],
+                "key_systems": ["Smart Key", "Keyless Entry"],
+                "pin_codes": ["Dealer PIN", "Security Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 5,
+                "market_share": "0.01%",
+                "special_functions": ["Throttle Adaptation", "Key Programming", "Suspension Calibration"],
+                "requires_security_code": True,
+                "programming_tool": "BAC Diagnostic",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
+            },
+            "Caterham": {
+                "region": "UK",
+                "diagnostic_protocols": ["Caterham Protocol", "CAN", "UDS"],
+                "common_ecus": ["ECM", "TCM", "ABS"],
+                "key_systems": ["Smart Key", "Immobilizer"],
+                "pin_codes": ["Dealer PIN", "Security Code"],
+                "obd_protocol": "ISO 15765-4",
+                "security_level": 4,
+                "market_share": "0.01%",
+                "special_functions": ["Throttle Adaptation", "Key Programming", "TPMS Reset"],
+                "requires_security_code": True,
+                "programming_tool": "Caterham Diagnostic",
+                "can_architecture": {
+                    "buses": ["HS", "MS", "LS"],
+                    "reachable_ecus_without_gateway": ["ECM", "TCM"],
+                    "frame_permissions": {
+                        "read_only": ["diagnostic_trouble_codes", "live_data", "freeze_frame_data"],
+                        "write_capable": ["clear_dtc", "actuator_tests", "ecu_configuration", "coding"]
+                    }
+                }
             }
         }
         
@@ -463,6 +1117,38 @@ class EnhancedBrandDatabase:
         brand_security = brand_info.get('security_level', 1)
         return user_security_level >= brand_security
 
+    def get_brand_tier(self, brand_name: str) -> Tuple[Tier, str]:
+        """Get the tier and reason for a specific brand"""
+        brand_info = self.brand_data.get(brand_name, {})
+        if not brand_info:
+            return Tier.FREE, "Brand not found"
+        return tier_system.determine_tier(brand_info)
+
+    def get_brands_by_tier(self, tier: Tier) -> List[str]:
+        """Get all brands that belong to a specific tier"""
+        brands_in_tier = []
+        for brand_name, brand_info in self.brand_data.items():
+            brand_tier, _ = tier_system.determine_tier(brand_info)
+            if brand_tier == tier:
+                brands_in_tier.append(brand_name)
+        return brands_in_tier
+
+    def get_tier_explanation(self, brand_name: str) -> str:
+        """Get detailed tier explanation for a brand"""
+        brand_info = self.brand_data.get(brand_name, {})
+        if not brand_info:
+            return f"Brand '{brand_name}' not found"
+        return tier_system.get_brand_tier_explanation(brand_name, brand_info)
+
+    def validate_tier_access(self, brand_name: str, user_tier: Tier) -> bool:
+        """Validate if user tier allows access to brand"""
+        required_tier, _ = self.get_brand_tier(brand_name)
+        return tier_system.validate_tier_access(user_tier, required_tier)
+
+    def get_tier_pricing_table(self) -> Dict:
+        """Get pricing table for all tiers"""
+        return tier_system.get_pricing_table()
+
 # Global enhanced brand database instance
 brand_database = EnhancedBrandDatabase()
 
@@ -478,6 +1164,19 @@ def get_brands_by_region(region):
 
 def get_brands_by_protocol(protocol):
     return brand_database.get_brands_by_protocol(protocol)
+
+# Tier-related legacy functions
+def get_brand_tier(brand_name):
+    return brand_database.get_brand_tier(brand_name)
+
+def get_brands_by_tier(tier):
+    return brand_database.get_brands_by_tier(tier)
+
+def get_tier_explanation(brand_name):
+    return brand_database.get_tier_explanation(brand_name)
+
+def get_tier_pricing_table():
+    return brand_database.get_tier_pricing_table()
 
 # Test function
 if __name__ == "__main__":
@@ -495,9 +1194,18 @@ if __name__ == "__main__":
         info = get_brand_info(brand)
         print(f"\n{brand}:")
         print(f"  Region: {info.get('region')}")
-        print(f"  Security Level: {info.get('security_level')}")
+        security_level = info.get('security_level')
+        security_name = SecurityLevel(security_level).name if security_level else 'Unknown'
+        print(f"  Security Level: {security_level} ({security_name})")
         print(f"  Key Systems: {', '.join(info.get('key_systems', []))}")
         print(f"  Special Functions: {', '.join(info.get('special_functions', []))}")
+        can_arch = info.get('can_architecture', {})
+        if can_arch:
+            print(f"  CAN Buses: {', '.join(can_arch.get('buses', []))}")
+            print(f"  Reachable ECUs without Gateway: {', '.join(can_arch.get('reachable_ecus_without_gateway', []))}")
+            frame_perms = can_arch.get('frame_permissions', {})
+            print(f"  Read-Only Frames: {', '.join(frame_perms.get('read_only', []))}")
+            print(f"  Write-Capable Frames: {', '.join(frame_perms.get('write_capable', []))}")
     
     # Test regional brands
     japanese_brands = get_brands_by_region("Japan")
@@ -506,3 +1214,21 @@ if __name__ == "__main__":
     # Test protocol search
     uds_brands = get_brands_by_protocol("UDS")
     print(f"\nUDS Protocol Brands: {', '.join(uds_brands)}")
+
+    # Test tier system
+    print(f"\nTier System Test:")
+    for brand in test_brands:
+        tier, reason = get_brand_tier(brand)
+        print(f"  {brand}: Tier {tier.value} ({tier.name}) - {reason}")
+
+    # Test tier explanations
+    print(f"\nTier Explanations:")
+    for brand in test_brands[:2]:  # Just first two for brevity
+        explanation = get_tier_explanation(brand)
+        print(f"\n{explanation}")
+
+    # Test pricing table
+    pricing = get_tier_pricing_table()
+    print(f"\nPricing Table:")
+    for tier_num, info in pricing.items():
+        print(f"  Tier {tier_num} ({info['name']}): R{info['price_zar']} - {info['description']}")

@@ -149,7 +149,7 @@ class SQLiteCANManager:
 
         try:
             cursor = self._connection.cursor()
-            cursor.execute("SELECT DISTINCT manufacturer FROM vehicles ORDER BY manufacturer")
+            cursor.execute("SELECT DISTINCT make FROM vehicles ORDER BY make")
             return [row[0] for row in cursor.fetchall()]
         except Exception as e:
             logger.error(f"Error getting manufacturers: {e}")
@@ -163,7 +163,7 @@ class SQLiteCANManager:
         try:
             cursor = self._connection.cursor()
             cursor.execute(
-                "SELECT DISTINCT model FROM vehicles WHERE manufacturer = ? ORDER BY model",
+                "SELECT DISTINCT model FROM vehicles WHERE make = ? ORDER BY model",
                 (manufacturer,)
             )
             return [row[0] for row in cursor.fetchall()]
@@ -187,12 +187,12 @@ class SQLiteCANManager:
             # Find vehicle
             if model:
                 cursor.execute(
-                    "SELECT id, manufacturer, model, year_range FROM vehicles WHERE manufacturer = ? AND model = ?",
+                    "SELECT id, make, model, years FROM vehicles WHERE make = ? AND model = ?",
                     (manufacturer, model)
                 )
             else:
                 cursor.execute(
-                    "SELECT id, manufacturer, model, year_range FROM vehicles WHERE manufacturer = ?",
+                    "SELECT id, make, model, years FROM vehicles WHERE make = ?",
                     (manufacturer,)
                 )
 
@@ -213,21 +213,22 @@ class SQLiteCANManager:
 
             # Load messages for this vehicle
             cursor.execute("""
-                SELECT id, can_id, name, dlc, description, transmitter, cycle_time_ms
+                SELECT id, can_id, dlc
                 FROM messages
                 WHERE vehicle_id = ?
                 ORDER BY can_id
+                LIMIT 50
             """, (vehicle_id,))
 
             message_rows = cursor.fetchall()
 
             for msg_row in message_rows:
-                msg_id, can_id, name, dlc, description, transmitter, cycle_time_ms = msg_row
+                msg_id, can_id, dlc = msg_row
 
                 # Load signals for this message
                 cursor.execute("""
                     SELECT id, name, start_bit, bit_length, byte_order, scale, offset,
-                           min_value, max_value, unit, description
+                           min_val, max_val, unit
                     FROM signals
                     WHERE message_id = ?
                     ORDER BY start_bit
@@ -256,12 +257,12 @@ class SQLiteCANManager:
                 message = CANMessage(
                     id=msg_id,
                     can_id=can_id,
-                    name=name,
+                    name=f"MSG_0x{can_id:03X}",
                     dlc=dlc,
                     signals=signals,
-                    description=description,
-                    transmitter=transmitter,
-                    cycle_time_ms=cycle_time_ms
+                    description="",
+                    transmitter="",
+                    cycle_time_ms=0
                 )
 
                 db.messages[can_id] = message
@@ -276,7 +277,7 @@ class SQLiteCANManager:
             logger.error(f"Error loading vehicle database {manufacturer} {model}: {e}")
             return None
 
-    def search_signals(self, query: str, manufacturer: str = None, model: str = None) -> List[Dict[str, Any]]:
+    def search_signals(self, query: str, manufacturer: Optional[str] = None, model: Optional[str] = None) -> List[Dict[str, Any]]:
         """Search for signals by name or description"""
         if not self._connection:
             return []
@@ -444,7 +445,7 @@ def get_all_manufacturers() -> List[str]:
 
     return can_db_manager.get_all_manufacturers()
 
-def search_can_signals(query: str, manufacturer: str = None, model: str = None) -> List[Dict[str, Any]]:
+def search_can_signals(query: str, manufacturer: Optional[str] = None, model: Optional[str] = None) -> List[Dict[str, Any]]:
     """Search for CAN signals"""
     if not can_db_manager._connection:
         can_db_manager.connect()

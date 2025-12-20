@@ -22,7 +22,7 @@ try:
     SECURITY_MANAGER_AVAILABLE = True
 except ImportError:
     SECURITY_MANAGER_AVAILABLE = False
-    logger.warning("Security manager not available, using fallback")
+    logger.warning("Security manager not available")
 
 
 class SecurityManager:

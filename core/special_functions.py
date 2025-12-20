@@ -23,7 +23,7 @@ try:
     SPECIAL_FUNCTIONS_AVAILABLE = True
 except ImportError:
     SPECIAL_FUNCTIONS_AVAILABLE = False
-    logger.warning("Special functions manager not available, using fallback")
+    logger.warning("Special functions manager not available")
 
 
 class SpecialFunctionsManager:

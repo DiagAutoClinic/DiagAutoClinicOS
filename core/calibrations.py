@@ -23,7 +23,7 @@ try:
     CALIBRATIONS_AVAILABLE = True
 except ImportError:
     CALIBRATIONS_AVAILABLE = False
-    logger.warning("Calibrations manager not available, using fallback")
+    logger.warning("Calibrations manager not available")
 
 
 class CalibrationsManager:

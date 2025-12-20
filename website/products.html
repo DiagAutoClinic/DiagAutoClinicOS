@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - DACOS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" href="../assets/favicon.ico">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <img src="../assets/dacos_logo.png" alt="DACOS Logo" width="50" height="50">
+                DACOS
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="about.html">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="products.html">Products</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="contact.html">Contact</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <section class="py-5 bg-secondary text-light">
+        <div class="container">
+            <h1 class="text-center mb-5">DACOS Authority Tiers</h1>
+            <p class="text-center mb-5">DACOS does not sell "features". DACOS grants system authority over vehicles. Authority without structure becomes damage.</p>
+
+            <!-- Tier Cards -->
+            <div class="row">
+                <!-- Tier 1: Free -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card bg-dark text-light h-100 border-success">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="card-title mb-0">Tier 1: Free - Observer</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="text-success">Negligible Risk</h6>
+                            <p class="card-text"><strong>Security Authority:</strong> Generic OBD-II only, Read-only CAN frames, No ECU state mutation possible</p>
+                            <p><strong>Capabilities:</strong></p>
+                            <ul>
+                                <li>VIN decoding</li>
+                                <li>Read / clear emission-related DTCs</li>
+                                <li>Live sensor data</li>
+                                <li>Snapshot logging</li>
+                            </ul>
+                            <p><strong>Price:</strong> <span class="text-success">R0 / month</span></p>
+                            <p><strong>For:</strong> Verification, Education, Trust building</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tier 2: Basic -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card bg-dark text-light h-100 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="card-title mb-0">Tier 2: Basic - Maintenance Operator</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="text-warning">Low Risk</h6>
+                            <p class="card-text"><strong>Security Authority:</strong> Limited CAN write access, No security codes, No gateway override</p>
+                            <p><strong>Capabilities:</strong></p>
+                            <ul>
+                                <li>Service resets</li>
+                                <li>Maintenance-related functions</li>
+                                <li>Full-module DTC read/clear</li>
+                            </ul>
+                            <p><strong>Price:</strong> <span class="text-warning">R249 / month</span></p>
+                            <p><strong>For:</strong> DIY users, Roadside technicians, Entry-level workshops</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tier 3: Intermediate -->
+                <div class="col-lg-4 mb-4">
+                    <div class="card bg-dark text-light h-100 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="card-title mb-0">Tier 3: Intermediate - System Influencer</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="text-warning">Moderate Risk</h6>
+                            <p class="card-text"><strong>Security Authority:</strong> Controlled write access, Learning and adaptation functions</p>
+                            <p><strong>Capabilities:</strong></p>
+                            <ul>
+                                <li>Throttle learning</li>
+                                <li>Steering angle calibration</li>
+                                <li>Battery registration</li>
+                                <li>Actuator tests</li>
+                            </ul>
+                            <p><strong>Price:</strong> <span class="text-warning">R599 / month</span></p>
+                            <p><strong>Requires Acknowledgement</strong></p>
+                            <p><strong>For:</strong> Independent workshops, Diagnostic specialists</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Tier 4: Professional -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card bg-dark text-light h-100 border-danger">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="card-title mb-0">Tier 4: Professional - Vehicle Authority</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="text-danger">High Risk</h6>
+                            <p class="card-text"><strong>Security Authority:</strong> Dealer-level CAN access, Gateway-aware operations, Multi-bus control</p>
+                            <p><strong>Capabilities:</strong></p>
+                            <ul>
+                                <li>System calibrations</li>
+                                <li>Bidirectional ECU control</li>
+                                <li>Secure gateway workflows</li>
+                                <li>Advanced diagnostics</li>
+                            </ul>
+                            <p><strong>Price:</strong> <span class="text-danger">R1,299 / month</span></p>
+                            <p><strong>Requires Per-Session Acknowledgement</strong></p>
+                            <p><strong>For:</strong> Professional diagnostic centers, Specialist repair shops</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tier 5: Advanced -->
+                <div class="col-lg-6 mb-4">
+                    <div class="card bg-dark text-light h-100 border-danger">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="card-title mb-0">Tier 5: Advanced - System Architect</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6 class="text-danger">Extreme Risk</h6>
+                            <p class="card-text"><strong>Security Authority:</strong> Raw CAN frame injection, ECU coding and configuration, Full security-level access</p>
+                            <p><strong>Capabilities:</strong></p>
+                            <ul>
+                                <li>Variant coding</li>
+                                <li>ECU parameter modification</li>
+                                <li>Custom CAN definitions</li>
+                                <li>Raw frame injection and replay</li>
+                            </ul>
+                            <p><strong>Price:</strong> <span class="text-danger">R2,499 / month</span></p>
+                            <p><strong>Requires Explicit & Recurrent Acknowledgement</strong></p>
+                            <p><strong>For:</strong> ECU engineers, Security researchers, Advanced coders</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Brand Examples -->
+            <div class="row mt-5">
+                <div class="col-12">
+                    <h3 class="text-center mb-4">Brand Tier Examples</h3>
+                    <div class="accordion" id="brandExamples">
+                        <div class="accordion-item bg-dark text-light">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button bg-dark text-light" type="button" data-bs-toggle="collapse" data-bs-target="#bmwExample" aria-expanded="true" aria-controls="bmwExample">
+                                    BMW - Tier 5: Advanced
+                                </button>
+                            </h2>
+                            <div id="bmwExample" class="accordion-collapse collapse show" data-bs-parent="#brandExamples">
+                                <div class="accordion-body">
+                                    <p><strong>Why this tier?</strong> Security Level 5 with ECU configuration and coding capabilities</p>
+                                    <p><strong>Security Authority:</strong> Raw CAN frame injection, ECU coding and configuration</p>
+                                    <p><strong>Risk Factor:</strong> ⚫ Extreme - This tier can brick ECUs, violate regulations, create unsafe vehicles</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item bg-dark text-light">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-dark text-light" type="button" data-bs-toggle="collapse" data-bs-target="#toyotaExample" aria-expanded="false" aria-controls="toyotaExample">
+                                    Toyota - Tier 3: Intermediate
+                                </button>
+                            </h2>
+                            <div id="toyotaExample" class="accordion-collapse collapse" data-bs-parent="#brandExamples">
+                                <div class="accordion-body">
+                                    <p><strong>Why this tier?</strong> Security Level 3 with actuator tests and ECU configuration</p>
+                                    <p><strong>Security Authority:</strong> Controlled write access with learning functions</p>
+                                    <p><strong>Risk Factor:</strong> 🟠 Moderate - Incorrect execution can trigger limp mode or require re-learning</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-5">
+                <p class="mb-3"><em>The price is not for features. The price is for who carries the consequences.</em></p>
+                <a href="contact.html" class="btn btn-primary btn-lg">Choose Your Authority Level</a>
+            </div>
+        </div>
+    </section>
+
+    <footer class="bg-dark text-light py-3">
+        <div class="container text-center">
+            <p>&copy; 2025 DACOS. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

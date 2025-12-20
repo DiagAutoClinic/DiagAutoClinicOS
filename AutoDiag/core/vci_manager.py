@@ -60,7 +60,7 @@ class VCIManager:
 
         # Supported device signatures
         self.device_signatures = {
-            VCITypes.GODIAG_GD101: ["GoDiag", "GD101", "GT100"],
+            VCITypes.GODIAG_GD101: ["GoDiag", "GD101", "GT100", "N32G42x Port"],
             VCITypes.OBDLINK_MX_PLUS: ["OBDLink", "MX+", "MX-Plus", "MX Plus"],
             VCITypes.SCANMATIK_2_PRO: ["Scanmatik", "2 Pro"],
             VCITypes.HH_OBD_ADVANCE: ["HH OBD", "Advance"],
@@ -163,13 +163,35 @@ class VCIManager:
                         logger.info(f"Found VCI device by USB ID: {device.name} on {port.device}")
                         continue
 
-                    # Try to identify device by opening port briefly
-                    device = self._identify_device_on_port(port.device)
+                    # Check for GD101 devices by description to avoid opening port
+                    device = self._identify_godiag_by_description(port)
                     if device:
                         device.port = port.device
                         device.last_seen = time.time()
                         self.available_devices.append(device)
-                        logger.info(f"Found VCI device: {device.name} on {port.device}")
+                        logger.info(f"Found GoDiag GD101 by description: {device.name} on {port.device}")
+                        continue
+
+                    # Try to identify device by opening port briefly (skip for GD101)
+                    # Check if this port might be a GD101 device to avoid opening
+                    is_godiag_port = False
+                    if port.description:
+                        desc_lower = port.description.lower()
+                        godiag_signatures = self.device_signatures.get(VCITypes.GODIAG_GD101, [])
+                        for signature in godiag_signatures:
+                            if signature.lower() in desc_lower:
+                                is_godiag_port = True
+                                break
+
+                    if not is_godiag_port:
+                        device = self._identify_device_on_port(port.device)
+                        if device:
+                            device.port = port.device
+                            device.last_seen = time.time()
+                            self.available_devices.append(device)
+                            logger.info(f"Found VCI device: {device.name} on {port.device}")
+                    else:
+                        logger.debug(f"Skipping port opening for potential GD101 device on {port.device}")
 
                 except Exception as e:
                     logger.debug(f"Failed to identify device on {port.device}: {e}")
@@ -217,6 +239,25 @@ class VCIManager:
                         )
                         device.capabilities = self._get_device_capabilities(vci_type)
                         return device
+
+        return None
+
+    def _identify_godiag_by_description(self, port) -> Optional[VCIDevice]:
+        """Identify GoDiag GD101 device by port description without opening port"""
+        if port.description:
+            desc_lower = port.description.lower()
+            godiag_signatures = self.device_signatures.get(VCITypes.GODIAG_GD101, [])
+
+            for signature in godiag_signatures:
+                if signature.lower() in desc_lower:
+                    device = VCIDevice(
+                        device_type=VCITypes.GODIAG_GD101,
+                        name=f"GoDiag GD101 ({signature})",
+                        port=port.device,
+                        status=VCIStatus.DISCONNECTED
+                    )
+                    device.capabilities = self._get_device_capabilities(VCITypes.GODIAG_GD101)
+                    return device
 
         return None
 
@@ -400,59 +441,27 @@ class VCIManager:
             return False
 
     def _connect_godiag_gd101(self, device: VCIDevice) -> bool:
-        """Connect to GoDiag GD101 device"""
+        """Connect to GoDiag GD101 device using J2534 PassThru interface."""
         try:
-            # Try to import and use the J2534 interface
-            from shared.j2534_passthru import GoDiagGD101PassThru
-
-            # Get list of available COM ports
-            available_ports = []
-            try:
-                import serial.tools.list_ports  # type: ignore[import-not-found]
-                available_ports = [p.device for p in serial.tools.list_ports.comports()]
-                logger.info(f"Available COM ports: {available_ports}")
-            except ImportError:
-                # Fallback to common ports - COM2 is prioritized for GoDiag GD101
-                available_ports = ["COM2", "COM1", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM10"]
-
-            # If device has a specific port, try that first
-            ports_to_try = []
-            if device.port:
-                ports_to_try = [device.port] + [p for p in available_ports if p != device.port]
+            from shared.j2534_passthru import get_passthru_device
+            
+            # Instantiate the J2534 device (mock_mode=False to use the real DLL)
+            j2534_device = get_passthru_device(mock_mode=False)
+            
+            # Open the device
+            if j2534_device.open():
+                device._j2534_device = j2534_device
+                logger.info("Successfully connected to GoDiag GD101 via J2534 DLL.")
+                return True
             else:
-                ports_to_try = available_ports
-
-            j2534_device = None
-            for port in ports_to_try:
-                try:
-                    logger.info(f"Trying to connect GoDiag GD101 on {port}...")
-                    j2534_device = GoDiagGD101PassThru(port=port, baudrate=115200)
-
-                    if j2534_device.open():
-                        device.port = port
-                        device._j2534_device = j2534_device
-                        logger.info(f"Successfully connected GoDiag GD101 on {port}")
-
-                        # Get OBD2 connection status
-                        obd2_status = j2534_device.get_obd2_status()
-                        logger.info(f"OBD2 Status: {obd2_status}")
-
-                        return True
-                    else:
-                        logger.debug(f"Failed to open GoDiag GD101 on {port}")
-
-                except Exception as e:
-                    logger.debug(f"Failed to connect GoDiag GD101 on {port}: {e}")
-                    continue
-
-            logger.error("Could not connect to GoDiag GD101 on any available port")
-            return False
+                logger.error("Failed to open GoDiag GD101 via J2534 DLL.")
+                return False
 
         except ImportError as e:
             logger.error(f"J2534 interface not available: {e}")
             return False
         except Exception as e:
-            logger.error(f"GoDiag GD101 connection failed: {e}")
+            logger.error(f"GoDiag GD101 J2534 connection failed: {e}")
             return False
 
     def _connect_obdlink_mx_plus(self, device: VCIDevice) -> bool:

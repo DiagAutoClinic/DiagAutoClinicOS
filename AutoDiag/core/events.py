@@ -329,7 +329,7 @@ def subscribe_to_events(callback: Callable[[Event], None],
 
 
 # Event helper functions
-def create_diagnostic_start_event(operation: str, brand: str = None) -> Event:
+def create_diagnostic_start_event(operation: str, brand: Optional[str] = None) -> Event:
     """Create diagnostic start event"""
     data = {'operation': operation}
     if brand:

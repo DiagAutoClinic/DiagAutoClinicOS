@@ -2,23 +2,21 @@
 """
 J2534 PassThru Protocol Handler with OBD2 16-Pin Direct Connection
 Supports GoDiag GD101 and compatible J2534 devices for UDS/ISO 14229 diagnostics
-Direct connection to OBD2 16-pin connector with proper pinout configuration
+using the GODIAG_PT32.dll driver.
 """
 
 import logging
 import time
-from typing import Optional, List, Tuple, Dict
+import ctypes
+from ctypes import c_ulong, c_void_p, byref, POINTER, create_string_buffer
+from typing import Optional, List, Dict
 from enum import Enum
 from abc import ABC, abstractmethod
-
-# Import OBD2 configuration
-from .godiag_gd101_obd2_config import (
-    OBD2Pin, OBD2Protocol, GoDiagOBD2Config,
-    GoDiagOBD2Connector, OBD2PinMapper, create_godiag_obd2_config
-)
+import os
 
 logger = logging.getLogger(__name__)
 
+# --- J2534 Standard Enums and Structures ---
 
 class J2534Protocol(Enum):
     """J2534 Protocol IDs"""
@@ -28,8 +26,7 @@ class J2534Protocol(Enum):
     ISO14230 = 4
     CAN = 5
     ISO15765 = 6
-    ISO14229_UDS = 7  # UDS over CAN/ISO-TP
-
+    ISO14229_UDS = 7
 
 class J2534Status(Enum):
     """J2534 Status codes"""
@@ -48,437 +45,348 @@ class J2534Status(Enum):
     INVALID_MESSAGE = 0x0C
     UNKNOWN_ERROR = 0xFF
 
+class PASSTHRU_MSG(ctypes.Structure):
+    """J2534 Message Structure for ctypes"""
+    _fields_ = [
+        ("ProtocolID", c_ulong),
+        ("RxStatus", c_ulong),
+        ("TxFlags", c_ulong),
+        ("Timestamp", c_ulong),
+        ("DataSize", c_ulong),
+        ("ExtraDataIndex", c_ulong),
+        ("pData", POINTER(ctypes.c_ubyte)),
+    ]
 
 class J2534Message:
-    """J2534 Message structure"""
-    
+    """Python-friendly J2534 Message structure"""
     def __init__(self, protocol: J2534Protocol, tx_flags: int = 0, data: bytes = b''):
         self.protocol = protocol
         self.tx_flags = tx_flags
         self.rx_status = 0
         self.timestamp = 0
         self.data = data
-        self.extra_data = b''
-    
-    def to_bytes(self) -> bytes:
-        """Convert message to bytes"""
-        return self.data + self.extra_data
-    
-    @staticmethod
-    def from_bytes(data: bytes, protocol: J2534Protocol) -> 'J2534Message':
-        """Create message from bytes"""
-        msg = J2534Message(protocol)
-        msg.data = data
-        return msg
 
+# --- Abstract Base Class ---
 
 class J2534PassThru(ABC):
     """Abstract J2534 PassThru interface"""
-    
     @abstractmethod
-    def open(self) -> bool:
-        """Open device connection"""
-        pass
-    
+    def open(self) -> bool: pass
     @abstractmethod
-    def close(self) -> bool:
-        """Close device connection"""
-        pass
-    
+    def close(self) -> bool: pass
     @abstractmethod
-    def connect(self, protocol: J2534Protocol, flags: int = 0) -> int:
-        """Connect to protocol (returns channel ID)"""
-        pass
-    
+    def connect(self, protocol: J2534Protocol, flags: int = 0, baudrate: int = 500000) -> int: pass
     @abstractmethod
-    def disconnect(self, channel_id: int) -> bool:
-        """Disconnect from protocol"""
-        pass
-    
+    def disconnect(self, channel_id: int) -> bool: pass
     @abstractmethod
-    def send_message(self, channel_id: int, message: J2534Message, timeout_ms: int = 1000) -> bool:
-        """Send message on channel"""
-        pass
-    
+    def send_message(self, channel_id: int, message: J2534Message, timeout_ms: int = 1000) -> bool: pass
     @abstractmethod
-    def read_message(self, channel_id: int, timeout_ms: int = 1000) -> Optional[J2534Message]:
-        """Read message from channel"""
-        pass
-    
+    def read_message(self, channel_id: int, timeout_ms: int = 1000) -> Optional[J2534Message]: pass
     @abstractmethod
-    def is_connected(self) -> bool:
-        """Check if device is connected"""
-        pass
+    def is_connected(self) -> bool: pass
+    @abstractmethod
+    def get_last_error(self) -> str: pass
 
+# --- Real J2534 Implementation ---
+
+class GoDiagGD101PassThru(J2534PassThru):
+    """Real GoDiag GD101 J2534 PassThru using GODIAG_PT32.dll"""
+
+    def __init__(self, **kwargs):
+        self._is_open = False
+        self.channels: Dict[int, J2534Protocol] = {}
+        self.dll_handle = None
+        self.device_id = c_ulong(0)
+        self._load_driver()
+
+    def _load_driver(self):
+        """Load GODIAG J2534 driver DLL"""
+        try:
+            # Correctly locate the DLL relative to this file
+            driver_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'drivers', 'GODIAG J2534 Driver', 'GODIAG_PT32.dll'))
+            if os.path.exists(driver_path):
+                self.dll_handle = ctypes.windll.LoadLibrary(driver_path)
+                self._define_api_prototypes()
+                logger.info(f"Loaded GODIAG J2534 driver from {driver_path}")
+            else:
+                logger.error(f"GODIAG J2534 driver not found at {driver_path}")
+        except Exception as e:
+            logger.error(f"Failed to load GODIAG J2534 driver: {e}")
+            self.dll_handle = None
+
+    def _define_api_prototypes(self):
+        """Define ctypes function prototypes for the J2534 API"""
+        if not self.dll_handle: return
+        self.dll_handle.PassThruOpen.argtypes = [c_void_p, POINTER(c_ulong)]
+        self.dll_handle.PassThruOpen.restype = c_ulong
+        self.dll_handle.PassThruClose.argtypes = [c_ulong]
+        self.dll_handle.PassThruClose.restype = c_ulong
+        self.dll_handle.PassThruConnect.argtypes = [c_ulong, c_ulong, c_ulong, c_ulong, POINTER(c_ulong)]
+        self.dll_handle.PassThruConnect.restype = c_ulong
+        self.dll_handle.PassThruDisconnect.argtypes = [c_ulong]
+        self.dll_handle.PassThruDisconnect.restype = c_ulong
+        self.dll_handle.PassThruWriteMsgs.argtypes = [c_ulong, POINTER(PASSTHRU_MSG), POINTER(c_ulong), c_ulong]
+        self.dll_handle.PassThruWriteMsgs.restype = c_ulong
+        self.dll_handle.PassThruReadMsgs.argtypes = [c_ulong, POINTER(PASSTHRU_MSG), POINTER(c_ulong), c_ulong]
+        self.dll_handle.PassThruReadMsgs.restype = c_ulong
+        self.dll_handle.PassThruGetLastError.argtypes = [POINTER(ctypes.c_char * 80)]
+        self.dll_handle.PassThruGetLastError.restype = c_ulong
+
+    def open(self) -> bool:
+        if not self.dll_handle:
+            logger.error("J2534 driver not loaded. Cannot open device.")
+            return False
+        if self._is_open:
+            return True
+        
+        status = self.dll_handle.PassThruOpen(None, byref(self.device_id))
+        if status == J2534Status.NOERROR.value:
+            self._is_open = True
+            logger.info(f"J2534 device opened successfully with DeviceID: {self.device_id.value}")
+            return True
+        else:
+            logger.error(f"Failed to open J2534 device. Status: {status}. Error: {self.get_last_error()}")
+            return False
+
+    def close(self) -> bool:
+        if not self._is_open:
+            return True
+        
+        for channel_id in list(self.channels.keys()):
+            self.disconnect(channel_id)
+            
+        status = self.dll_handle.PassThruClose(self.device_id)
+        if status == J2534Status.NOERROR.value:
+            self._is_open = False
+            self.device_id = c_ulong(0)
+            logger.info("J2534 device closed successfully.")
+            return True
+        else:
+            logger.error(f"Failed to close J2534 device. Status: {status}. Error: {self.get_last_error()}")
+            return False
+
+    def connect(self, protocol: J2534Protocol, flags: int = 0, baudrate: int = 500000) -> int:
+        if not self._is_open:
+            logger.error("Device not open. Cannot connect to protocol.")
+            return -1
+            
+        channel_id = c_ulong(0)
+        status = self.dll_handle.PassThruConnect(self.device_id, protocol.value, flags, baudrate, byref(channel_id))
+        
+        if status == J2534Status.NOERROR.value:
+            self.channels[channel_id.value] = protocol
+            logger.info(f"Connected to {protocol.name} on ChannelID: {channel_id.value}")
+            return channel_id.value
+        else:
+            logger.error(f"Failed to connect to {protocol.name}. Status: {status}. Error: {self.get_last_error()}")
+            return -1
+
+    def disconnect(self, channel_id: int) -> bool:
+        if channel_id not in self.channels:
+            logger.warning(f"Channel {channel_id} not connected or already disconnected.")
+            return True
+            
+        status = self.dll_handle.PassThruDisconnect(channel_id)
+        if status == J2534Status.NOERROR.value:
+            del self.channels[channel_id]
+            logger.info(f"Disconnected ChannelID: {channel_id}")
+            return True
+        else:
+            logger.error(f"Failed to disconnect ChannelID {channel_id}. Status: {status}. Error: {self.get_last_error()}")
+            return False
+
+    def send_message(self, channel_id: int, message: J2534Message, timeout_ms: int = 1000) -> bool:
+        if channel_id not in self.channels:
+            logger.error(f"Cannot send message: Invalid channel {channel_id}")
+            return False
+
+        # The data must be mutable for the C function
+        data_buffer = create_string_buffer(message.data)
+        
+        msg = PASSTHRU_MSG(
+            ProtocolID=message.protocol.value,
+            TxFlags=message.tx_flags,
+            DataSize=len(message.data),
+            pData=ctypes.cast(data_buffer, POINTER(ctypes.c_ubyte))
+        )
+        num_msgs = c_ulong(1)
+        
+        status = self.dll_handle.PassThruWriteMsgs(channel_id, byref(msg), byref(num_msgs), timeout_ms)
+        
+        if status == J2534Status.NOERROR.value:
+            logger.debug(f"Sent {len(message.data)} bytes on channel {channel_id}: {message.data.hex()}")
+            return True
+        else:
+            logger.error(f"Failed to write message. Status: {status}. Error: {self.get_last_error()}")
+            return False
+
+    def read_message(self, channel_id: int, timeout_ms: int = 1000) -> Optional[J2534Message]:
+        if channel_id not in self.channels:
+            logger.error(f"Cannot read message: Invalid channel {channel_id}")
+            return None
+
+        # Create a buffer for the message data. 4096 is a standard J2534 buffer size.
+        data_buffer = create_string_buffer(4096)
+        
+        msg = PASSTHRU_MSG(
+            ProtocolID=self.channels[channel_id].value,
+            pData=ctypes.cast(data_buffer, POINTER(ctypes.c_ubyte))
+        )
+        num_msgs = c_ulong(1)
+        
+        status = self.dll_handle.PassThruReadMsgs(channel_id, byref(msg), byref(num_msgs), timeout_ms)
+        
+        if status == J2534Status.NOERROR.value and num_msgs.value > 0:
+            read_msg = msg
+            # Correctly slice the data from the buffer
+            data = data_buffer.raw[0:read_msg.DataSize]
+            
+            py_msg = J2534Message(
+                protocol=J2534Protocol(read_msg.ProtocolID),
+                data=data
+            )
+            py_msg.rx_status = read_msg.RxStatus
+            py_msg.timestamp = read_msg.Timestamp
+            
+            logger.debug(f"Read {len(data)} bytes on channel {channel_id}: {data.hex()}")
+            return py_msg
+        elif status != J2534Status.TIMEOUT.value:
+            # Only log errors that are not timeouts
+            logger.error(f"Failed to read message. Status: {status}. Error: {self.get_last_error()}")
+            
+        return None
+
+    def is_connected(self) -> bool:
+        return self._is_open and len(self.channels) > 0
+
+    def get_last_error(self) -> str:
+        if not self.dll_handle:
+            return "J2534 driver not loaded."
+        error_desc = create_string_buffer(80)
+        self.dll_handle.PassThruGetLastError(byref(error_desc))
+        return error_desc.value.decode('ascii', errors='ignore').strip()
+
+# --- Mock Implementation for Testing ---
 
 class MockJ2534PassThru(J2534PassThru):
-    """Mock J2534 PassThru for testing"""
-    
-    def __init__(self, device_name: str = "Mock GoDiag GD101"):
-        self.device_name = device_name
-        self._is_connected = False
+    """Mock J2534 PassThru for testing without hardware"""
+    def __init__(self, **kwargs):
         self._is_open = False
         self.channels: Dict[int, J2534Protocol] = {}
         self.next_channel_id = 1
-        logger.info(f"Initialized mock J2534 device: {device_name}")
-    
-    def open(self) -> bool:
-        """Open mock device"""
-        self._is_open = True
-        logger.debug(f"[MOCK] Opened device {self.device_name}")
-        return True
-    
-    def close(self) -> bool:
-        """Close mock device"""
-        self._is_open = False
-        self.channels.clear()
-        logger.debug(f"[MOCK] Closed device {self.device_name}")
-        return True
-    
-    def connect(self, protocol: J2534Protocol, flags: int = 0) -> int:
-        """Connect to protocol (mock)"""
-        if not self._is_open:
-            logger.error("Device not open")
-            return -1
-        
+        logger.info("Initialized mock J2534 device.")
+    def open(self) -> bool: self._is_open = True; logger.info("Mock device opened."); return True
+    def close(self) -> bool: self._is_open = False; self.channels.clear(); logger.info("Mock device closed."); return True
+    def connect(self, protocol: J2534Protocol, **kwargs) -> int:
+        if not self._is_open: return -1
         channel_id = self.next_channel_id
         self.channels[channel_id] = protocol
         self.next_channel_id += 1
-        self._is_connected = True
-        
-        logger.debug(f"[MOCK] Connected to {protocol.name} on channel {channel_id}")
+        logger.info(f"Mock connected to {protocol.name} on channel {channel_id}")
         return channel_id
-    
     def disconnect(self, channel_id: int) -> bool:
-        """Disconnect from protocol"""
-        if channel_id in self.channels:
-            del self.channels[channel_id]
-            if not self.channels:
-                self._is_connected = False
-            logger.debug(f"[MOCK] Disconnected channel {channel_id}")
-            return True
+        if channel_id in self.channels: del self.channels[channel_id]; logger.info(f"Mock disconnected channel {channel_id}"); return True
         return False
-    
-    def send_message(self, channel_id: int, message: J2534Message, timeout_ms: int = 1000) -> bool:
-        """Send message (mock)"""
-        if not self._is_connected or channel_id not in self.channels:
-            logger.error(f"Invalid channel {channel_id}")
-            return False
-        
-        logger.debug(f"[MOCK] Sent {len(message.data)} bytes on channel {channel_id}: {message.data.hex()}")
+    def send_message(self, channel_id: int, message: J2534Message, **kwargs) -> bool: 
+        logger.debug(f"Mock sent: {message.data.hex()}")
         return True
-    
-    def read_message(self, channel_id: int, timeout_ms: int = 1000) -> Optional[J2534Message]:
-        """Read message (mock)"""
-        if not self._is_connected or channel_id not in self.channels:
-            return None
-        
-        # Return mock responses based on protocol
-        protocol = self.channels[channel_id]
-        
-        if protocol == J2534Protocol.ISO14229_UDS or protocol == J2534Protocol.CAN:
-            # Mock UDS responses - randomly return VIN, DTC scan, or DTC clear response
-            import random
-            response_type = random.choice(['vin', 'dtc_scan', 'dtc_clear'])
-            
-            if response_type == 'vin':
-                # 0x62 = positive response to 0x22 (ReadDataByIdentifier)
-                mock_response = b'\x62\xF1\x90WVWZZZ3CZ7E123456'
-            elif response_type == 'dtc_scan':
-                # 0x59 = positive response to 0x19 (ReadDTCInformation)
-                # Format: P0300 (0x030000) + status 0x08
-                mock_response = b'\x59\x01\x03\x00\x00\x08\x03\x01\x00\x08'
-            else:  # dtc_clear
-                # 0x54 = positive response to 0x14 (ClearDiagnosticInformation)
-                mock_response = b'\x54'
-            
-            msg = J2534Message(protocol, data=mock_response)
-            logger.debug(f"[MOCK] Read {len(mock_response)} bytes on channel {channel_id}")
-            return msg
-        
+    def read_message(self, channel_id: int, **kwargs) -> Optional[J2534Message]: 
+        logger.debug("Mock read returning None.")
         return None
-    
-    def is_connected(self) -> bool:
-        """Check mock connection status"""
-        return self._is_connected
+    def is_connected(self) -> bool: return self._is_open and len(self.channels) > 0
+    def get_last_error(self) -> str: return "No error in mock device."
 
+# --- Factory Function ---
 
-class GoDiagGD101PassThru(J2534PassThru):
-    """Real GoDiag GD101 J2534 PassThru with OBD2 16-Pin Direct Connection"""
-    
-    def __init__(self, port: str = "COM1", baudrate: int = 115200, obd2_protocol: str = "ISO15765_11"):
-        self.port = port
-        self.baudrate = baudrate
-        self._is_connected = False
-        self._is_open = False
-        self.channels: Dict[int, J2534Protocol] = {}
-        self.next_channel_id = 1
-        self.serial_conn = None
-        
-        # Initialize OBD2 16-pin connector
-        self.obd2_config = create_godiag_obd2_config(port, obd2_protocol)
-        self.obd2_connector = GoDiagOBD2Connector(self.obd2_config)
-        
-        try:
-            import serial
-            self.serial = serial
-        except ImportError:
-            logger.warning("pyserial not available - GoDiag GD101 will not work")
-            self.serial = None
-    
-    def open(self) -> bool:
-        """Open GoDiag GD101 device with OBD2 16-Pin connection"""
-        try:
-            if not self.serial:
-                logger.error("Serial module not available")
-                return False
-            
-            # Connect to OBD2 16-pin port
-            logger.info("Establishing OBD2 16-pin connection...")
-            obd2_success = self.obd2_connector.connect_obd2_port(self.port)
-            
-            if not obd2_success:
-                logger.error("Failed to establish OBD2 16-pin connection")
-                return False
-            
-            # Open serial connection to GoDiag GD101
-            self.serial_conn = self.serial.Serial(
-                port=self.port,
-                baudrate=self.baudrate,
-                timeout=2
-            )
-            
-            # Send initialization command
-            self._send_command(b'\x00\x01')  # Init GoDiag
-            time.sleep(0.5)
-            
-            self._is_open = True
-            logger.info(f"Opened GoDiag GD101 on {self.port} with OBD2 16-Pin connection")
-            
-            # Log connection details
-            status = self.obd2_connector.get_connection_status()
-            logger.info(f"OBD2 Status: Protocol={status['protocol']}, Required Pins={status['required_pins']}")
-            
-            return True
-        
-        except Exception as e:
-            logger.error(f"Failed to open GoDiag GD101: {e}")
-            return False
-    
-    def close(self) -> bool:
-        """Close GoDiag GD101 device and OBD2 connection"""
-        try:
-            # Disconnect OBD2 connection first
-            if hasattr(self, 'obd2_connector') and self.obd2_connector:
-                self.obd2_connector.disconnect_obd2_port()
-            
-            if self.serial_conn:
-                self._send_command(b'\x00\x02')  # Close GoDiag
-                self.serial_conn.close()
-            
-            self._is_open = False
-            self._is_connected = False
-            self.channels.clear()
-            logger.info("Closed GoDiag GD101 and OBD2 16-Pin connection")
-            return True
-        
-        except Exception as e:
-            logger.error(f"Error closing GoDiag GD101: {e}")
-            return False
-    
-    def connect(self, protocol: J2534Protocol, flags: int = 0) -> int:
-        """Connect to protocol via GoDiag"""
-        try:
-            if not self._is_open:
-                logger.error("Device not open")
-                return -1
-            
-            # Map J2534 protocol to GoDiag protocol ID
-            protocol_map = {
-                J2534Protocol.ISO14229_UDS: 0x14,
-                J2534Protocol.CAN: 0x05,
-                J2534Protocol.ISO15765: 0x06,
-                J2534Protocol.ISO14230: 0x04,
-            }
-            
-            gd_proto = protocol_map.get(protocol, 0xFF)
-            
-            # Send connect command to GoDiag
-            cmd = bytes([0x01, gd_proto, flags >> 8, flags & 0xFF])
-            response = self._send_command(cmd)
-            
-            if response and response[0] == 0x00:  # Success
-                channel_id = self.next_channel_id
-                self.channels[channel_id] = protocol
-                self.next_channel_id += 1
-                self._is_connected = True
-                
-                logger.info(f"Connected to {protocol.name} on channel {channel_id}")
-                return channel_id
-            else:
-                logger.error(f"Failed to connect to {protocol.name}")
-                return -1
-        
-        except Exception as e:
-            logger.error(f"Connect error: {e}")
-            return -1
-    
-    def disconnect(self, channel_id: int) -> bool:
-        """Disconnect from protocol"""
-        try:
-            if channel_id in self.channels:
-                cmd = bytes([0x02, channel_id])
-                response = self._send_command(cmd)
-                
-                if response and response[0] == 0x00:
-                    del self.channels[channel_id]
-                    if not self.channels:
-                        self._is_connected = False
-                    logger.debug(f"Disconnected channel {channel_id}")
-                    return True
-            
-            return False
-        
-        except Exception as e:
-            logger.error(f"Disconnect error: {e}")
-            return False
-    
-    def send_message(self, channel_id: int, message: J2534Message, timeout_ms: int = 1000) -> bool:
-        """Send message via GoDiag"""
-        try:
-            if not self._is_connected or channel_id not in self.channels:
-                logger.error(f"Invalid channel {channel_id}")
-                return False
-            
-            # Build GoDiag message frame
-            data = message.to_bytes()
-            cmd = bytes([0x03, channel_id]) + bytes([len(data) >> 8, len(data) & 0xFF]) + data
-            
-            response = self._send_command(cmd, timeout_ms=timeout_ms)
-            
-            if response and response[0] == 0x00:
-                logger.debug(f"Sent {len(data)} bytes on channel {channel_id}")
-                return True
-            
-            return False
-        
-        except Exception as e:
-            logger.error(f"Send error: {e}")
-            return False
-    
-    def read_message(self, channel_id: int, timeout_ms: int = 1000) -> Optional[J2534Message]:
-        """Read message from GoDiag"""
-        try:
-            if not self._is_connected or channel_id not in self.channels:
-                return None
-            
-            cmd = bytes([0x04, channel_id])
-            start_time = time.time()
-            
-            while (time.time() - start_time) * 1000 < timeout_ms:
-                response = self._send_command(cmd, timeout_ms=100)
-                
-                if response and len(response) > 3:
-                    status = response[0]
-                    data_len = (response[1] << 8) | response[2]
-                    data = response[3:3 + data_len]
-                    
-                    msg = J2534Message(self.channels[channel_id], data=data)
-                    msg.rx_status = status
-                    logger.debug(f"Read {len(data)} bytes on channel {channel_id}")
-                    return msg
-                
-                time.sleep(0.01)
-            
-            return None
-        
-        except Exception as e:
-            logger.error(f"Read error: {e}")
-            return None
-    
-    def is_connected(self) -> bool:
-        """Check connection status"""
-        return self._is_connected
-    
-    def _send_command(self, cmd: bytes, timeout_ms: int = 1000) -> Optional[bytes]:
-        """Send command to GoDiag and receive response"""
-        try:
-            if not self.serial_conn or not self.serial_conn.is_open:
-                return None
-            
-            # Send command
-            self.serial_conn.write(cmd)
-            self.serial_conn.flush()
-            
-            # Read response
-            start_time = time.time()
-            response = b''
-            
-            while (time.time() - start_time) * 1000 < timeout_ms:
-                if self.serial_conn.in_waiting:
-                    response += self.serial_conn.read(self.serial_conn.in_waiting)
-                    break
-                time.sleep(0.01)
-            
-            return response if response else None
-        
-        except Exception as e:
-            logger.error(f"Command error: {e}")
-            return None
-    def get_obd2_status(self) -> Dict:
-        """Get OBD2 16-pin connection status"""
-        if hasattr(self, 'obd2_connector') and self.obd2_connector:
-            return self.obd2_connector.get_connection_status()
-        return {'connected': False, 'protocol': None}
-    
-    def validate_obd2_connection(self) -> Tuple[bool, List[str]]:
-        """Validate OBD2 16-pin connection setup"""
-        if hasattr(self, 'obd2_connector') and self.obd2_connector:
-            return self.obd2_connector.pin_mapper.validate_godiag_connection()
-        return False, ["OBD2 connector not initialized"]
-    
-    def get_obd2_pin_instructions(self) -> List[str]:
-        """Get step-by-step OBD2 pin connection instructions"""
-        if hasattr(self, 'obd2_connector') and self.obd2_connector:
-            return self.obd2_connector.pin_mapper.get_connection_instructions()
-        return ["OBD2 connector not initialized"]
-    
-    def auto_detect_protocol(self) -> bool:
-        """Auto-detect OBD2 protocol from vehicle"""
-        if hasattr(self, 'obd2_connector') and self.obd2_connector:
-            detected_protocol = self.obd2_connector.auto_detect_protocol()
-            logger.info(f"Auto-detected OBD2 protocol: {detected_protocol.name}")
-            return True
-        return False
-
-
-def get_passthru_device(mock_mode: bool = True, device_name: str = "GoDiag GD101", 
-                       port: str = "COM1") -> J2534PassThru:
+def get_passthru_device(mock_mode: bool = False, **kwargs) -> J2534PassThru:
     """Factory function to get J2534 PassThru device"""
     if mock_mode:
-        return MockJ2534PassThru(device_name)
+        logger.info("Using Mock J2534 PassThru device.")
+        return MockJ2534PassThru(**kwargs)
     else:
-        return GoDiagGD101PassThru(port)
-
+        logger.info("Using real GoDiag GD101 J2534 PassThru device via DLL.")
+        return GoDiagGD101PassThru(**kwargs)
 
 if __name__ == "__main__":
-    # Test mock device
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
     
-    device = get_passthru_device(mock_mode=True)
+    # --- Real Device Test ---
+    # Set mock_mode=False to test with the actual GODIAG_PT32.dll
+    print("--- Starting Real J2534 Device Test ---")
+    device = get_passthru_device(mock_mode=False)
     
     if device.open():
-        channel = device.connect(J2534Protocol.ISO14229_UDS)
+        print("Device opened successfully.")
+        # Connect to ISO15765 protocol (standard for modern CAN diagnostics)
+        channel = device.connect(protocol=J2534Protocol.ISO15765, baudrate=500000)
         
         if channel > 0:
-            # Send mock UDS request
-            msg = J2534Message(J2534Protocol.ISO14229_UDS, data=b'\x22\xF1\x90')
-            if device.send_message(channel, msg):
-                # Read response
-                response = device.read_message(channel)
-                if response:
-                    print(f"Response: {response.data.hex()}")
+            print(f"Connected to channel {channel}.")
+            # Example: Send a UDS request for VIN (Service 0x22, DID 0xF190)
+            # This requires a CAN ID, which depends on the vehicle. Using a common diagnostic request ID 0x7DF.
+            can_id = b'\x00\x00\x07\xDF'
+            uds_request = b'\x02\x22\xF1\x90' # Length=2, Service=22, DID=F190
             
+            # J2534 message data for ISO15765 includes the CAN ID as the first 4 bytes.
+            msg_data = can_id + uds_request
+            
+            msg = J2534Message(J2534Protocol.ISO15765, data=msg_data)
+            
+            if device.send_message(channel, msg):
+                print(f"Sent VIN request: {msg_data.hex()}")
+                print("Reading response...")
+                
+                # Loop to read potential multi-frame responses or wait for a single response
+                start_time = time.time()
+                vin_parts = []
+                full_vin = ""
+                
+                while time.time() - start_time < 5: # 5 second timeout for response
+                    response = device.read_message(channel, timeout_ms=500)
+                    if response:
+                        # The response data also includes the CAN ID. The actual UDS data follows.
+                        # Response ID is typically Request ID + 8 (e.g., 0x7E8 for a 0x7E0 request)
+                        response_can_id = response.data[:4]
+                        response_uds_data = response.data[4:]
+                        print(f"Received response: {response_uds_data.hex()} from CAN ID {response_can_id.hex()}")
+
+                        # Check for a positive response to ReadDataByIdentifier (0x62)
+                        if response_uds_data.startswith(b'\x62\xF1\x90'): # Single frame response
+                            vin_bytes = response_uds_data[3:]
+                            full_vin = vin_bytes.decode('ascii', errors='ignore')
+                            print(f"SUCCESS: Decoded VIN: {full_vin}")
+                            break
+                        # Check for multi-frame response (First Frame = 0x10)
+                        elif response_uds_data.startswith(b'\x10'):
+                            # This is the first frame of a multi-frame response
+                            total_len = int.from_bytes(response_uds_data[0:2], 'big') & 0x0FFF
+                            vin_parts.append(response_uds_data[3:])
+                            # We would need to send a Flow Control message here, but for simplicity, we just keep reading
+                            print("Multi-frame response started. Reading subsequent frames...")
+                        # Check for consecutive frames (starts with 0x2x)
+                        elif response_uds_data[0] & 0xF0 == 0x20:
+                             vin_parts.append(response_uds_data[1:])
+                             # If we have all parts, assemble the VIN
+                             assembled_data = b''.join(vin_parts)
+                             if len(assembled_data) >= 17: # A VIN is 17 chars
+                                 full_vin = assembled_data[:17].decode('ascii', errors='ignore')
+                                 print(f"SUCCESS: Assembled VIN from multi-frame: {full_vin}")
+                                 break
+                    else:
+                        time.sleep(0.1) # Wait a bit before polling again
+                
+                if not full_vin:
+                    print("Failed to get a complete VIN response.")
+
+            else:
+                print("Failed to send VIN request.")
+
             device.disconnect(channel)
+            print("Disconnected from channel.")
         
         device.close()
+        print("Device closed.")
+    else:
+        print("Failed to open J2534 device. Check driver installation and device connection.")
+    
+    print("--- Real J2534 Device Test Finished ---")

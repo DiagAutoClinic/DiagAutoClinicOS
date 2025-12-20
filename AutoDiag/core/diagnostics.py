@@ -8,7 +8,6 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from PyQt6.QtCore import QTimer, pyqtSignal, QObject
 from PyQt6.QtWidgets import QWidget, QMessageBox, QTableWidgetItem
-import random
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,8 @@ try:
     CAN_PARSER_AVAILABLE = True
 except ImportError:
     CAN_PARSER_AVAILABLE = False
-    logger.warning("CAN bus parser not available - using mock data")
+    logger.error("CAN bus parser not available - hardware required for vehicle database access")
+    raise RuntimeError("CAN parser required for vehicle database access")
 
 # Import VCI manager
 try:
@@ -30,6 +30,15 @@ try:
 except ImportError:
     VCI_MANAGER_AVAILABLE = False
     logger.warning("VCI manager not available - VCI detection disabled")
+
+# Import tier system
+try:
+    from shared.tier_system import tier_system, Tier
+    from shared.brand_database import brand_database
+    TIER_SYSTEM_AVAILABLE = True
+except ImportError:
+    TIER_SYSTEM_AVAILABLE = False
+    logger.warning("Tier system not available - tier enforcement disabled")
 
 
 class DiagnosticsController(QObject):
@@ -67,6 +76,15 @@ class DiagnosticsController(QObject):
 
         # Current voltage reading
         self.current_voltage = 12.6  # Default voltage
+
+        # Load user tier from configuration
+        try:
+            from AutoDiag.config.settings import get_config
+            tier_level = get_config("user.tier_level", 1)
+            self.user_tier = Tier(tier_level)
+        except Exception as e:
+            logger.warning(f"Failed to load user tier from config: {e}")
+            self.user_tier = Tier.FREE
     
     def _setup_callbacks(self):
         """Setup default UI callbacks"""
@@ -91,22 +109,15 @@ class DiagnosticsController(QObject):
             self.available_vehicles = list_all_vehicles()
             logger.info(f"Loaded {len(self.available_vehicles)} vehicles from REF files")
         else:
-            # Fallback to basic brands
-            self.available_vehicles = [
-                ("Toyota", "Camry", ""),
-                ("Honda", "Civic", ""),
-                ("BMW", "3 Series", ""),
-                ("Mercedes", "C-Class", ""),
-                ("Audi", "A4", ""),
-                ("Ford", "Focus", ""),
-                ("Volkswagen", "Golf", ""),
-            ]
-            logger.info("Using fallback vehicle list")
+            # No fallback - hardware required for vehicle database
+            self.available_vehicles = []
+            logger.error("CAN parser not available - vehicle database cannot be loaded")
+            raise RuntimeError("CAN parser required for vehicle database access")
 
     def load_vehicle_database(self, manufacturer: str, model: str = "") -> bool:
         """Load CAN database for specific vehicle"""
         if not CAN_PARSER_AVAILABLE:
-            logger.warning("CAN parser not available - using mock database")
+            logger.error("CAN parser not available - hardware required for vehicle database access")
             return False
 
         self.current_vehicle_db = get_vehicle_database(manufacturer, model)
@@ -125,12 +136,16 @@ class DiagnosticsController(QObject):
         """Get models available for a manufacturer"""
         return sorted([v[1] for v in self.available_vehicles if v[0] == manufacturer])
     
-    def read_dtcs(self, brand: str = None) -> Dict[str, Any]:
+    def read_dtcs(self, brand: Optional[str] = None) -> Dict[str, Any]:
         """Read diagnostic trouble codes"""
         if brand:
             self.current_brand = brand
 
         try:
+            # Check tier access first
+            if not self.enforce_tier_access(self.current_brand, "read_dtcs"):
+                return {"status": "error", "message": "Tier access denied for DTC reading"}
+
             # Check VCI connection first
             if not self._check_vci_connection():
                 return {"status": "error", "message": "No VCI device connected. Please connect a VCI device first."}
@@ -214,7 +229,7 @@ class DiagnosticsController(QObject):
         text += f"Total DTCs: {dtc_data.get('total_count', 0)}"
         return text
     
-    def clear_dtcs(self, brand: str = None) -> Dict[str, Any]:
+    def clear_dtcs(self, brand: Optional[str] = None) -> Dict[str, Any]:
         """Clear diagnostic trouble codes"""
         if brand:
             self.current_brand = brand
@@ -307,7 +322,7 @@ class DiagnosticsController(QObject):
             logger.error(f"Error completing DTC clear: {e}")
             self._show_error_message("DTC Clear Error", f"Error completing DTC clear: {e}")
     
-    def start_live_stream(self, brand: str = None) -> Dict[str, Any]:
+    def start_live_stream(self, brand: Optional[str] = None) -> Dict[str, Any]:
         """Start live data streaming"""
         if brand:
             self.current_brand = brand
@@ -386,11 +401,9 @@ class DiagnosticsController(QObject):
         for msg in list(self.current_vehicle_db.messages.values())[:10]:  # First 10 messages
             for signal in msg.signals[:5]:  # Up to 5 signals per message
                 if signal.name not in signals_used and len(live_data) < 12:
-                    # Generate realistic value within signal range
-                    if signal.max_value > signal.min_value:
-                        value = random.uniform(signal.min_value, signal.max_value)
-                    else:
-                        value = random.uniform(0, 100)
+                    # Hardware required for live data - cannot generate simulated values
+                    logger.warning("Live data requires hardware connection - no simulated data generation")
+                    return []
 
                     # Format value appropriately
                     if signal.unit in ["RPM", "km/h", "°C", "%", "V", "bar", "°BTDC"]:
@@ -417,57 +430,20 @@ class DiagnosticsController(QObject):
                 device = self.vci_manager.get_connected_device()
                 if device and "can_bus" in device.capabilities:
                     # In real implementation, this would capture real CAN messages
-                    # For now, simulate realistic CAN data based on current vehicle database
-                    can_data = self._simulate_realtime_can_data()
-                    logger.info(f"Captured {len(can_data)} realtime CAN messages")
+                    # For now, return empty dict - hardware required for CAN data
+                    logger.warning("Real CAN data capture not implemented - hardware required")
                 else:
                     logger.warning("Connected device does not support CAN bus monitoring")
             else:
-                logger.info("No VCI device connected - using simulated CAN data")
-                can_data = self._simulate_realtime_can_data()
+                logger.warning("No VCI device connected - cannot capture CAN data")
 
         except Exception as e:
             logger.error(f"Error getting realtime CAN data: {e}")
 
         return can_data
 
-    def _simulate_realtime_can_data(self) -> Dict[int, bytes]:
-        """Simulate realistic CAN data based on current vehicle database"""
-        can_data = {}
 
-        if not self.current_vehicle_db or not self.current_vehicle_db.messages:
-            return can_data
-
-        # Generate realistic CAN messages for known message IDs
-        message_ids = list(self.current_vehicle_db.messages.keys())[:5]  # First 5 messages
-
-        for can_id in message_ids:
-            # Generate realistic 8-byte CAN data
-            data = bytearray(8)
-
-            # Fill with realistic values based on message type
-            if "Engine" in self.current_vehicle_db.messages[can_id].name:
-                # Engine data - RPM, load, etc.
-                data[0] = random.randint(0, 255)  # RPM high byte
-                data[1] = random.randint(0, 255)  # RPM low byte
-                data[2] = random.randint(0, 100)  # Engine load
-                data[3] = random.randint(20, 120)  # Coolant temp
-            elif "Transmission" in self.current_vehicle_db.messages[can_id].name:
-                # Transmission data
-                data[0] = random.randint(0, 7)  # Gear position
-                data[1] = random.randint(0, 100)  # Gear ratio
-                data[2] = random.randint(0, 200)  # Oil temp
-            elif "ABS" in self.current_vehicle_db.messages[can_id].name:
-                # ABS data
-                data[0] = random.randint(0, 255)  # Wheel speed high
-                data[1] = random.randint(0, 255)  # Wheel speed low
-                data[2] = random.randint(0, 100)  # Brake pressure
-
-            can_data[can_id] = bytes(data)
-
-        return can_data
-
-    def run_quick_scan(self, brand: str = None) -> Dict[str, Any]:
+    def run_quick_scan(self, brand: Optional[str] = None) -> Dict[str, Any]:
         """Run quick diagnostic scan"""
         if brand:
             self.current_brand = brand
@@ -529,7 +505,7 @@ class DiagnosticsController(QObject):
             logger.error(f"Error completing quick scan: {e}")
             self._show_error_message("Quick Scan Error", f"Error completing quick scan: {e}")
     
-    def get_ecu_info(self, brand: str = None) -> Dict[str, Any]:
+    def get_ecu_info(self, brand: Optional[str] = None) -> Dict[str, Any]:
         """Get ECU information using real VCI communication"""
         if brand:
             self.current_brand = brand
@@ -572,18 +548,18 @@ class DiagnosticsController(QObject):
             self._show_error_message("ECU Info Error", f"Failed to get ECU info: {e}")
             return {"status": "error", "message": str(e)}
     
-    def populate_sample_data(self) -> List[Tuple[str, str, str]]:
-        """Populate sample data for live data table from CAN database"""
+    def populate_live_data_table(self) -> List[Tuple[str, str, str]]:
+        """Populate live data table from CAN database"""
         try:
-            sample_data = self._get_live_data_from_can_db()
+            live_data = self._get_live_data_from_can_db()
 
             if 'populate_live_data_table' in self.ui_callbacks:
-                self.ui_callbacks['populate_live_data_table'](sample_data)
+                self.ui_callbacks['populate_live_data_table'](live_data)
 
-            return sample_data
+            return live_data
 
         except Exception as e:
-            logger.error(f"Failed to populate sample data: {e}")
+            logger.error(f"Failed to populate live data table: {e}")
             return []
     
     def _update_status(self, message: str):
@@ -639,6 +615,74 @@ class DiagnosticsController(QObject):
             logger.info(f"Brand set to: {brand} (CAN database loaded)")
         else:
             logger.info(f"Brand set to: {brand} (using default database)")
+
+    def set_user_tier(self, tier: Tier):
+        """Set the user's current tier level"""
+        self.user_tier = tier
+        logger.info(f"User tier set to: {tier.name}")
+
+    def get_user_tier(self) -> Tier:
+        """Get the user's current tier level"""
+        return self.user_tier
+
+    def check_tier_access(self, brand_name: str, operation: str = None) -> Tuple[bool, str]:
+        """
+        Check if user has tier access for a specific brand/operation
+
+        Returns:
+            Tuple of (has_access, message)
+        """
+        if not TIER_SYSTEM_AVAILABLE:
+            return True, "Tier system not available - access granted"
+
+        try:
+            # Get required tier for this brand
+            required_tier, reason = brand_database.get_brand_tier(brand_name)
+
+            # Check if user tier meets requirement
+            if tier_system.validate_tier_access(self.user_tier, required_tier):
+                return True, f"Access granted - {reason}"
+            else:
+                tier_info = tier_system.get_tier_info(required_tier)
+                return False, f"Tier {required_tier.value} ({tier_info['name']}) required. Current tier: {self.user_tier.value}"
+
+        except Exception as e:
+            logger.error(f"Error checking tier access: {e}")
+            return False, f"Tier check failed: {e}"
+
+    def show_tier_acknowledgement(self, tier: Tier, brand_name: str = None, operation: str = None) -> bool:
+        """Show tier acknowledgement dialog if required"""
+        if not TIER_SYSTEM_AVAILABLE:
+            return True
+
+        try:
+            from AutoDiag.ui.tier_acknowledgement_dialog import show_tier_acknowledgement
+            return show_tier_acknowledgement(tier, brand_name, operation)
+        except ImportError:
+            logger.warning("Tier acknowledgement dialog not available")
+            return True
+
+    def enforce_tier_access(self, brand_name: str, operation: str = None) -> bool:
+        """
+        Enforce tier access for an operation
+
+        Returns:
+            True if access granted, False otherwise
+        """
+        has_access, message = self.check_tier_access(brand_name, operation)
+
+        if not has_access:
+            self._show_error_message("Tier Access Denied", message)
+            return False
+
+        # Check if acknowledgement is required
+        required_tier, _ = brand_database.get_brand_tier(brand_name)
+        if tier_system.requires_acknowledgement(required_tier):
+            if not self.show_tier_acknowledgement(required_tier, brand_name, operation):
+                logger.info(f"User declined tier {required_tier.value} acknowledgement")
+                return False
+
+        return True
     
     def get_brand(self) -> str:
         """Get current vehicle brand"""
@@ -647,6 +691,22 @@ class DiagnosticsController(QObject):
     def is_streaming_active(self) -> bool:
         """Check if live data streaming is active"""
         return self.is_streaming
+
+    def get_current_voltage(self) -> float:
+        """Get the current voltage reading"""
+        return self.current_voltage
+
+    def update_voltage_reading(self):
+        """Update the voltage reading from VCI device"""
+        try:
+            new_voltage = self._read_vehicle_voltage()
+            self.current_voltage = new_voltage
+            logger.debug(f"Updated voltage reading: {new_voltage:.1f}V")
+            return new_voltage
+        except Exception as e:
+            logger.error(f"Failed to update voltage reading: {e}")
+            # Keep existing voltage reading
+            return self.current_voltage
 
     def _on_vci_status_change(self, event: str, data: Any):
         """Handle VCI status change events"""
@@ -959,21 +1019,18 @@ class DiagnosticsController(QObject):
         return scan_results
 
     def _read_vehicle_voltage(self) -> float:
-        """Read vehicle battery/system voltage via OBD-II"""
+        """Read vehicle battery/system voltage via OBD-II - requires hardware"""
         try:
             if self.vci_manager and self.vci_manager.is_connected():
                 # In real implementation, send OBD-II PID 0x42 (Control module voltage)
-                # For now, simulate realistic voltage reading
-                base_voltage = 12.0 + random.uniform(0, 2.8)  # 12.0V to 14.8V
-                return round(base_voltage, 1)
+                # For now, raise NotImplementedError - hardware required
+                raise NotImplementedError("Real voltage reading requires VCI implementation")
             else:
-                # Return a reasonable default when no VCI is connected
-                return 12.6
+                raise RuntimeError("No VCI device connected - cannot read vehicle voltage")
 
         except Exception as e:
             logger.error(f"Error reading vehicle voltage: {e}")
-            # Return a safe default value
-            return 12.6
+            raise
 
     def _detect_protocol(self) -> str:
         """Detect the communication protocol used by the vehicle"""
@@ -986,24 +1043,6 @@ class DiagnosticsController(QObject):
                 return "ISO 15765-4 CAN"
         return "Unknown"
 
-    def _get_simulated_scan_results(self) -> Dict[str, Any]:
-        """Get simulated scan results for demonstration"""
-        dtc_count = random.randint(0, 3)  # 0-3 DTCs
-
-        return {
-            "timestamp": datetime.now().isoformat(),
-            "brand": self.current_brand,
-            "status": "completed",
-            "results": {
-                "basic_communication": "OK",
-                "power_supply": "NORMAL",
-                "ecu_response": "ACTIVE",
-                "dtc_count": dtc_count,
-                "system_ready": True,
-                "protocol_detected": "CAN 11bit/500k",
-                "voltage_measured": f"{random.uniform(12.5, 14.2):.1f}V"
-            }
-        }
 
     def _format_scan_results(self, scan_results: Dict[str, Any]) -> str:
         """Format scan results for display"""
@@ -1089,43 +1128,6 @@ class DiagnosticsController(QObject):
         # 3. Return decoded string
         raise NotImplementedError(f"Real DID 0x{did:04X} reading requires VCI implementation")
 
-    def _get_simulated_ecu_info(self) -> Dict[str, Any]:
-        """Get simulated ECU information"""
-        brand_info = {
-            "Toyota": {
-                "ecu_type": "Engine Control Module",
-                "part_number": "89663-12345",
-                "software_version": "v2.1.8",
-                "hardware_version": "v1.2"
-            },
-            "BMW": {
-                "ecu_type": "Digital Motor Electronics",
-                "part_number": "12147512345",
-                "software_version": "v1.2.3",
-                "hardware_version": "MSV90"
-            },
-            "Mercedes": {
-                "ecu_type": "Motor Electronics",
-                "part_number": "A2711501234",
-                "software_version": "v3.0.1",
-                "hardware_version": "SME"
-            }
-        }
-
-        base_info = brand_info.get(self.current_brand, {
-            "ecu_type": "Engine Control Module",
-            "part_number": "Generic-ECU-001",
-            "software_version": "v1.0.0",
-            "hardware_version": "v1.0"
-        })
-
-        return {
-            **base_info,
-            "vin": f"{self.current_brand[:3].upper()}{random.randint(10000000000000000, 99999999999999999)}",
-            "calibration_date": datetime.now().strftime("%Y-%m-%d"),
-            "protocol": "CAN 11bit/500k",
-            "brand": self.current_brand
-        }
 
     def _format_ecu_info(self, ecu_info: Dict[str, Any]) -> str:
         """Format ECU information for display"""
@@ -1139,53 +1141,12 @@ class DiagnosticsController(QObject):
         text += f"Protocol: {ecu_info.get('protocol', 'Unknown')}"
         return text
 
-    def _get_simulated_dtcs(self) -> List[Dict[str, Any]]:
-        """Get simulated DTCs for demonstration when VCI is not available"""
-        # Provide realistic DTC examples based on current brand
-        brand_dtcs = {
-            "Toyota": [
-                {
-                    "code": "P0301",
-                    "description": "Cylinder 1 Misfire Detected",
-                    "status": "Confirmed",
-                    "priority": "Medium",
-                    "freeze_frame": {"RPM": 2450, "Load": "65%"}
-                }
-            ],
-            "BMW": [
-                {
-                    "code": "2A1C",
-                    "description": "DME: Internal fault",
-                    "status": "Pending",
-                    "priority": "High",
-                    "first_occurrence": datetime.now().strftime("%Y-%m-%d")
-                }
-            ],
-            "Mercedes": [
-                {
-                    "code": "P2000",
-                    "description": "NOx Trap Efficiency Below Threshold",
-                    "status": "Confirmed",
-                    "priority": "Medium",
-                    "freeze_frame": {"Engine_Load": "75%", "RPM": "1800"}
-                }
-            ]
-        }
-
-        return brand_dtcs.get(self.current_brand, [
-            {
-                "code": "P0000",
-                "description": "No DTCs stored",
-                "status": "Info",
-                "priority": "Low"
-            }
-        ])
 
     def _check_vci_connection(self) -> bool:
-        """Check if a VCI device is connected and ready"""
+        """Check if a VCI device is connected and ready - hardware required"""
         if not self.vci_manager:
-            logger.warning("VCI manager not available")
-            return True  # Allow operations without VCI manager in real mode
+            logger.error("VCI manager not available - hardware required for all operations")
+            return False
 
         if not self.vci_manager.is_connected():
             logger.warning("No VCI device connected - attempting auto-scan and connect")
@@ -1195,24 +1156,11 @@ class DiagnosticsController(QObject):
                 if self.vci_manager.connect_to_device(devices[0]):
                     logger.info(f"Auto-connected to {devices[0].name}")
                     return True
-            
-                def get_current_voltage(self) -> float:
-                    """Get the current voltage reading"""
-                    return self.current_voltage
-            
-                def update_voltage_reading(self):
-                    """Update the voltage reading from VCI device"""
-                    try:
-                        new_voltage = self._read_vehicle_voltage()
-                        self.current_voltage = new_voltage
-                        logger.debug(f"Updated voltage reading: {new_voltage:.1f}V")
-                        return new_voltage
-                    except Exception as e:
-                        logger.error(f"Failed to update voltage reading: {e}")
-                        # Keep existing voltage reading
-                        return self.current_voltage
-            # If no device found, still allow operation (real mode)
-            logger.info("No VCI device found - operating in standalone mode")
-            return True
+                else:
+                    logger.error(f"Failed to auto-connect to {devices[0].name}")
+                    return False
+            else:
+                logger.error("No VCI devices found - hardware required for all operations")
+                return False
 
         return True

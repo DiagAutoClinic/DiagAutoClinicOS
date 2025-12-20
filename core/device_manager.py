@@ -22,7 +22,7 @@ try:
     DEVICE_HANDLER_AVAILABLE = True
 except ImportError:
     DEVICE_HANDLER_AVAILABLE = False
-    logger.warning("Device handler not available, using fallback")
+    logger.warning("Device handler not available")
 
 
 class DeviceManager:
@@ -174,7 +174,7 @@ class DeviceManager:
             b'\x00\x00\x00\x00'  # Example Software Version (padded)
             b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  # Example Part Number (padded)
             # Add more padding or specific data as needed based on real ECU response structure
-            b'\x00' * 50  # More padding to simulate a longer response
+            b'\x00' * 50  # Padding for response
         )
 
     def _get_vin_response_bytes(self):

@@ -126,9 +126,8 @@ class SecurityTab(QWidget):
         
     def program_new_key(self):
         """Program new key"""
-        if self.pin_input.text() != "1234":  # Mock PIN check
-            QMessageBox.warning(self, "PIN Required", "Please enter correct PIN first!")
-            return
+        QMessageBox.warning(self, "Hardware Required", "VCI device required for key programming operations!")
+        return
             
         self.results.append(f"[{datetime.now().strftime('%H:%M:%S')}] Programming new key...")
         QTimer.singleShot(3000, lambda: self.results.append(

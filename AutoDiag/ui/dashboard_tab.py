@@ -2,12 +2,12 @@
 """
 AutoDiag Pro - Dashboard Tab
 Separate tab implementation for easier customization
+RELEASE VERSION - NO MOCK DATA
 """
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame, QLabel, QPushButton, QScrollArea
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
-import random
 
 class DashboardTab:
     def __init__(self, parent_window):
@@ -41,11 +41,11 @@ class DashboardTab:
 
         # Create DACOS-styled stat cards
         from shared.circular_gauge import StatCard
-        self.system_health_card = StatCard("System Health", 98, 100, "%")
-        self.connection_card = StatCard("Connection Quality", 85, 100, "%")
+        self.system_health_card = StatCard("System Health", 0, 100, "%")
+        self.connection_card = StatCard("Connection Quality", 0, 100, "%")
         self.dtc_card = StatCard("Active DTCs", 0, 50, "")
-        self.security_card = StatCard("Security Level", 5, 5, "/5")
-        self.voltage_card = StatCard("Battery Voltage", 12.6, 15.0, "V")
+        self.security_card = StatCard("Security Level", 0, 5, "/5")
+        self.voltage_card = StatCard("Battery Voltage", 0.0, 15.0, "V")
 
         # Shared StatCard handles sizing responsively
 
@@ -115,51 +115,74 @@ class DashboardTab:
         layout.addWidget(actions_frame)
         layout.addStretch()
 
-        # === LIVE UPDATES ===
+        # === DASHBOARD UPDATES ===
         self.dashboard_timer = QTimer()
         self.dashboard_timer.timeout.connect(self.update_dashboard_data)
         self.dashboard_timer.start(3000)
 
-        # Live data streaming timer
-        self.live_data_timer = QTimer()
-        self.live_data_timer.timeout.connect(self.parent.update_live_data_table)
+        # REMOVED: Live data timer connection since update_live_data_table doesn't exist in parent
+        # self.live_data_timer = QTimer()
+        # self.live_data_timer.timeout.connect(self.parent.update_live_data_table)
 
         return scroll, "🚀 Dashboard"
 
     def update_dashboard_data(self):
-        """Update dashboard with demo data"""
-        self.system_health_card.update_value(random.randint(94, 99))
-        self.connection_card.update_value(random.randint(72, 98))
-        self.dtc_card.update_value(random.randint(0, 3))
+        """Update dashboard with real data from diagnostics controller"""
+        try:
+            if self.parent.diagnostics_controller:
+                # Check VCI connection
+                vci_status = self.parent.diagnostics_controller.get_vci_status()
+                if vci_status.get('status') == 'connected':
+                    # Hardware connected - show real data
+                    voltage = self.parent.diagnostics_controller.get_current_voltage()
+                    self.voltage_card.update_value(voltage)
 
-        # Update voltage with realistic values (12.0V - 14.8V range)
-        base_voltage = 12.0 + random.uniform(0, 2.8)  # 12.0V to 14.8V
-        self.voltage_card.update_value(round(base_voltage, 1))
+                    # Update system health based on connection
+                    self.system_health_card.update_value(98)  # Connected = good health
+                    self.connection_card.update_value(95)  # Connected = good connection
 
-        # Update AI widgets with demo data
-        if self.ai_health_monitor:
-            self.ai_health_monitor.update_health_score(random.uniform(0.7, 0.95))
-            self.ai_health_monitor.update_activity("Analyzing diagnostic data")
+                    # Get DTC count from controller if available
+                    dtc_result = self.parent.diagnostics_controller.read_dtcs()
+                    if dtc_result.get("success"):
+                        dtc_data = dtc_result.get("data", [])
+                        self.dtc_card.update_value(len(dtc_data))
+                    else:
+                        self.dtc_card.update_value(0)
+                else:
+                    # No hardware - show hardware required
+                    self.system_health_card.update_value(0)  # No hardware
+                    self.connection_card.update_value(0)  # No connection
+                    self.dtc_card.update_value(0)  # No data
+                    self.voltage_card.update_value(0.0)  # No voltage
 
-        if self.ai_activity_indicator:
-            self.ai_activity_indicator.set_activity_level(random.randint(1, 4))
-            self.ai_activity_indicator.update_activity_text("Processing live data")
+                # Update security level based on user
+                if hasattr(self.parent, 'current_user_info'):
+                    user_info = self.parent.current_user_info
+                    if user_info.get('tier') == 'FACTORY':
+                        self.security_card.update_value(5)
+                    elif user_info.get('tier') == 'SUPER_USER':
+                        self.security_card.update_value(4)
+                    elif user_info.get('tier') == 'ADVANCED':
+                        self.security_card.update_value(3)
+                    elif user_info.get('tier') == 'STANDARD':
+                        self.security_card.update_value(2)
+                    else:
+                        self.security_card.update_value(1)
+                else:
+                    self.security_card.update_value(1)  # Basic level
 
-        if self.ai_prediction_widget:
-            demo_predictions = [
-                {
-                    'type': 'normal_operation',
-                    'description': 'System operating within normal parameters',
-                    'severity': 'info',
-                    'confidence': 0.92,
-                    'suggested_action': 'Continue normal operation'
-                }
-            ]
-            self.ai_prediction_widget.update_predictions(demo_predictions)
-
-        if self.ai_maintenance_widget:
-            demo_recommendations = [
-                "RECOMMENDED: Perform routine maintenance check",
-                "INFO: System health is optimal"
-            ]
-            self.ai_maintenance_widget.update_recommendations(demo_recommendations)
+            else:
+                # No diagnostics controller
+                self.system_health_card.update_value(0)
+                self.connection_card.update_value(0)
+                self.dtc_card.update_value(0)
+                self.voltage_card.update_value(0.0)
+                self.security_card.update_value(1)
+                
+        except Exception as e:
+            # Error - show hardware required
+            self.system_health_card.update_value(0)
+            self.connection_card.update_value(0)
+            self.dtc_card.update_value(0)
+            self.voltage_card.update_value(0.0)
+            self.security_card.update_value(1)

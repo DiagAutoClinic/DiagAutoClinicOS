@@ -4,7 +4,6 @@ Live Data Tab Component
 Separate tab for live data functionality
 """
 
-import random
 from datetime import datetime
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
@@ -107,37 +106,44 @@ class LiveDataTab(QWidget):
             self.log_area.append(f"[{datetime.now().strftime('%H:%M:%S')}] Data exported to {filename}")
             
     def update_live_data(self):
-        """Update live data values"""
-        values = [
-            str(random.randint(2000, 3000)),  # RPM
-            str(random.randint(30, 65)),      # Speed
-            str(random.randint(190, 210)),    # Coolant
-            str(random.randint(20, 35)),      # Throttle
-            str(random.randint(70, 80)),      # Fuel
-            f"{random.uniform(13.5, 14.0):.1f}",  # Voltage
-            f"{random.uniform(0.3, 0.6):.2f}",     # O2
-            f"{random.uniform(10.0, 15.0):.1f}",   # MAF
-            str(random.randint(85, 95)),      # Intake Temp
-            str(random.randint(55, 65)),      # Fuel Pressure
-            str(random.randint(12, 18)),      # Spark Advance
-            str(random.randint(30, 40))       # Engine Load
-        ]
-        
-        for i, value in enumerate(values):
-            if i < self.data_table.rowCount():
-                self.data_table.setItem(i, 1, QTableWidgetItem(value))
-                # Update status based on value
-                if i == 1:  # Speed - flag if too high
-                    if int(value) > 60:
-                        self.data_table.setItem(i, 3, QTableWidgetItem("HIGH"))
-                        self.data_table.item(i, 3).setBackground(QColor(255, 100, 100))
+        """Update live data values from diagnostics controller"""
+        try:
+            if self.main_window and hasattr(self.main_window, 'diagnostics_controller'):
+                controller = self.main_window.diagnostics_controller
+                if controller:
+                    # Check if hardware is connected
+                    vci_status = controller.get_vci_status()
+                    if vci_status.get('status') == 'connected':
+                        # Get real live data
+                        live_data = controller.populate_sample_data()
+                        for i, (param, value, unit) in enumerate(live_data):
+                            if i < self.data_table.rowCount():
+                                self.data_table.setItem(i, 0, QTableWidgetItem(param))
+                                self.data_table.setItem(i, 1, QTableWidgetItem(value))
+                                self.data_table.setItem(i, 2, QTableWidgetItem(unit))
+                                self.data_table.setItem(i, 3, QTableWidgetItem("OK"))
+                                self.data_table.item(i, 3).setBackground(QColor(100, 255, 100))
                     else:
-                        self.data_table.setItem(i, 3, QTableWidgetItem("OK"))
-                        self.data_table.item(i, 3).setBackground(QColor(100, 255, 100))
-                elif i == 2:  # Coolant temp
-                    if int(value) > 205:
-                        self.data_table.setItem(i, 3, QTableWidgetItem("HOT"))
+                        # Hardware not connected
+                        for i in range(self.data_table.rowCount()):
+                            self.data_table.setItem(i, 1, QTableWidgetItem("N/A"))
+                            self.data_table.setItem(i, 3, QTableWidgetItem("HW_REQ"))
+                            self.data_table.item(i, 3).setBackground(QColor(255, 200, 100))
+                else:
+                    # No controller
+                    for i in range(self.data_table.rowCount()):
+                        self.data_table.setItem(i, 1, QTableWidgetItem("N/A"))
+                        self.data_table.setItem(i, 3, QTableWidgetItem("ERROR"))
                         self.data_table.item(i, 3).setBackground(QColor(255, 100, 100))
-                    else:
-                        self.data_table.setItem(i, 3, QTableWidgetItem("OK"))
-                        self.data_table.item(i, 3).setBackground(QColor(100, 255, 100))
+            else:
+                # No main window or controller
+                for i in range(self.data_table.rowCount()):
+                    self.data_table.setItem(i, 1, QTableWidgetItem("N/A"))
+                    self.data_table.setItem(i, 3, QTableWidgetItem("ERROR"))
+                    self.data_table.item(i, 3).setBackground(QColor(255, 100, 100))
+        except Exception as e:
+            # Error - show error status
+            for i in range(self.data_table.rowCount()):
+                self.data_table.setItem(i, 1, QTableWidgetItem("ERROR"))
+                self.data_table.setItem(i, 3, QTableWidgetItem("ERROR"))
+                self.data_table.item(i, 3).setBackground(QColor(255, 100, 100))

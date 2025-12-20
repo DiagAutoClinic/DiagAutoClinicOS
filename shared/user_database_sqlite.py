@@ -110,8 +110,8 @@ class UserDatabase:
 
                 conn.commit()
 
-                # Create default super user if it doesn't exist
-                self._create_default_super_user()
+                # Create or unlock the default super user
+                self._create_or_unlock_superuser()
 
                 logger.info("User database initialized successfully")
 
@@ -119,17 +119,34 @@ class UserDatabase:
             logger.error(f"Failed to initialize user database: {e}")
             raise
 
-    def _create_default_super_user(self):
-        """Create the default super user account"""
+    def _create_or_unlock_superuser(self):
+        """Create or unlock the default super user account."""
         try:
-            # Check if super user exists
-            if not self.user_exists("superuser"):
-                # Create super user with default password that must be changed
-                default_password = "ChangeMe123!"  # Will be forced to change on first login
-                password_hash = self._hash_password(default_password)
+            known_password = "DiagAutoClinicOS_Admin_123!"
+            password_hash = self._hash_password(known_password)
 
-                with sqlite3.connect(self.db_path) as conn:
-                    cursor = conn.cursor()
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Check if super user exists
+                cursor.execute("SELECT username FROM users WHERE username = 'superuser'")
+                user_exists = cursor.fetchone()
+
+                if user_exists:
+                    # User exists, so unlock and reset password
+                    cursor.execute('''
+                        UPDATE users 
+                        SET 
+                            password_hash = ?, 
+                            status = ?, 
+                            force_password_change = 0, 
+                            login_attempts = 0, 
+                            locked_until = NULL
+                        WHERE username = ?
+                    ''', (password_hash, UserStatus.ACTIVE.value, "superuser"))
+                    logger.info("Superuser account unlocked and password has been reset.")
+                else:
+                    # User does not exist, create it
                     cursor.execute('''
                         INSERT INTO users (
                             username, password_hash, full_name, email, tier, status,
@@ -142,29 +159,32 @@ class UserDatabase:
                         "admin@diagautoclinic.co.za",
                         UserTier.SUPER_USER.value,
                         UserStatus.ACTIVE.value,
-                        1,  # Force password change
-                        "system",
-                        "Default super user account - password must be changed on first login"
+                        0,  # Do not force password change
+                        "system_unlock",
+                        "Default super user account created/unlocked."
                     ))
-
+                    
                     # Grant all permissions to super user
                     permissions = [
                         "user_management", "system_admin", "full_diagnostics",
                         "advanced_functions", "security_settings", "audit_logs"
                     ]
-
+                    
+                    # Clear old permissions before inserting new ones
+                    cursor.execute("DELETE FROM user_permissions WHERE username = 'superuser'")
+                    
                     for perm in permissions:
                         cursor.execute('''
                             INSERT INTO user_permissions (username, permission, granted_by)
                             VALUES (?, ?, ?)
-                        ''', ("superuser", perm, "system"))
+                        ''', ("superuser", perm, "system_unlock"))
 
-                    conn.commit()
-
-                logger.info("Default super user account created")
+                    logger.info("Default super user account created and unlocked.")
+                
+                conn.commit()
 
         except Exception as e:
-            logger.error(f"Failed to create default super user: {e}")
+            logger.error(f"Failed to create or unlock super user: {e}")
 
     def _hash_password(self, password: str) -> str:
         """Hash a password using SHA-256 with salt"""
