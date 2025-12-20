@@ -12,7 +12,6 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
-import random
 import logging
 from typing import Dict, Optional
 from datetime import datetime
@@ -28,7 +27,7 @@ try:
     CAN_PARSER_AVAILABLE = True
 except Exception:
     CAN_PARSER_AVAILABLE = False
-    logger.warning("CAN REF parser not available – using mock data.")
+    logger.warning("CAN REF parser not available - hardware required for CAN data.")
 
 # Try DACOS THEME
 try:
@@ -446,9 +445,9 @@ class CANBusDataTab:
             except Exception:
                 self.manufacturer_combo.addItems(["BMW", "Audi", "Toyota"])
         else:
-            fallback = ["BMW", "Mercedes", "Audi", "Toyota", "Honda", "Ford"]
-            self.manufacturer_combo.addItems(fallback)
-            self._log("Using fallback manufacturers (parser missing).")
+            manufacturers = ["BMW", "Mercedes", "Audi", "Toyota", "Honda", "Ford"]
+            self.manufacturer_combo.addItems(manufacturers)
+            self._log("CAN parser not available - limited manufacturer list.")
 
     def _on_manufacturer_changed(self, m):
         self.model_combo.clear()
@@ -627,19 +626,31 @@ class CANBusDataTab:
         if not self.current_database:
             return
 
-        updated = 0
-        for row in range(self.can_table.rowCount()):
-            if random.random() < 0.3:
-                canid = self.can_table.item(row, 0).data(Qt.ItemDataRole.UserRole)
-                data = bytes([random.randint(0, 255) for _ in range(8)])
-                hexdata = " ".join(f"{b:02X}" for b in data)
+        # Check if hardware is connected
+        has_hardware = False
+        if hasattr(self.parent, 'diagnostics_controller') and self.parent.diagnostics_controller:
+            vci_status = self.parent.diagnostics_controller.get_vci_status()
+            has_hardware = vci_status.get('status') == 'connected'
 
-                self.can_table.item(row, 3).setText(hexdata)
-                self.message_counters[canid] += 1
-                self.can_table.item(row, 4).setText(str(self.message_counters[canid]))
-                ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-                self.can_table.item(row, 5).setText(ts)
-                updated += 1
+        if has_hardware:
+            # Hardware connected - get real CAN data
+            can_data = self.parent.diagnostics_controller._get_realtime_can_data()
+            updated = 0
+            for can_id, data in can_data.items():
+                row = self._find_message_row(can_id)
+                if row >= 0:
+                    hexdata = " ".join(f"{b:02X}" for b in data)
+                    self.can_table.item(row, 3).setText(hexdata)
+                    self.message_counters[can_id] += 1
+                    self.can_table.item(row, 4).setText(str(self.message_counters[can_id]))
+                    ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                    self.can_table.item(row, 5).setText(ts)
+                    updated += 1
+        else:
+            # No hardware - show hardware required
+            for row in range(self.can_table.rowCount()):
+                self.can_table.item(row, 3).setText("HW_REQ")
+                self.can_table.item(row, 5).setText("Hardware Required")
 
         self._update_selected_signals()
 
@@ -653,11 +664,28 @@ class CANBusDataTab:
         if not msg:
             return
 
+        # Check if hardware is connected
+        has_hardware = False
+        if hasattr(self.parent, 'diagnostics_controller') and self.parent.diagnostics_controller:
+            vci_status = self.parent.diagnostics_controller.get_vci_status()
+            has_hardware = vci_status.get('status') == 'connected'
+
         for r in range(self.signal_table.rowCount()):
             if r < len(msg.signals):
-                s = msg.signals[r]
-                val = random.uniform(s.min_value, s.max_value)
-                self.signal_table.item(r, 1).setText(f"{val:.2f}")
+                if has_hardware:
+                    # Hardware connected - get real signal values from live data
+                    live_data = self.parent.diagnostics_controller.populate_sample_data()
+                    # Find matching signal in live data
+                    signal_name = msg.signals[r].name.replace('_', ' ').title()
+                    value = "--"
+                    for param, val, unit in live_data:
+                        if param == signal_name:
+                            value = val
+                            break
+                    self.signal_table.item(r, 1).setText(value)
+                else:
+                    # No hardware - show hardware required
+                    self.signal_table.item(r, 1).setText("HW_REQ")
 
     # --------------------------------------------------------------
     # REALTIME MONITORING METHODS

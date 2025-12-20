@@ -89,7 +89,7 @@ class DualDeviceEngine:
             # Create primary device (GoDiag GD101 J2534)
             if primary_device_name in ["GoDiag GD101", "GoDiag GT100 PLUS GPT"]:
                 if self.mock_mode:
-                    primary_device = MockJ2534PassThru("GoDiag GT100 PLUS GPT Mock")
+                    primary_device = None  # Hardware required
                 else:
                     # Try multiple possible ports for GoDiag GT100
                     primary_device = None
@@ -533,9 +533,9 @@ class DualDeviceEngine:
                     mock_response = J2534Message(J2534Protocol.ISO14229_UDS,
                                                data=b'\x59\x01\x03\x00\x00\x08\x03\x01\x00\x08')
                 elif request_data[0] == 0x14:  # DTC clear
-                    mock_response = J2534Message(J2534Protocol.ISO14229_UDS, data=b'\x54')
+                    response = None  # Hardware required for responses
                 else:
-                    mock_response = J2534Message(J2534Protocol.ISO14229_UDS, data=b'\x7F\x00\x12')
+                    response = None  # Hardware required for responses
                 
                 return mock_response
             

@@ -1,0 +1,23 @@
+GoDiag GD101 + Opel ECU Connection Test Report
+============================================================
+Generated: 2025-12-18T10:55:36.985398
+
+Test Configuration:
+- Hardware: GoDiag GD101 (N32G43x Port)
+- Interface: GoDiag GT100 PLUS GPT
+- Target Vehicle: Opel ECU
+- Connection Type: OBD2 16-pin
+
+Test Results:
+- N32G43x Port Detection: PASS
+- GD101 Device Detection: PASS
+- GT100 PLUS GPT Interface: WARNING
+- Opel ECU Communication: FAIL
+- GT100 PLUS GPT Features: SKIPPED
+
+Summary:
+- Total Tests: 5
+- Passed: 2
+- Failed: 1
+- Warnings: 1
+- Skipped: 1

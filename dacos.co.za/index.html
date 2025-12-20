@@ -3,81 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DACOS - Advanced Automotive Diagnostics</title>
+    <title>DACOS | Future Diagnostics</title>
+    
+    <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="icon" href="../assets/favicon.ico">
-    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+
+    <!-- Dynamic Background -->
+    <canvas id="neural-bg"></canvas>
+    <div class="scanline"></div>
+    <div class="noise-overlay"></div>
+
+    <!-- Loading Screen -->
+    <div id="loader" class="loader-overlay">
+        <div class="loader-content">
+            <div class="hex-spinner"></div>
+            <div class="loading-text" id="loading-text">INITIALIZING SYSTEM...</div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <a class="navbar-brand" href="#">
-                <img src="../assets/dacos_logo.png" alt="DACOS Logo" width="50" height="50">
-                DACOS
+                <i class="fa-solid fa-microchip me-2"></i>DACOS<span class="text-accent">.OS</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="fa-solid fa-bars text-accent"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#home">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="about.html">About</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="products.html">Products</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="contact.html">Contact</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link" href="#home" data-text="HOME">HOME</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#features" data-text="MODULES">MODULES</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#hardware" data-text="HARDWARE">HARDWARE</a></li>
+                    <li class="nav-item"><a class="nav-link btn-glitch" href="#download">DOWNLOAD v3.2</a></li>
                 </ul>
             </div>
         </div>
     </nav>
 
-    <section id="home" class="hero-section">
-        <div class="container text-center">
-            <img src="../assets/dacos_logo.png" alt="DACOS Logo" class="hero-logo">
-            <h1 class="display-4 text-light">Welcome to DACOS</h1>
-            <p class="lead text-light">Revolutionizing Automotive Diagnostics with Cutting-Edge Technology</p>
-            <a href="products.html" class="btn btn-primary btn-lg">Explore Products</a>
-        </div>
-    </section>
-
-    <section id="about" class="py-5 bg-dark text-light">
-        <div class="container">
-            <h2 class="text-center mb-4">About DACOS</h2>
-            <p class="text-center">DACOS (DiagAutoClinicOS) is a comprehensive suite of automotive diagnostic tools designed for professionals and enthusiasts alike. Our software empowers users to diagnose, calibrate, and maintain vehicles with unparalleled precision and efficiency.</p>
-        </div>
-    </section>
-
-    <section id="products" class="py-5 bg-secondary text-light">
-        <div class="container">
-            <h2 class="text-center mb-4">Our Products</h2>
-            <div class="row">
-                <div class="col-md-4 mb-4">
-                    <div class="card bg-dark text-light h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">AutoDiag</h5>
-                            <p class="card-text">Advanced diagnostic software for comprehensive vehicle analysis and troubleshooting.</p>
-                        </div>
+    <!-- Hero Section -->
+    <section id="home" class="hero-section d-flex align-items-center">
+        <div class="container position-relative z-2">
+            <div class="row align-items-center">
+                <div class="col-lg-7">
+                    <div class="hero-badge mb-3">
+                        <span class="pulse-dot"></span> SYSTEM ONLINE
+                    </div>
+                    <h1 class="display-1 glitch-text" data-text="DIAGNOSTICS EVOLVED">DIAGNOSTICS<br><span class="text-accent">EVOLVED</span></h1>
+                    <p class="lead mt-3 typing-effect" id="hero-desc"></p>
+                    <div class="mt-5 d-flex gap-3">
+                        <a href="#download" class="btn btn-cyber">
+                            <span class="btn-content"><i class="fa-brands fa-windows me-2"></i>INITIALIZE DOWNLOAD</span>
+                            <span class="btn-glitch-effect"></span>
+                        </a>
+                        <a href="https://github.com/DiagAutoClinic/DiagAutoClinicOS" target="_blank" class="btn btn-outline-cyber">
+                            <span class="btn-content"><i class="fa-brands fa-github me-2"></i>SOURCE CODE</span>
+                        </a>
                     </div>
                 </div>
-                <div class="col-md-4 mb-4">
-                    <div class="card bg-dark text-light h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">AutoECU</h5>
-                            <p class="card-text">ECU programming and calibration tools for optimal vehicle performance.</p>
+                <div class="col-lg-5 d-none d-lg-block">
+                    <div class="hologram-container">
+                        <div class="hologram-circle"></div>
+                        <div class="hologram-circle inner"></div>
+                        <i class="fa-solid fa-car-on hologram-icon"></i>
+                        <div class="floating-card card-1">
+                            <i class="fa-solid fa-bolt text-warning"></i>
+                            <span>ECU: CONNECTED</span>
                         </div>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-4">
-                    <div class="card bg-dark text-light h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">AutoKey</h5>
-                            <p class="card-text">Key programming and transponder management solutions.</p>
+                        <div class="floating-card card-2">
+                            <i class="fa-solid fa-shield-halved text-success"></i>
+                            <span>SEC: ACTIVE</span>
                         </div>
                     </div>
                 </div>
@@ -85,42 +93,188 @@
         </div>
     </section>
 
-    <section id="contact" class="py-5 bg-dark text-light">
-        <div class="container">
-            <h2 class="text-center mb-4">Contact Us</h2>
-            <div class="row">
-                <div class="col-md-6">
-                    <p>Get in touch with us for support, inquiries, or partnerships.</p>
-                    <p>Email: info@dacos.co.za</p>
-                    <p>Phone: +27 XX XXX XXXX</p>
+    <!-- Stats HUD -->
+    <div class="container position-relative z-2 mb-5">
+        <div class="row g-4">
+            <div class="col-md-3 col-6">
+                <div class="hud-stat">
+                    <h3>25+</h3>
+                    <p>BRANDS SUPPORTED</p>
                 </div>
-                <div class="col-md-6">
-                    <form>
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="name">
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="hud-stat">
+                    <h3>J2534</h3>
+                    <p>PASSTHRU READY</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="hud-stat">
+                    <h3>100%</h3>
+                    <p>OPEN SOURCE</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="hud-stat">
+                    <h3>AI</h3>
+                    <p>POWERED CORE</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features / Modules -->
+    <section id="features" class="py-5">
+        <div class="container">
+            <div class="section-header text-center mb-5">
+                <h2 class="section-title">SYSTEM MODULES</h2>
+                <div class="section-line"></div>
+            </div>
+            
+            <div class="row g-4">
+                <!-- AutoDiag -->
+                <div class="col-lg-4">
+                    <div class="cyber-card">
+                        <div class="card-border-top"></div>
+                        <div class="card-content">
+                            <div class="icon-box">
+                                <i class="fa-solid fa-stethoscope"></i>
+                            </div>
+                            <h3>AutoDiag</h3>
+                            <p>Professional grade diagnostics. Read/Clear DTCs, Live Data Streaming, and System Scanning with J2534 precision.</p>
+                            <ul class="tech-list">
+                                <li><i class="fa-solid fa-check"></i> Global OBDII</li>
+                                <li><i class="fa-solid fa-check"></i> Ford/GM Enhanced</li>
+                                <li><i class="fa-solid fa-check"></i> Live Graphing</li>
+                            </ul>
                         </div>
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email">
+                        <div class="card-border-bottom"></div>
+                    </div>
+                </div>
+
+                <!-- AutoECU -->
+                <div class="col-lg-4">
+                    <div class="cyber-card">
+                        <div class="card-border-top"></div>
+                        <div class="card-content">
+                            <div class="icon-box">
+                                <i class="fa-solid fa-microchip"></i>
+                            </div>
+                            <h3>AutoECU</h3>
+                            <p>Advanced ECU programming and coding. Flash firmware, modify parameters, and perform adaptations.</p>
+                            <ul class="tech-list">
+                                <li><i class="fa-solid fa-check"></i> Module Coding</li>
+                                <li><i class="fa-solid fa-check"></i> VIN Writing</li>
+                                <li><i class="fa-solid fa-check"></i> Flash Memory</li>
+                            </ul>
                         </div>
-                        <div class="mb-3">
-                            <label for="message" class="form-label">Message</label>
-                            <textarea class="form-control" id="message" rows="3"></textarea>
+                        <div class="card-border-bottom"></div>
+                    </div>
+                </div>
+
+                <!-- AutoKey -->
+                <div class="col-lg-4">
+                    <div class="cyber-card">
+                        <div class="card-border-top"></div>
+                        <div class="card-content">
+                            <div class="icon-box">
+                                <i class="fa-solid fa-key"></i>
+                            </div>
+                            <h3>AutoKey</h3>
+                            <p>Immobilizer and key management. Program new keys, reset immobilizers, and handle security access.</p>
+                            <ul class="tech-list">
+                                <li><i class="fa-solid fa-check"></i> Key Learning</li>
+                                <li><i class="fa-solid fa-check"></i> IMMO Reset</li>
+                                <li><i class="fa-solid fa-check"></i> Transponder Ops</li>
+                            </ul>
                         </div>
-                        <button type="submit" class="btn btn-primary">Send Message</button>
-                    </form>
+                        <div class="card-border-bottom"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <footer class="bg-dark text-light py-3">
-        <div class="container text-center">
-            <p>&copy; 2025 DACOS. All rights reserved.</p>
+    <!-- Hardware Compatibility -->
+    <section id="hardware" class="py-5 position-relative">
+        <div class="bg-grid"></div>
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h2 class="section-title mb-4">HARDWARE INTERFACE</h2>
+                    <p class="lead text-light">DACOS is engineered to work with industry-standard hardware.</p>
+                    <p class="text-muted">Our driver layer supports J2534 PassThru, ELM327, and proprietary protocols.</p>
+                    
+                    <div class="hardware-list mt-4">
+                        <div class="hw-item active">
+                            <span class="hw-icon"><i class="fa-solid fa-plug"></i></span>
+                            <div>
+                                <h5>GoDiag GD101 / GT100+</h5>
+                                <small>Full J2534 Support Verified</small>
+                            </div>
+                        </div>
+                        <div class="hw-item">
+                            <span class="hw-icon"><i class="fa-brands fa-bluetooth"></i></span>
+                            <div>
+                                <h5>OBDLink MX+</h5>
+                                <small>High-Speed Bluetooth Diagnostics</small>
+                            </div>
+                        </div>
+                        <div class="hw-item">
+                            <span class="hw-icon"><i class="fa-solid fa-server"></i></span>
+                            <div>
+                                <h5>Scanmatik 2 Pro</h5>
+                                <small>Professional PassThru Interface</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6 text-center">
+                    <div class="device-showcase">
+                        <div class="scanner-line"></div>
+                        <i class="fa-solid fa-hard-drive device-icon"></i>
+                        <div class="device-glow"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download / CTA -->
+    <section id="download" class="py-5 text-center">
+        <div class="container">
+            <div class="cta-box">
+                <h2 class="mb-4">READY TO UPGRADE YOUR WORKSHOP?</h2>
+                <p class="mb-5">Join the open-source revolution. No subscriptions. No limits.</p>
+                <a href="https://github.com/DiagAutoClinic/DiagAutoClinicOS/releases" class="btn btn-cyber btn-lg">
+                    <span class="btn-content">DOWNLOAD INSTALLER v3.2</span>
+                </a>
+                <p class="mt-3 text-muted small">Requires Windows 10/11 (64-bit) • Python 3.10+</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>DACOS<span class="text-accent">.OS</span></h5>
+                    <p class="small text-muted">DiagAutoClinic Operating Suite</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="social-links">
+                        <a href="#"><i class="fa-brands fa-github"></i></a>
+                        <a href="#"><i class="fa-brands fa-discord"></i></a>
+                        <a href="#"><i class="fa-brands fa-youtube"></i></a>
+                    </div>
+                    <p class="small text-muted mt-2">&copy; 2025 DiagAutoClinic. Open Source (GPLv3).</p>
+                </div>
+            </div>
         </div>
     </footer>
 
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
 </body>

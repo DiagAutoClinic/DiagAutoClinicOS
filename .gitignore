@@ -46,6 +46,7 @@ build/
 *.log
 *.db
 *.sqlite3
+users.json
 dacos_ai.sh
 dacos_ai.sh
 

@@ -16,7 +16,7 @@ shared_path = os.path.join(os.path.dirname(__file__), '..', 'shared')
 sys.path.insert(0, shared_path)
 
 from security_manager import (
-    SecurityManager, SecurityLevel, UserRole, security_manager
+    SecurityManager, EnhancedSecurityManager, SecurityLevel, UserRole, security_manager
 )
 
 
@@ -117,58 +117,66 @@ class TestAuthentication:
     
     def test_successful_authentication(self, sec_manager):
         """Test successful user authentication"""
-        success, message = sec_manager.authenticate_user('tech1', 'tech123')
-        
+        success, message, user_info = sec_manager.authenticate_user('tech1', 'tech123')
+
         assert success is True
         assert 'Welcome' in message
         assert sec_manager.current_user == 'tech1'
         assert sec_manager.session_token is not None
         assert sec_manager.security_level == SecurityLevel.STANDARD
+        assert user_info['username'] == 'tech1'
     
     def test_authentication_wrong_password(self, sec_manager):
         """Test authentication with wrong password"""
-        success, message = sec_manager.authenticate_user('tech1', 'wrongpass')
-        
+        success, message, user_info = sec_manager.authenticate_user('tech1', 'wrongpass')
+
         assert success is False
         assert 'Invalid credentials' in message
         assert sec_manager.current_user is None
+        assert user_info is None
     
     def test_authentication_nonexistent_user(self, sec_manager):
         """Test authentication with non-existent user"""
-        success, message = sec_manager.authenticate_user('nonexistent', 'pass')
-        
+        success, message, user_info = sec_manager.authenticate_user('nonexistent', 'pass')
+
         assert success is False
         assert sec_manager.current_user is None
-    
+        assert user_info is None
+
     def test_authentication_empty_credentials(self, sec_manager):
         """Test authentication with empty credentials"""
-        success1, msg1 = sec_manager.authenticate_user('', 'pass')
-        success2, msg2 = sec_manager.authenticate_user('user', '')
-        
+        success1, msg1, ui1 = sec_manager.authenticate_user('', 'pass')
+        success2, msg2, ui2 = sec_manager.authenticate_user('user', '')
+
         assert success1 is False
         assert success2 is False
-    
+        assert ui1 is None
+        assert ui2 is None
+
     def test_authentication_case_insensitive_username(self, sec_manager):
         """Test username is case-insensitive"""
-        success1, _ = sec_manager.authenticate_user('TECH1', 'tech123')
+        success1, _, ui1 = sec_manager.authenticate_user('TECH1', 'tech123')
         sec_manager.logout()
-        success2, _ = sec_manager.authenticate_user('Tech1', 'tech123')
-        
+        success2, _, ui2 = sec_manager.authenticate_user('Tech1', 'tech123')
+
         assert success1 is True
         assert success2 is True
+        assert ui1 is not None
+        assert ui2 is not None
     
     @pytest.mark.parametrize("username,password,expected_level", [
         ('tech1', 'tech123', SecurityLevel.STANDARD),
         ('supervisor', 'super789', SecurityLevel.ADVANCED),
         ('admin', 'admin345', SecurityLevel.FACTORY),
     ])
-    def test_different_user_security_levels(self, sec_manager, username, 
+    def test_different_user_security_levels(self, sec_manager, username,
                                            password, expected_level):
         """Test different users have correct security levels"""
-        success, _ = sec_manager.authenticate_user(username, password)
-        
+        success, _, user_info = sec_manager.authenticate_user(username, password)
+
         assert success is True
         assert sec_manager.security_level == expected_level
+        assert user_info is not None
 
 
 class TestSessionManagement:
@@ -177,7 +185,7 @@ class TestSessionManagement:
     def test_session_token_generation(self, sec_manager):
         """Test session token is generated on login"""
         sec_manager.authenticate_user('tech1', 'tech123')
-        
+
         assert sec_manager.session_token is not None
         assert len(sec_manager.session_token) > 0
         assert sec_manager.session_expiry is not None
@@ -185,7 +193,7 @@ class TestSessionManagement:
     def test_session_validation_valid(self, sec_manager):
         """Test valid session validation"""
         sec_manager.authenticate_user('tech1', 'tech123')
-        
+
         assert sec_manager.validate_session() is True
     
     def test_session_validation_no_token(self, sec_manager):
@@ -196,26 +204,26 @@ class TestSessionManagement:
         """Test session expires after timeout"""
         # Use short timeout for testing
         sec_manager.security_config['session_timeout'] = 1  # 1 second
-        
+
         sec_manager.authenticate_user('tech1', 'tech123')
         assert sec_manager.validate_session() is True
-        
+
         # Wait for expiration
         time.sleep(1.5)
-        
+
         assert sec_manager.validate_session() is False
         assert sec_manager.current_user is None
-    
+
     def test_session_sliding_expiration(self, sec_manager):
         """Test session expiration extends on validation"""
         sec_manager.security_config['session_timeout'] = 2  # 2 seconds
-        
+
         sec_manager.authenticate_user('tech1', 'tech123')
         initial_expiry = sec_manager.session_expiry
-        
+
         time.sleep(0.5)
         sec_manager.validate_session()  # Should extend expiration
-        
+
         new_expiry = sec_manager.session_expiry
         assert new_expiry > initial_expiry
 
@@ -301,38 +309,40 @@ class TestFailedAttemptHandling:
     def test_failed_attempt_counter(self, sec_manager):
         """Test failed attempts are counted"""
         initial_attempts = sec_manager.failed_attempts
-        
+
         sec_manager.authenticate_user('tech1', 'wrongpass')
-        
+
         assert sec_manager.failed_attempts > initial_attempts
-    
+
     def test_user_lockout_after_failures(self, sec_manager):
         """Test user lockout after multiple failures"""
         # Attempt failed logins
         for _ in range(3):
             sec_manager.authenticate_user('tech1', 'wrongpass')
-        
+
         # User should be locked
-        success, message = sec_manager.authenticate_user('tech1', 'tech123')
-        
+        success, message, user_info = sec_manager.authenticate_user('tech1', 'tech123')
+
         assert success is False
         assert 'locked' in message.lower()
-    
+        assert user_info is None
+
     def test_system_lockout_after_max_failures(self, sec_manager):
         """Test system-wide lockout after max failures"""
         sec_manager.security_config['max_failed_attempts'] = 3
-        
+
         # Fail 3 times
         for _ in range(3):
             sec_manager.authenticate_user('fake', 'wrongpass')
-        
+
         # System should be locked
         assert sec_manager.lockout_until is not None
-        
+
         # Even valid login should fail
-        success, message = sec_manager.authenticate_user('tech1', 'tech123')
+        success, message, user_info = sec_manager.authenticate_user('tech1', 'tech123')
         assert success is False
         assert 'locked' in message.lower()
+        assert user_info is None
     
     def test_failed_attempts_reset_on_success(self, sec_manager):
         """Test failed attempts reset after successful login"""
@@ -518,8 +528,9 @@ class TestUserManagement:
         
         # Verify new user can login
         sec_manager.logout()
-        success2, _ = sec_manager.authenticate_user('newtech', 'NewPass123')
+        success2, _, user_info2 = sec_manager.authenticate_user('newtech', 'NewPass123')
         assert success2 is True
+        assert user_info2 is not None
     
     def test_add_user_duplicate_username(self, sec_manager):
         """Test adding user with existing username"""
@@ -558,13 +569,15 @@ class TestPasswordChange:
         
         # Verify can login with new password
         sec_manager.logout()
-        success2, _ = sec_manager.authenticate_user('tech1', 'NewPass123')
+        success2, _, ui2 = sec_manager.authenticate_user('tech1', 'NewPass123')
         assert success2 is True
-        
+        assert ui2 is not None
+
         # Old password should not work
         sec_manager.logout()
-        success3, _ = sec_manager.authenticate_user('tech1', 'tech123')
+        success3, _, ui3 = sec_manager.authenticate_user('tech1', 'tech123')
         assert success3 is False
+        assert ui3 is None
     
     def test_change_password_wrong_old_password(self, sec_manager):
         """Test changing password with wrong old password"""
@@ -610,8 +623,9 @@ class TestLockoutReset:
         
         # User should be able to login now
         sec_manager.logout()
-        success2, _ = sec_manager.authenticate_user('supervisor', 'super789')
+        success2, _, ui2 = sec_manager.authenticate_user('supervisor', 'super789')
         assert success2 is True
+        assert ui2 is not None
     
     def test_reset_lockout_nonexistent_user(self, sec_manager):
         """Test resetting lockout for non-existent user"""
@@ -686,10 +700,11 @@ class TestGlobalSecurityManagerInstance:
         """Test global instance is functional"""
         # Save initial state
         initial_user = security_manager.current_user
-        
-        success, _ = security_manager.authenticate_user('test', 'test123')
+
+        success, _, user_info = security_manager.authenticate_user('admin', 'admin345')
         assert success is True
-        
+        assert user_info is not None
+
         # Clean up
         security_manager.logout()
 
@@ -1121,13 +1136,14 @@ class TestAuthenticationReturnValues:
     """Test authentication return value consistency"""
     
     def test_authenticate_returns_tuple(self, sec_manager):
-        """Test authenticate_user returns (bool, str) tuple"""
+        """Test authenticate_user returns (bool, str, dict) tuple"""
         result = sec_manager.authenticate_user('tech1', 'tech123')
-        
+
         assert isinstance(result, tuple)
-        assert len(result) == 2
+        assert len(result) == 3
         assert isinstance(result[0], bool)
         assert isinstance(result[1], str)
+        assert isinstance(result[2], (dict, type(None)))
     
     def test_all_auth_methods_return_tuples(self, sec_manager):
         """Test all authentication-related methods return tuples"""

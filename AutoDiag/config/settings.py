@@ -187,6 +187,30 @@ class ConfigurationManager:
             scope=ConfigScope.USER,
             category="user"
         )
+
+        # Tier Configuration
+        self.register_config(
+            key="user.tier_level",
+            default_value=1,  # Free tier by default
+            description="User's current tier level (1-5)",
+            scope=ConfigScope.USER,
+            category="user",
+            validator=lambda x: isinstance(x, int) and 1 <= x <= 5
+        )
+
+        self.register_config(
+            key="tier.enforce_access",
+            default_value=True,
+            description="Enforce tier-based access control",
+            category="tier"
+        )
+
+        self.register_config(
+            key="tier.show_acknowledgements",
+            default_value=True,
+            description="Show tier acknowledgement dialogs",
+            category="tier"
+        )
     
     def register_config(self, key: str, default_value: Any, 
                        description: str = "", scope: ConfigScope = ConfigScope.SYSTEM,
