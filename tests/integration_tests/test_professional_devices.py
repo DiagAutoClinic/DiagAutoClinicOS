@@ -540,14 +540,14 @@ class DeviceHandler:
             return False
 
     def enable_bench_mode(self, enable: bool = True) -> bool:  # GT100+ bench operations
-        """Enable bench mode with GT100+ (stable power check for GD101 routing)"""
+        """Enable bench mode with GT100+ (stable power check)"""
         if self.current_device and self.current_device.name == "Godiag GT100+":
             status = self.get_breakout_status()
             if status.get('voltage', 0) < 11.0:
                 logger.warning("Low voltage detected - bench mode unsafe")
                 return False
             self.bench_mode = enable
-            logger.info(f"Bench mode {'enabled' if enable else 'disabled'} - Route GD101 through GT100+ pins")
+            logger.info(f"Bench mode {'enabled' if enable else 'disabled'} - GT100+ monitoring active")
             return True
         return False
 
@@ -612,10 +612,10 @@ class DeviceHandler:
         if self.current_device and self.current_device.device_type == "J2534":
             return self._j2534_read_ecu_identification()
         elif self.current_device and self.current_device.device_type == "Breakout":
-            # Route through GT100+ to GD101
+            # Route through GT100+ for monitoring
             status = self.get_breakout_status()
             if status.get('voltage', 0) > 11.0:
-                return self._j2534_read_ecu_identification()  # Assume GD101 connected
+                return self._j2534_read_ecu_identification()  # Assume device connected
             else:
                 return {'error': 'Low power on bench'}
         else:

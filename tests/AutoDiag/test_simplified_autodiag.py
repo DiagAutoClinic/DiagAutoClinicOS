@@ -2,7 +2,7 @@
 """
 Simplified AutoDiag Test Suite
 Focus: VIN Scan, DTC Scan, DTC Clear
-Real: Volkswagen (via J2534 GoDiag GD101) | Mock: All other brands
+Real: Volkswagen (via J2534) | Mock: All other brands
 """
 
 import pytest
@@ -26,7 +26,7 @@ from main_final import (
 )
 
 from j2534_passthru import (
-    MockJ2534PassThru, J2534Protocol, J2534Message, J2534PassThru
+    J2534Protocol, J2534Message, J2534PassThru
 )
 
 
@@ -77,7 +77,7 @@ class TestVWDiagnosticEngine:
 
 
 class TestJ2534PassThru:
-    """Test J2534 PassThru interface and GoDiag GD101 integration"""
+    """Test J2534 PassThru interface integration"""
     
     def test_mock_passthru_open(self):
         """Test opening mock J2534 device"""
@@ -132,7 +132,7 @@ class TestJ2534PassThru:
     
     def test_vw_engine_with_j2534_mock(self):
         """Test VW engine with mock J2534 device"""
-        passthru = MockJ2534PassThru("Test GoDiag GD101")
+        passthru = MockJ2534PassThru("Test J2534 Device")
         engine = VWDiagnosticEngine(passthru_device=passthru, use_mock=False)
         
         # Should connect successfully with mock device

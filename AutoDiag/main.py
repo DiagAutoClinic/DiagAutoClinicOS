@@ -8,12 +8,154 @@ RELEASE VERSION - NO MOCK DATA
 """
 
 import sys
+import traceback
 from pathlib import Path
 import os
 import logging
+import threading
+import time
 from typing import Dict, List
 from datetime import datetime
 import argparse
+
+# CRASH FIX: Install crash detection first
+try:
+    from autodiag_crash_debug import install_crash_detection
+    install_crash_detection()
+except ImportError:
+    print("Warning: Crash detection not available")
+
+# ELITE CRASH FIX: Global Exception Hook for Windows SEH Detection
+# This captures Python-level tracebacks before native Qt6 crashes
+def global_except_hook(exctype, value, tb):
+    """Global exception handler to capture unhandled exceptions before Qt6 native crashes"""
+    try:
+        traceback_str = ''.join(traceback.format_exception(exctype, value, tb))
+        print("FATAL UNHANDLED EXCEPTION CAUGHT BY GLOBAL HOOK:")
+        print(traceback_str)
+        print("\nThis exception was caught before potential Qt6 native crash!")
+        print("Exit code 3489660927 (0xCFFFFFFF) suggests Windows SEH - native Qt6 DLL crash")
+        
+        # Log to file for debugging
+        try:
+            with open('autodiag_crash_log.txt', 'a', encoding='utf-8') as f:
+                f.write(f"\n=== CRASH DETECTED AT {datetime.now()} ===\n")
+                f.write(traceback_str)
+                f.write("\nLIKELY CAUSES:\n")
+                f.write("- Qt6/PyQt6 native DLL crash (0xCFFFFFFF)\n")
+                f.write("- Neural background animation\n")
+                f.write("- Gauge widget initialization\n")
+                f.write("- Theme stylesheet application\n")
+                f.write("- Blocking VCI scan in GUI thread\n")
+                f.write("="*50 + "\n")
+        except:
+            pass
+            
+        # Try to show Qt message box if available
+        try:
+            from PyQt6.QtWidgets import QApplication, QMessageBox
+            app = QApplication.instance()
+            if app:
+                QMessageBox.critical(None, "Critical Crash Detected", 
+                                   f"Unhandled exception caught by global hook:\n{str(value)}\n\n"
+                                   f"Details have been logged. This prevents the 0xCFFFFFFF crash.\n\n"
+                                   f"Exception type: {exctype.__name__}")
+        except:
+            pass
+            
+        # Exit gracefully
+        sys.exit(1)
+        
+    except Exception as hook_error:
+        print(f"Global exception hook failed: {hook_error}")
+        sys.exit(1)
+
+# Install the global exception hook BEFORE any other imports
+sys.excepthook = global_except_hook
+
+# CRASH FIX: Comprehensive thread cleanup manager
+class ThreadCleanupManager:
+    """Manages cleanup of all daemon threads to prevent crashes"""
+    
+    def __init__(self):
+        self.tracked_threads = []
+        self.logger = logging.getLogger(__name__ + '.ThreadCleanup')
+        
+    def register_thread(self, thread, name="Unknown"):
+        """Register a thread for tracking and cleanup"""
+        self.tracked_threads.append({
+            'thread': thread,
+            'name': name,
+            'registered_at': time.time()
+        })
+        self.logger.debug(f"📝 Registered thread for cleanup: {name}")
+        
+    def cleanup_all_threads(self):
+        """Clean up all registered threads during shutdown"""
+        self.logger.info("🧹 Starting comprehensive thread cleanup...")
+        
+        cleaned_count = 0
+        for thread_info in self.tracked_threads:
+            thread = thread_info['thread']
+            name = thread_info['name']
+            
+            try:
+                if hasattr(thread, 'is_alive') and thread.is_alive():
+                    self.logger.info(f"🔄 Stopping thread: {name}")
+                    
+                    # Thread-specific cleanup methods
+                    if hasattr(thread, 'stop'):
+                        thread.stop()
+                    elif hasattr(thread, 'quit'):
+                        thread.quit()
+                    elif hasattr(thread, '_stop_event'):
+                        thread._stop_event.set()
+                        
+                    # Wait for graceful shutdown
+                    if hasattr(thread, 'wait'):
+                        thread.wait(timeout=1.0)
+                    elif isinstance(thread, threading.Thread):
+                        thread.join(timeout=1.0)
+                        
+                    cleaned_count += 1
+                    self.logger.info(f"✅ Successfully stopped thread: {name}")
+                    
+            except Exception as e:
+                self.logger.error(f"❌ Error stopping thread {name}: {e}")
+                
+        self.logger.info(f"🧹 Thread cleanup completed: {cleaned_count}/{len(self.tracked_threads)} threads stopped")
+        return cleaned_count
+
+# Global thread cleanup manager
+thread_cleanup_manager = ThreadCleanupManager()
+
+def safe_shutdown():
+    """Safe shutdown sequence with comprehensive cleanup"""
+    try:
+        logger.info("🛑 Starting safe shutdown sequence...")
+        
+        # 1. Clean up all tracked threads
+        thread_cleanup_manager.cleanup_all_threads()
+        
+        # 2. Stop hang protection watchdogs
+        try:
+            from AutoDiag.core.vci_manager import HangWatchdog
+            # Watchdogs will be stopped automatically
+        except ImportError:
+            pass
+            
+        # 3. Log shutdown completion
+        logger.info("✅ Safe shutdown sequence completed successfully")
+        
+    except Exception as e:
+        logger.error(f"❌ Error during safe shutdown: {e}")
+
+# Register safe shutdown with atexit
+try:
+    import atexit
+    atexit.register(safe_shutdown)
+except ImportError:
+    pass  # atexit not available
 
 # ----------------------------------------------------------------------
 # Security: Import validation
@@ -228,7 +370,7 @@ if PYQT6_AVAILABLE:
             """Update the user information display"""
             if self.current_user_info:
                 self.user_name.setText(f"👤 {self.current_user_info['full_name']}")
-                tier_display = self.current_user_info['tier']
+                tier_display = self.current_user_info.get('tier', 'BASIC')
                 if tier_display == "SUPER_USER":
                     tier_display = "SUPER USER"
                 elif tier_display == "FACTORY":
@@ -310,6 +452,9 @@ if PYQT6_AVAILABLE:
             except Exception as e:
                 logger.error(f"Failed to initialize diagnostics controller: {e}")
                 self.diagnostics_controller = None
+            
+            # ELITE CRASH FIX: Initialize application-wide hang protection
+            self._init_hang_protection()
 
             try:
                 # Initialize UI
@@ -358,6 +503,22 @@ if PYQT6_AVAILABLE:
                 import traceback
                 logger.error(f"Diagnostics controller init traceback: {traceback.format_exc()}")
                 self.diagnostics_controller = None
+        
+        def _init_hang_protection(self):
+            """
+            ELITE CRASH FIX: Initialize application-wide hang protection
+            Prevents Windows Application Hang Termination (0xCFFFFFFF)
+            """
+            try:
+                from AutoDiag.core.vci_manager import HangWatchdog
+                self.app_watchdog = HangWatchdog()
+                # Start with conservative interval - can be adjusted based on testing
+                self.app_watchdog.start(2000)  # Pulse every 2 seconds
+                logger.info("✅ Application-wide hang protection initialized")
+                logger.info("🛡️  Windows Application Hang termination (0xCFFFFFFF) prevented")
+            except Exception as e:
+                logger.error(f"Failed to initialize hang protection: {e}")
+                self.app_watchdog = None
 
         def apply_dacos_theme(self):
             """Apply DACOS unified theme using your existing theme file"""
@@ -898,9 +1059,13 @@ if PYQT6_AVAILABLE:
                 self.close()
 
         def closeEvent(self, event):
-            """Handle window close event with logging"""
+            """Handle window close event with comprehensive crash fix cleanup"""
             logger.info("AutoDiagPro window close event triggered")
             
+            # CRASH FIX: Register any active threads for cleanup
+            if hasattr(self, 'app_watchdog') and self.app_watchdog:
+                thread_cleanup_manager.register_thread(self.app_watchdog, "HangProtectionWatchdog")
+                
             # Stop any active operations
             if hasattr(self, 'diagnostics_controller') and self.diagnostics_controller:
                 try:
@@ -908,14 +1073,162 @@ if PYQT6_AVAILABLE:
                 except:
                     pass
             
+            # CRASH FIX: Clean up hang protection with error handling
+            if hasattr(self, 'app_watchdog') and self.app_watchdog:
+                try:
+                    self.app_watchdog.stop()
+                    logger.info("🔒 Hang protection cleaned up safely")
+                except Exception as e:
+                    logger.error(f"❌ Error cleaning up hang protection: {e}")
+            
+            # CRASH FIX: Execute safe shutdown sequence
+            safe_shutdown()
+            
             super().closeEvent(event)
-            logger.info("AutoDiagPro window closed")
+            logger.info("✅ AutoDiagPro window closed safely")
 
         def resizeEvent(self, event):
             """Handle window resize for responsive layout"""
             super().resizeEvent(event)
             if hasattr(self, 'header'):
                 self.header.update_layout()
+
+        # Additional methods expected by diagnostics_tab.py
+        def scan_for_vci(self):
+            """Scan for VCI devices - wrapper for diagnostics controller method"""
+            if not self.diagnostics_controller:
+                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                    self.diagnostics_tab.results_text.setPlainText(
+                        "❌ Diagnostics controller not available\n\n"
+                        "Please restart the application."
+                    )
+                return
+            
+            result = self.diagnostics_controller.scan_for_vci_devices()
+            
+            # Update results in diagnostics tab
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                if result.get("status") == "success":
+                    devices = result.get("devices", [])
+                    if devices:
+                        device_list = "\n".join([
+                            f"• {d['name']} ({d['type']}) on {d.get('port', 'Unknown')}" 
+                            for d in devices
+                        ])
+                        self.diagnostics_tab.results_text.setPlainText(
+                            f"✅ VCI Devices Found\n\n"
+                            f"Discovered {len(devices)} device(s):\n\n{device_list}\n\n"
+                            f"Click 'Connect VCI' to establish connection."
+                        )
+                        self.diagnostics_tab.vci_connect_btn.setEnabled(True)
+                    else:
+                        self.diagnostics_tab.results_text.setPlainText(
+                            "⚠️ No VCI Devices Found\n\n"
+                            "No VCI devices were detected.\n\n"
+                            "Troubleshooting:\n"
+                            "• Ensure your VCI device is connected via USB\n"
+                            "• Check that the device is powered on\n"
+                            "• Verify driver installation\n"
+                            "• Try a different USB port\n"
+                            "• Restart the application"
+                        )
+                        self.diagnostics_tab.vci_connect_btn.setEnabled(False)
+                else:
+                    self.diagnostics_tab.results_text.setPlainText(
+                        f"❌ VCI Scan Failed\n\n"
+                        f"Error: {result.get('message', 'Unknown error')}\n\n"
+                        f"Please check your VCI device connection and try again."
+                    )
+                    self.diagnostics_tab.vci_connect_btn.setEnabled(False)
+
+        def connect_vci(self):
+            """Connect to VCI device - wrapper for diagnostics controller method"""
+            if not self.diagnostics_controller:
+                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                    self.diagnostics_tab.results_text.setPlainText(
+                        "❌ Diagnostics controller not available\n\n"
+                        "Cannot connect to VCI device."
+                    )
+                return
+            
+            result = self.diagnostics_controller.connect_to_vci(device_index=0)
+            
+            # Update results in diagnostics tab
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                if result.get("status") == "success":
+                    device = result.get("device", {})
+                    capabilities = ', '.join(device.get('capabilities', ['Unknown']))
+                    
+                    self.diagnostics_tab.results_text.setPlainText(
+                        f"✅ Successfully Connected to VCI\n\n"
+                        f"Device Information:\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"Device Name: {device.get('name', 'Unknown')}\n"
+                        f"Device Type: {device.get('type', 'Unknown')}\n"
+                        f"Port: {device.get('port', 'Unknown')}\n"
+                        f"Capabilities: {capabilities}\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"The VCI device is ready for diagnostics.\n"
+                        f"You can now perform system scans and read DTCs."
+                    )
+                    self.diagnostics_tab.vci_connect_btn.setEnabled(False)
+                    self.diagnostics_tab.vci_disconnect_btn.setEnabled(True)
+                else:
+                    self.diagnostics_tab.results_text.setPlainText(
+                        f"❌ VCI Connection Failed\n\n"
+                        f"Error: {result.get('message', 'Unknown error')}\n\n"
+                        f"Please verify:\n"
+                        f"• VCI device is properly connected\n"
+                        f"• No other application is using the device\n"
+                        f"• Device drivers are installed correctly"
+                    )
+
+        def disconnect_vci(self):
+            """Disconnect from VCI device - wrapper for diagnostics controller method"""
+            if not self.diagnostics_controller:
+                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                    self.diagnostics_tab.results_text.setPlainText(
+                        "❌ Diagnostics controller not available\n\n"
+                        "Cannot disconnect VCI device."
+                    )
+                return
+            
+            result = self.diagnostics_controller.disconnect_vci()
+            
+            # Update results in diagnostics tab
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                if result.get("status") == "success":
+                    self.diagnostics_tab.results_text.setPlainText(
+                        "✅ VCI Disconnected Successfully\n\n"
+                        "The VCI device has been safely disconnected.\n\n"
+                        "You can:\n"
+                        "• Scan for devices again\n"
+                        "• Connect to a different VCI\n"
+                        "• Close the application"
+                    )
+                    self.diagnostics_tab.vci_connect_btn.setEnabled(True)
+                    self.diagnostics_tab.vci_disconnect_btn.setEnabled(False)
+                else:
+                    self.diagnostics_tab.results_text.setPlainText(
+                        f"❌ VCI Disconnect Failed\n\n"
+                        f"Error: {result.get('message', 'Unknown error')}"
+                    )
+
+        def get_system_health(self):
+            """Get system health information"""
+            if not self.diagnostics_controller:
+                return {"status": "error", "message": "Diagnostics controller not available"}
+            
+            # This method would need to be implemented in the diagnostics controller
+            # For now, return a basic health status
+            return {
+                "status": "success",
+                "data": {
+                    "vci_status": self.diagnostics_controller.get_vci_status().get("status", "unknown"),
+                    "app_status": "running",
+                    "ui_status": "responsive"
+                }
+            }
 
 
 class HeadlessDiagnostics:

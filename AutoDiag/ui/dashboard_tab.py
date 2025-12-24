@@ -8,6 +8,7 @@ RELEASE VERSION - NO MOCK DATA
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QFrame, QLabel, QPushButton, QScrollArea
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
+from ai.dashboard_widgets import AIHealthMonitor, AIPredictionWidget, AIActivityIndicator, AIMaintenanceWidget
 
 class DashboardTab:
     def __init__(self, parent_window):

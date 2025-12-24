@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 J2534 PassThru Protocol Handler with OBD2 16-Pin Direct Connection
-Supports GoDiag GD101 and compatible J2534 devices for UDS/ISO 14229 diagnostics
-using the GODIAG_PT32.dll driver.
+Supports J2534 devices for UDS/ISO 14229 diagnostics
 """
 
 import logging
@@ -89,9 +88,6 @@ class J2534PassThru(ABC):
 
 # --- Real J2534 Implementation ---
 
-class GoDiagGD101PassThru(J2534PassThru):
-    """Real GoDiag GD101 J2534 PassThru using GODIAG_PT32.dll"""
-
     def __init__(self, **kwargs):
         self._is_open = False
         self.channels: Dict[int, J2534Protocol] = {}
@@ -139,13 +135,38 @@ class GoDiagGD101PassThru(J2534PassThru):
         if self._is_open:
             return True
         
-        status = self.dll_handle.PassThruOpen(None, byref(self.device_id))
-        if status == J2534Status.NOERROR.value:
-            self._is_open = True
-            logger.info(f"J2534 device opened successfully with DeviceID: {self.device_id.value}")
-            return True
-        else:
-            logger.error(f"Failed to open J2534 device. Status: {status}. Error: {self.get_last_error()}")
+        try:
+            # Add timeout protection for DLL operations
+            import threading
+            
+            def open_device():
+                return self.dll_handle.PassThruOpen(None, byref(self.device_id))
+            
+            # Use a thread with timeout to prevent hanging
+            result = [None]
+            def target():
+                result[0] = open_device()
+            
+            thread = threading.Thread(target=target)
+            thread.daemon = True
+            thread.start()
+            thread.join(timeout=5.0)  # 5 second timeout
+            
+            if thread.is_alive():
+                logger.error("J2534 device open operation timed out after 5 seconds")
+                return False
+            
+            status = result[0]
+            if status == J2534Status.NOERROR.value:
+                self._is_open = True
+                logger.info(f"J2534 device opened successfully with DeviceID: {self.device_id.value}")
+                return True
+            else:
+                logger.error(f"Failed to open J2534 device. Status: {status}. Error: {self.get_last_error()}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"J2534 device open failed with exception: {e}")
             return False
 
     def close(self) -> bool:
@@ -170,15 +191,38 @@ class GoDiagGD101PassThru(J2534PassThru):
             logger.error("Device not open. Cannot connect to protocol.")
             return -1
             
-        channel_id = c_ulong(0)
-        status = self.dll_handle.PassThruConnect(self.device_id, protocol.value, flags, baudrate, byref(channel_id))
-        
-        if status == J2534Status.NOERROR.value:
-            self.channels[channel_id.value] = protocol
-            logger.info(f"Connected to {protocol.name} on ChannelID: {channel_id.value}")
-            return channel_id.value
-        else:
-            logger.error(f"Failed to connect to {protocol.name}. Status: {status}. Error: {self.get_last_error()}")
+        try:
+            channel_id = c_ulong(0)
+            
+            # Add timeout protection for connect operation
+            def connect_device():
+                return self.dll_handle.PassThruConnect(self.device_id, protocol.value, flags, baudrate, byref(channel_id))
+            
+            import threading
+            result = [None]
+            def target():
+                result[0] = connect_device()
+            
+            thread = threading.Thread(target=target)
+            thread.daemon = True
+            thread.start()
+            thread.join(timeout=10.0)  # 10 second timeout for connection
+            
+            if thread.is_alive():
+                logger.error(f"J2534 connection to {protocol.name} timed out after 10 seconds")
+                return -1
+            
+            status = result[0]
+            if status == J2534Status.NOERROR.value:
+                self.channels[channel_id.value] = protocol
+                logger.info(f"Connected to {protocol.name} on ChannelID: {channel_id.value}")
+                return channel_id.value
+            else:
+                logger.error(f"Failed to connect to {protocol.name}. Status: {status}. Error: {self.get_last_error()}")
+                return -1
+                
+        except Exception as e:
+            logger.error(f"J2534 connection failed with exception: {e}")
             return -1
 
     def disconnect(self, channel_id: int) -> bool:
@@ -304,8 +348,8 @@ def get_passthru_device(mock_mode: bool = False, **kwargs) -> J2534PassThru:
         logger.info("Using Mock J2534 PassThru device.")
         return MockJ2534PassThru(**kwargs)
     else:
-        logger.info("Using real GoDiag GD101 J2534 PassThru device via DLL.")
-        return GoDiagGD101PassThru(**kwargs)
+        logger.info("Using real J2534 PassThru device via DLL.")
+        return J2534PassThru(**kwargs)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')

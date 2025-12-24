@@ -2,7 +2,6 @@
 """
 OBDLink MX+ Device Handler
 Bluetooth-based CAN bus sniffer for automotive diagnostics
-Compatible with GoDiag GD101 J2534 system
 """
 
 import logging
@@ -195,22 +194,44 @@ class OBDLinkMXPlus:
         ]
         self.mock_message_index = 0
     
-    def discover_devices(self) -> List[str]:
-        """Discover OBDLink MX+ devices via Bluetooth"""
+    def discover_devices(self, timeout: int = 6) -> List[str]:
+        """Discover OBDLink MX+ devices via Bluetooth with timeout protection"""
         if self.mock_mode:
             return ["OBDLink-MXPlus-001", "OBDLink-MXPlus-002"]
         
         try:
-            # For real implementation, would use bluetooth module
+            # Import required modules
             import bluetooth
-            devices = bluetooth.discover_devices(duration=8, lookup_names=True, flush_cache=True)
-            obdlink_devices = []
+            import threading
+            import time
+            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
             
-            for addr, name in devices:
-                if "OBD" in name.upper() or "OBDLink" in name.upper():
-                    obdlink_devices.append(f"{name} ({addr})")
+            # Use thread pool for timeout protection
+            def bluetooth_discovery():
+                try:
+                    # Use shorter duration to avoid hanging
+                    duration = min(timeout, 6)  # Max 6 seconds
+                    devices = bluetooth.discover_devices(duration=duration, lookup_names=True, flush_cache=True)
+                    obdlink_devices = []
+                    
+                    for addr, name in devices:
+                        if "OBD" in name.upper() or "OBDLink" in name.upper():
+                            obdlink_devices.append(f"{name} ({addr})")
+                    
+                    return obdlink_devices
+                except Exception as e:
+                    logger.debug(f"Bluetooth discovery error: {e}")
+                    return []
             
-            return obdlink_devices
+            # Run discovery with timeout
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(bluetooth_discovery)
+                try:
+                    return future.result(timeout=timeout)
+                except FutureTimeoutError:
+                    logger.warning(f"Bluetooth discovery timed out after {timeout}s")
+                    return []
+                    
         except ImportError:
             logger.warning("Bluetooth module not available - mock mode only")
             return []
@@ -262,20 +283,30 @@ class OBDLinkMXPlus:
             self.is_connected = True
             logger.info(f"[MOCK] Connected to {port}")
             return True
-        
+
+        logger.info(f"Attempting to connect to OBDLink MX+ on {port} at {baudrate} baud")
         try:
             import serial
-            
+
             self.serial_port = serial.Serial(port, baudrate, timeout=2)
-            
+            logger.info(f"Serial port {port} opened successfully")
+
             # Initialize device
-            return self._initialize_device()
-            
+            init_success = self._initialize_device()
+            if init_success:
+                logger.info(f"Successfully connected and initialized OBDLink MX+ on {port}")
+                self.is_connected = True
+            else:
+                logger.error(f"Device initialization failed on {port}")
+                self.serial_port.close()
+                self.serial_port = None
+            return init_success
+
         except ImportError:
             logger.error("pyserial module not available")
             return False
         except Exception as e:
-            logger.error(f"Serial connection failed: {e}")
+            logger.error(f"Serial connection failed on {port}: {e}")
             return False
     
     def _initialize_device(self) -> bool:
@@ -283,29 +314,36 @@ class OBDLinkMXPlus:
         if self.mock_mode:
             logger.info("[MOCK] Device initialized")
             return True
-        
+
+        logger.info("Starting OBDLink MX+ device initialization")
         try:
             # Send initialization commands
             commands = [
-                b'ATZ\r\n',    # Reset
-                b'ATE0\r\n',   # Disable echo
-                b'ATL0\r\n',   # Linefeeds off
-                b'ATH1\r\n',   # Headers on
+                (b'ATZ\r\n', 'Reset device'),
+                (b'ATE0\r\n', 'Disable echo'),
+                (b'ATL0\r\n', 'Linefeeds off'),
+                (b'ATH1\r\n', 'Headers on'),
             ]
-            
-            for cmd in commands:
-                self._send_command(cmd)
+
+            for cmd, desc in commands:
+                logger.debug(f"Sending command: {cmd.decode().strip()} ({desc})")
+                success = self._send_command(cmd)
+                if not success:
+                    logger.error(f"Failed to send command: {cmd.decode().strip()}")
+                    return False
                 time.sleep(0.5)
-            
+
             # Check device response
+            logger.debug("Reading initialization response")
             response = self._read_response()
+            logger.info(f"Device response: {response.strip()}")
             if 'ELM327' in response.upper() or 'OBDLINK' in response.upper():
                 logger.info("OBDLink MX+ initialized successfully")
                 return True
             else:
-                logger.warning("Device initialization response unclear")
+                logger.warning(f"Device initialization response unclear: '{response.strip()}'")
                 return True  # Continue anyway
-                
+
         except Exception as e:
             logger.error(f"Device initialization failed: {e}")
             return False
@@ -577,16 +615,24 @@ class OBDLinkMXPlus:
             if self.serial_port:
                 start_time = time.time()
                 response = ""
+                logger.debug(f"Reading response with timeout {timeout}s")
                 while (time.time() - start_time) < timeout:
                     if self.serial_port.in_waiting:
                         data = self.serial_port.readline().decode(errors='ignore')
+                        logger.debug(f"Read data: '{data.strip()}'")
                         response += data
                         if '>' in data:  # Prompt indicates end of response
+                            logger.debug("End of response detected (prompt '>' found)")
                             break
+                    else:
+                        time.sleep(0.01)  # Small delay to avoid busy waiting
+                logger.debug(f"Final response: '{response.strip()}'")
                 return response
             elif self.rfcomm_socket:
                 # For Bluetooth, would need to implement proper read logic
+                logger.warning("Bluetooth response reading not implemented")
                 return ""
+            logger.warning("No active connection for reading response")
             return ""
         except Exception as e:
             logger.error(f"Failed to read response: {e}")

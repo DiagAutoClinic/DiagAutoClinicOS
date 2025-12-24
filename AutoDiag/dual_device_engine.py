@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Dual Device Diagnostic Engine
-Coordinates GoDiag GD101 (J2534) with OBDLink MX+ (CAN Sniffer) for enhanced diagnostics
+Coordinates OBDLink MX+ (CAN Sniffer) for enhanced diagnostics
 """
 
 import logging
@@ -17,7 +17,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from shared.j2534_passthru import J2534PassThru, MockJ2534PassThru, GoDiagGD101PassThru, J2534Protocol
+from shared.j2534_passthru import J2534PassThru, MockJ2534PassThru, J2534Protocol
 from shared.obdlink_mxplus import OBDLinkMXPlus, CANMessage, OBDLinkProtocol
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class DeviceRole(Enum):
     """Device roles in dual-device setup"""
-    PRIMARY_DIAGNOSTIC = "primary_diagnostic"  # GoDiag GD101
+    PRIMARY_DIAGNOSTIC = "primary_diagnostic"  # OBDLink MX+
     SECONDARY_SNIFFER = "secondary_sniffer"    # OBDLink MX+
 
 
@@ -34,7 +34,7 @@ class DiagnosticMode(Enum):
     SYNCHRONIZED = "synchronized"    # Both devices work together
     INDEPENDENT = "independent"      # Devices work separately
     MONITOR_ONLY = "monitor_only"    # OBDLink MX+ only monitoring
-    DIAGNOSTIC_ONLY = "diagnostic_only"  # GD101 only diagnostics
+    DIAGNOSTIC_ONLY = "diagnostic_only"  # OBDLink MX+ only diagnostics
 
 
 @dataclass
@@ -61,7 +61,7 @@ class DualDeviceSession:
 
 
 class DualDeviceEngine:
-    """Engine for coordinating GoDiag GD101 + OBDLink MX+ operations"""
+    """Engine for coordinating OBDLink MX+ operations"""
     
     def __init__(self, mock_mode: bool = True):
         self.mock_mode = mock_mode
@@ -81,29 +81,30 @@ class DualDeviceEngine:
         logger.info(f"DualDeviceEngine initialized (mock_mode={mock_mode})")
     
     def create_session(self, 
-                      primary_device_name: str = "GoDiag GD101",
+                      primary_device_name: str = "OBDLink MX+",
                       secondary_device_name: str = "OBDLink MX+",
                       mode: DiagnosticMode = DiagnosticMode.SYNCHRONIZED) -> bool:
         """Create a dual-device session"""
         try:
-            # Create primary device (GoDiag GD101 J2534)
-            if primary_device_name in ["GoDiag GD101", "GoDiag GT100 PLUS GPT"]:
+            # Create primary device (OBDLink MX+)
+            if primary_device_name in ["OBDLink MX+"]:
                 if self.mock_mode:
                     primary_device = None  # Hardware required
                 else:
-                    # Try multiple possible ports for GoDiag GT100
+                    # Try multiple possible ports for OBDLink MX+
                     primary_device = None
                     for port in ["COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7"]:
                         try:
-                            primary_device = GoDiagGD101PassThru(port=port, baudrate=115200)
-                            logger.info(f"Successfully connected GoDiag GT100 on {port}")
+                            from shared.obdlink_mxplus import OBDLinkMXPlus
+                            primary_device = OBDLinkMXPlus(port=port, baudrate=38400)
+                            logger.info(f"Successfully connected OBDLink MX+ on {port}")
                             break
                         except Exception as e:
                             logger.debug(f"Failed to connect on {port}: {e}")
                             continue
                     
                     if primary_device is None:
-                        logger.error("Failed to connect GoDiag GT100 on any available port")
+                        logger.error("Failed to connect OBDLink MX+ on any available port")
                         return False
             else:
                 logger.error(f"Unknown primary device: {primary_device_name}")
@@ -136,8 +137,8 @@ class DualDeviceEngine:
             return False
         
         try:
-            # Connect primary device (GoDiag GD101)
-            logger.info("Connecting primary device (GoDiag GD101)...")
+            # Connect primary device (OBDLink MX+)
+            logger.info("Connecting primary device (OBDLink MX+)...")
             primary_success = self._connect_primary_device()
             if not primary_success:
                 logger.warning("Primary device connection failed, but continuing...")
@@ -181,7 +182,7 @@ class DualDeviceEngine:
         return primary_connected or secondary_connected
     
     def _connect_primary_device(self) -> bool:
-        """Connect primary device (GoDiag GD101)"""
+        """Connect primary device (OBDLink MX+)"""
         try:
             if not self.session.primary_device.open():
                 logger.error("Failed to open primary device")
@@ -197,7 +198,7 @@ class DualDeviceEngine:
                     logger.error("Failed to connect to CAN/ISO15765 protocol")
                     return False
             
-            logger.info("Primary device (GD101) connected to CAN/ISO15765")
+            logger.info("Primary device (OBDLink MX+) connected to CAN/ISO15765")
             return True
             
         except Exception as e:
@@ -412,7 +413,7 @@ class DualDeviceEngine:
     def _read_vin_with_monitoring(self) -> Dict:
         """Read VIN with CAN monitoring"""
         try:
-            # Send VIN request via GD101
+            # Send VIN request via OBDLink MX+
             vin_request = b'\x22\xF1\x90'  # UDS ReadDataByIdentifier for VIN
             vin_response = self._send_uds_request(vin_request)
             
@@ -442,7 +443,7 @@ class DualDeviceEngine:
     def _scan_dtcs_with_monitoring(self) -> Dict:
         """Scan DTCs with CAN monitoring"""
         try:
-            # Send DTC scan request via GD101
+            # Send DTC scan request via OBDLink MX+
             dtc_request = b'\x19\x01\xFF'  # UDS ReadDTCInformation
             dtc_response = self._send_uds_request(dtc_request)
             
@@ -472,7 +473,7 @@ class DualDeviceEngine:
     def _clear_dtcs_with_monitoring(self) -> Dict:
         """Clear DTCs with CAN monitoring"""
         try:
-            # Send DTC clear request via GD101
+            # Send DTC clear request via OBDLink MX+
             clear_request = b'\x14\xFF\xFF\xFF'  # UDS ClearDiagnosticInformation
             clear_response = self._send_uds_request(clear_request)
             
@@ -494,7 +495,7 @@ class DualDeviceEngine:
     def _read_ecu_info_with_monitoring(self) -> Dict:
         """Read ECU information with CAN monitoring"""
         try:
-            # Send ECU identification request via GD101
+            # Send ECU identification request via OBDLink MX+
             ecu_request = b'\x22\x1A\x80'  # UDS ReadDataByIdentifier for ECU identification
             ecu_response = self._send_uds_request(ecu_request)
             
@@ -520,7 +521,7 @@ class DualDeviceEngine:
             }
     
     def _send_uds_request(self, request_data: bytes):
-        """Send UDS request via primary device (GD101)"""
+        """Send UDS request via primary device (OBDLink MX+)"""
         try:
             # This would connect to the UDS channel and send the request
             # For now, return a mock response
@@ -539,7 +540,7 @@ class DualDeviceEngine:
                 
                 return mock_response
             
-            # Real implementation would send via GD101
+            # Real implementation would send via OBDLink MX+
             return None
             
         except Exception as e:

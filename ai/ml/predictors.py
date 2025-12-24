@@ -83,17 +83,28 @@ class MLPredictor:
 
     def _extract_features(self, live_data: Dict[str, Any]) -> Optional[np.ndarray]:
         """Extract features from live data for ML prediction."""
-        # This is a placeholder - would need to match the training feature extraction
+        # Match the feature extraction from train_charlemaine_final.py
         try:
             params = live_data.get("live_parameters", {})
-            rpm = params.get("engine_rpm", {}).get("value", 0)
-            coolant = params.get("coolant_temp", {}).get("value", 90)
-            voltage = params.get("battery_voltage", {}).get("value", 14.0)
-            throttle = params.get("throttle_position", {}).get("value", 0)
+            dtcs = live_data.get("dtc_codes", [])
+            vehicle_context = live_data.get("vehicle_context", {})
+            year = vehicle_context.get("year", 2010)
 
-            # Simple feature vector - would need to match training preprocessing
-            features = np.array([rpm, coolant, voltage, throttle])
-            return features
+            features = [
+                params.get("engine_rpm", {}).get("value", 0) / 8000.0,
+                params.get("coolant_temp", {}).get("value", 90) / 150.0,
+                params.get("battery_voltage", {}).get("value", 14.0) / 16.0,
+                params.get("throttle_position", {}).get("value", 0) / 100.0,
+                len(dtcs),  # DTC count
+                (year - 2000) / 30.0  # Normalized year
+            ]
+
+            # Convert to numpy array and apply preprocessor scaling
+            features_array = np.array(features, dtype=np.float32)
+            if self.loader.get_preprocessor():
+                features_array = self.loader.get_preprocessor().transform([features_array])[0]
+
+            return features_array
         except Exception as e:
             logger.warning(f"Feature extraction failed: {e}")
             return None

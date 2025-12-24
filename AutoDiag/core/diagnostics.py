@@ -21,7 +21,7 @@ try:
 except ImportError:
     CAN_PARSER_AVAILABLE = False
     logger.error("CAN bus parser not available - hardware required for vehicle database access")
-    raise RuntimeError("CAN parser required for vehicle database access")
+    # Don't raise - allow application to continue with limited functionality
 
 # Import VCI manager
 try:
@@ -72,7 +72,9 @@ class DiagnosticsController(QObject):
 
         # Initialize callbacks
         self._setup_callbacks()
-        self._load_available_vehicles()
+        # DEFERRED: Don't load vehicles during initialization to prevent startup hang
+        self._vehicles_loaded = False
+        self._load_available_vehicles_later()
 
         # Current voltage reading
         self.current_voltage = 12.6  # Default voltage
@@ -103,16 +105,28 @@ class DiagnosticsController(QObject):
             if key not in self.ui_callbacks:
                 self.ui_callbacks[key] = default_func
 
+    def _load_available_vehicles_later(self):
+        """Load list of available vehicles from REF files - deferred to prevent startup hang"""
+        # Use QTimer to defer loading until after UI is initialized
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(100, self._load_available_vehicles)
+    
     def _load_available_vehicles(self):
         """Load list of available vehicles from REF files"""
-        if CAN_PARSER_AVAILABLE:
-            self.available_vehicles = list_all_vehicles()
-            logger.info(f"Loaded {len(self.available_vehicles)} vehicles from REF files")
-        else:
-            # No fallback - hardware required for vehicle database
+        try:
+            if CAN_PARSER_AVAILABLE:
+                self.available_vehicles = list_all_vehicles()
+                logger.info(f"Loaded {len(self.available_vehicles)} vehicles from REF files")
+                self._vehicles_loaded = True
+            else:
+                # No fallback - hardware required for vehicle database
+                self.available_vehicles = []
+                logger.error("CAN parser not available - vehicle database cannot be loaded")
+                self._vehicles_loaded = False
+        except Exception as e:
+            logger.error(f"Error loading available vehicles: {e}")
             self.available_vehicles = []
-            logger.error("CAN parser not available - vehicle database cannot be loaded")
-            raise RuntimeError("CAN parser required for vehicle database access")
+            self._vehicles_loaded = False
 
     def load_vehicle_database(self, manufacturer: str, model: str = "") -> bool:
         """Load CAN database for specific vehicle"""
@@ -130,10 +144,14 @@ class DiagnosticsController(QObject):
 
     def get_available_manufacturers(self) -> List[str]:
         """Get list of available manufacturers"""
+        if not self._vehicles_loaded:
+            self._load_available_vehicles()
         return sorted(set(v[0] for v in self.available_vehicles))
 
     def get_models_for_manufacturer(self, manufacturer: str) -> List[str]:
         """Get models available for a manufacturer"""
+        if not self._vehicles_loaded:
+            self._load_available_vehicles()
         return sorted([v[1] for v in self.available_vehicles if v[0] == manufacturer])
     
     def read_dtcs(self, brand: Optional[str] = None) -> Dict[str, Any]:
@@ -737,15 +755,39 @@ class DiagnosticsController(QObject):
             logger.error(f"Error handling VCI status change: {e}")
 
     def scan_for_vci_devices(self) -> Dict[str, Any]:
-        """Scan for available VCI devices"""
+        """Scan for available VCI devices with timeout protection"""
         if not self.vci_manager:
             return {"status": "error", "message": "VCI manager not available"}
 
         try:
             self._update_status("🔍 Scanning for VCI devices...")
 
-            # Perform device scan
-            devices = self.vci_manager.scan_for_devices(timeout=10)
+            # Start async scan (returns True if scan started successfully)
+            scan_started = self.vci_manager.scan_for_devices(timeout=15)  # 15 second timeout
+
+            if scan_started:
+                # Scan started successfully - return success status
+                # The actual devices will be available via the devices_found signal
+                self._update_status("🔍 VCI scan started (checking devices...)")
+                return {"status": "success", "message": "VCI scan started", "scan_started": True}
+            else:
+                # Scan already in progress or failed to start
+                self._update_status("❌ VCI scan failed to start")
+                return {"status": "error", "message": "Scan already in progress or failed to start"}
+
+        except Exception as e:
+            logger.error(f"VCI scan failed: {e}")
+            self._update_status("❌ VCI scan failed")
+            return {"status": "error", "message": str(e)}
+
+    def get_scan_results(self) -> Dict[str, Any]:
+        """Get the results of the most recent VCI scan"""
+        if not self.vci_manager:
+            return {"status": "error", "message": "VCI manager not available"}
+
+        try:
+            # Get available devices from the VCI manager
+            devices = self.vci_manager.available_devices
 
             device_info = []
             for device in devices:
@@ -759,17 +801,14 @@ class DiagnosticsController(QObject):
             result = {
                 "status": "success",
                 "devices_found": len(devices),
-                "devices": device_info
+                "devices": device_info,
+                "scan_in_progress": self.vci_manager.is_scanning
             }
-
-            self._update_status(f"✅ Found {len(devices)} VCI device(s)")
-            logger.info(f"VCI scan completed: {len(devices)} devices found")
 
             return result
 
         except Exception as e:
-            logger.error(f"VCI scan failed: {e}")
-            self._update_status("❌ VCI scan failed")
+            logger.error(f"Failed to get scan results: {e}")
             return {"status": "error", "message": str(e)}
 
     def connect_to_vci(self, device_index: int = 0) -> Dict[str, Any]:
@@ -778,8 +817,8 @@ class DiagnosticsController(QObject):
             return {"status": "error", "message": "VCI manager not available"}
 
         try:
-            # Get available devices
-            devices = self.vci_manager.scan_for_devices(timeout=5)
+            # Get available devices from the VCI manager
+            devices = self.vci_manager.available_devices
 
             if not devices:
                 return {"status": "error", "message": "No VCI devices found"}
@@ -1153,12 +1192,12 @@ class DiagnosticsController(QObject):
             # Try to auto-scan and connect to first available device
             devices = self.vci_manager.scan_for_devices(timeout=5)
             if devices:
-                if self.vci_manager.connect_to_device(devices[0]):
-                    logger.info(f"Auto-connected to {devices[0].name}")
-                    return True
-                else:
-                    logger.error(f"Failed to auto-connect to {devices[0].name}")
-                    return False
+                for device in devices:
+                    if self.vci_manager.connect_to_device(device):
+                        logger.info(f"Auto-connected to {device.name}")
+                        return True
+                logger.error("Failed to auto-connect to any VCI device")
+                return False
             else:
                 logger.error("No VCI devices found - hardware required for all operations")
                 return False

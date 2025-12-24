@@ -40,6 +40,27 @@ class Charlemaine:
         if result.get('next_test'):
             print(f"   - Next Recommended Test: {result['next_test']} (Cost: {result['next_test_cost']})")
 
+        # Phase 9: Print explanations and failure modes
+        if result.get('explanations'):
+            print(f"\n   Reasoning Explanation:")
+            explanations = result['explanations']
+            if explanations.get('top_beliefs'):
+                beliefs_str = ', '.join([f"{b['hypothesis']} ({b['probability']:.1%})" for b in explanations['top_beliefs']])
+                print(f"     Top Hypotheses: {beliefs_str}")
+            if explanations.get('test_reasoning'):
+                tr = explanations['test_reasoning']
+                print(f"     Test Selection: {tr['test']} (gain: {tr['expected_information_gain']:.3f}, reliability: {tr['reliability_score']:.3f})")
+            if explanations.get('uncertainty_metrics'):
+                um = explanations['uncertainty_metrics']
+                print(f"     Uncertainty: entropy {um['entropy']:.3f}, max prob {um['max_probability']:.1%}")
+
+        if result.get('failure_modes'):
+            failure_modes = result['failure_modes']
+            if failure_modes:
+                print(f"\n   WARNING: System Limitations:")
+                for mode in failure_modes:
+                    print(f"     - {mode}")
+
         print("=" * 60)
         return result
 
