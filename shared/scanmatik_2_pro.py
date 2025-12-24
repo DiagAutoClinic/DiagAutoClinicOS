@@ -13,6 +13,7 @@ import re
 from typing import List, Dict, Optional, Tuple, Callable
 from dataclasses import dataclass
 from enum import Enum
+import serial.tools.list_ports
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +170,31 @@ class ScanMatik2Pro:
         
         # Auto-detect real hardware if not in mock mode
         if not mock_mode:
-            self.detect_devices()
+            detected_dicts = self.detect_devices()
+            # Convert dictionaries back to ScanMatikDeviceInfo objects for internal use
+            self.detected_devices = []
+            for device_dict in detected_dicts:
+                device_info = ScanMatikDeviceInfo(
+                    device_type=ScanMatikDeviceType.SCANMATIK_2_PRO,
+                    port=device_dict["port"],
+                    name=f"ScanMatik 2 Pro ({device_dict['port']})",
+                    description=device_dict["description"],
+                    firmware_version="Unknown",
+                    features=[
+                        ScanMatikFeature.BASIC_OBD,
+                        ScanMatikFeature.ENHANCED_OBD,
+                        ScanMatikFeature.DTC_CODES,
+                        ScanMatikFeature.LIVE_DATA,
+                        ScanMatikFeature.BIDIRECTIONAL,
+                        ScanMatikFeature.PROGRAMMING,
+                        ScanMatikFeature.SECURITY_ACCESS,
+                        ScanMatikFeature.UDS_COMMANDS,
+                        ScanMatikFeature.CAN_SNIFFING,
+                        ScanMatikFeature.ADVANCED_DIAGNOSTICS
+                    ],
+                    is_real_hardware=True
+                )
+                self.detected_devices.append(device_info)
     
     def _setup_mock_devices(self):
         """Setup mock ScanMatik devices for testing"""
@@ -203,13 +228,66 @@ class ScanMatik2Pro:
         self.detected_devices.append(mock_device)
         logger.info(f"Mock device setup complete: {mock_device.name}")
     
-    def detect_devices(self) -> List[ScanMatikDeviceInfo]:
-        """Detect ScanMatik 2 Pro devices on available ports"""
-        logger.info("Starting ScanMatik 2 Pro device detection...")
-        
-        if self.mock_mode:
-            return self.detected_devices
-        
+    def detect_devices(self) -> List[Dict[str, str]]:
+        """Elite detection for ScanMatik 2 Pro + GRD dongle – finds any COM port"""
+        devices = []
+        try:
+            ports = serial.tools.list_ports.comports()
+            logger.info(f"Found {len(ports)} total COM ports on system")
+            
+            for port in ports:
+                # Show all ports for debug
+                logger.debug(f"Port: {port.device} | Desc: {port.description} | HwID: {port.hwid}")
+                
+                # Match ScanMatik 2 Pro (FTDI chip) or GRD dongle
+                if (port.vid == 0x0403 and port.pid in [0x6001, 0x6010, 0x6011, 0x6014, 0x6015]) \
+                   or "FTDI" in (port.description or "") \
+                   or "ScanMatik" in (port.description or "") \
+                   or "GRD" in (port.description or ""):
+                    
+                    devices.append({
+                        "port": port.device,
+                        "description": port.description,
+                        "type": "ScanMatik 2 Pro",
+                        "vid_pid": f"{port.vid:04X}:{port.pid:04X}" if port.vid else "Unknown"
+                    })
+                    logger.info(f"✓ ScanMatik 2 Pro detected on {port.device} ({port.description})")
+                    
+        except Exception as e:
+            logger.error(f"Error scanning ports: {e}")
+
+        # If nothing found, show all ports so you can pick manually
+        if not devices:
+            logger.warning("No automatic match – listing all ports for manual selection")
+            for port in serial.tools.list_ports.comports():
+                devices.append({
+                    "port": port.device,
+                    "description": f"{port.description} (manual check)",
+                    "type": "Unknown USB-Serial"
+                })
+
+        # Store devices internally for compatibility
+        self.detected_devices = []
+        for device_dict in devices:
+            device_info = ScanMatikDeviceInfo(
+                device_type=ScanMatikDeviceType.SCANMATIK_2_PRO if device_dict["type"] == "ScanMatik 2 Pro" else ScanMatikDeviceType.UNKNOWN,
+                port=device_dict["port"],
+                name=f"{device_dict['type']} ({device_dict['port']})",
+                description=device_dict["description"],
+                firmware_version="Unknown",
+                features=[
+                    ScanMatikFeature.BASIC_OBD,
+                    ScanMatikFeature.DTC_CODES,
+                    ScanMatikFeature.LIVE_DATA
+                ],
+                is_real_hardware=True
+            )
+            self.detected_devices.append(device_info)
+
+        return devices
+    
+    def _detect_serial_devices(self) -> List[ScanMatikDeviceInfo]:
+        """Internal method for serial device detection (called in thread)"""
         # Common ports for diagnostic devices
         possible_ports = [
             'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
@@ -228,36 +306,55 @@ class ScanMatik2Pro:
         logger.info(f"ScanMatik detection complete. Found {len(self.detected_devices)} device(s)")
         return self.detected_devices
     
-    def _probe_port_for_scanmatik(self, port: str) -> Optional[ScanMatikDeviceInfo]:
-        """Probe a specific port for ScanMatik device"""
+    def _probe_port_for_scanmatik(self, port: str, timeout: float = 2.0) -> Optional[ScanMatikDeviceInfo]:
+        """Probe a specific port for ScanMatik device with timeout protection"""
         if self.mock_mode:
             return self.detected_devices[0] if self.detected_devices else None
+        
+        try:
+            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
             
+            # Use thread pool for timeout protection
+            def port_probe():
+                return self._safe_probe_port(port)
+            
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(port_probe)
+                try:
+                    return future.result(timeout=timeout)
+                except FutureTimeoutError:
+                    logger.debug(f"Port probing timed out for {port}")
+                    return None
+                    
+        except Exception as e:
+            logger.debug(f"Error probing port {port}: {e}")
+        
+        return None
+    
+    def _safe_probe_port(self, port: str) -> Optional[ScanMatikDeviceInfo]:
+        """Safe port probing (called in thread)"""
         try:
             ser = serial.Serial(
                 port=port,
                 baudrate=38400,
-                timeout=1.0,
+                timeout=0.5,  # Reduced timeout for faster probing
                 bytesize=serial.EIGHTBITS,
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE
             )
             
-            # Send device identification commands
+            # Send device identification commands with shorter delays
             ser.write(b'ATZ\r\n')  # Reset
-            time.sleep(0.5)
-            response = ser.read(1024).decode('utf-8', errors='ignore').strip()
+            time.sleep(0.2)  # Reduced from 0.5
+            response = ser.read(512).decode('utf-8', errors='ignore').strip()
             
             ser.write(b'ATI\r\n')  # Version info
-            time.sleep(0.3)
-            version_response = ser.read(1024).decode('utf-8', errors='ignore').strip()
+            time.sleep(0.1)  # Reduced from 0.3
+            version_response = ser.read(512).decode('utf-8', errors='ignore').strip()
             
             ser.write(b'AT@1\r\n')  # Device description
-            time.sleep(0.3)
-            desc_response = ser.read(1024).decode('utf-8', errors='ignore').strip()
-            
-            ser.write(b'ATE0\r\n')  # Disable echo for cleaner responses
-            time.sleep(0.2)
+            time.sleep(0.1)  # Reduced from 0.3
+            desc_response = ser.read(512).decode('utf-8', errors='ignore').strip()
             
             ser.close()
             

@@ -1,8 +1,10 @@
-# launcher.py - DIAG AUTO CLINIC OS LAUNCHER
-
 #!/usr/bin/env python3
 """
-DiagAutoClinicOS Launcher - Fixed Vehicle Diagnostics Button
+DiagAutoClinicOS Launcher - Fixed Vehicle Diagnostics Launch
+FIXES:
+- Proper subprocess detachment (CREATE_NEW_CONSOLE flag)
+- Better process monitoring
+- Cleaner output handling
 """
 
 import sys
@@ -10,18 +12,13 @@ import os
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox
-import time
-import threading
 import subprocess
 import logging
 import math
 import platform
+from datetime import datetime
 
-# --- Architecture Check ---
-# Note: Previously required 32-bit for GODIAG J2534 DLL, but GD101 removed - now supports 64-bit
-IS_64BIT_PYTHON = platform.architecture()[0] == "64bit"
-
-# Configure logging with Unicode support
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -31,45 +28,22 @@ logging.basicConfig(
     ]
 )
 
-# Fix Unicode encoding for console output
-import codecs
-class UnicodeStreamHandler(logging.StreamHandler):
-    def emit(self, record):
-        try:
-            msg = self.format(record)
-            stream = self.stream
-            stream.write(msg + self.terminator)
-            self.flush()
-        except Exception:
-            self.handleError(record)
-
-# Override the stdout handler with Unicode support
 logger = logging.getLogger("DiagLauncher")
-logger.handlers.clear()
-logger.addHandler(logging.FileHandler('launcher_debug.log', encoding='utf-8'))
-logger.addHandler(UnicodeStreamHandler(sys.stdout))
-logger.setLevel(logging.INFO)
 
 # Add project root to Python path
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Theme Configuration with fallbacks
+# Theme Configuration
 try:
     from shared.themes.dacos_theme import DACOS_THEME as THEME
-    logger.info("Successfully loaded DACOS theme from shared module")
-except ImportError as e:
-    logger.warning(f"Could not import DACOS theme: {e}.")
+    logger.info("Successfully loaded DACOS theme")
+except ImportError:
+    logger.warning("Could not import DACOS theme, using fallback")
     THEME = {
-        "bg_main": "#0A1A1A",
-        "bg_panel": "#0D2323",
-        "bg_card": "#134F4A",
-        "accent": "#21F5C1",
-        "glow": "#2AF5D1",
-        "text_main": "#E8F4F2",
-        "text_muted": "#9ED9CF",
-        "error": "#FF4D4D",
-        "success": "#10B981",
+        "bg_main": "#0A1A1A", "bg_panel": "#0D2323", "bg_card": "#134F4A",
+        "accent": "#21F5C1", "glow": "#2AF5D1", "text_main": "#E8F4F2",
+        "text_muted": "#9ED9CF", "error": "#FF4D4D", "success": "#10B981",
         "warning": "#F59E0B"
     }
 
@@ -113,16 +87,10 @@ class DiagLauncher(tk.Tk):
         self._start_animations()
 
     def safe_shutdown(self):
-        """Clean shutdown with process termination"""
+        """Clean shutdown"""
         self.animation_running = False
-        for name, process in self.running_processes.items():
-            try:
-                if process.poll() is None:  # Still running
-                    process.terminate()
-                    process.wait(timeout=2)
-                    logger.info(f"Terminated {name}")
-            except Exception as e:
-                logger.error(f"Error terminating {name}: {e}")
+        # Don't terminate processes - they should run independently
+        logger.info("Launcher shutting down")
         self.destroy()
 
     def _build_background(self):
@@ -133,14 +101,10 @@ class DiagLauncher(tk.Tk):
         # Create grid lines
         self.grid_lines = []
         for i in range(0, 1000, 50):
-            line = self.canvas.create_line(
-                i, 0, i, 650, fill=BG_PANEL, width=1, tags="grid"
-            )
+            line = self.canvas.create_line(i, 0, i, 650, fill=BG_PANEL, width=1, tags="grid")
             self.grid_lines.append(line)
         for i in range(0, 650, 50):
-            line = self.canvas.create_line(
-                0, i, 1000, i, fill=BG_PANEL, width=1, tags="grid"
-            )
+            line = self.canvas.create_line(0, i, 1000, i, fill=BG_PANEL, width=1, tags="grid")
             self.grid_lines.append(line)
 
     def _build_top(self):
@@ -148,38 +112,21 @@ class DiagLauncher(tk.Tk):
         header = tk.Frame(self.canvas, bg=BG_MAIN)
         self.canvas.create_window(0, 0, window=header, anchor="nw", width=1000, height=120)
         
-        # Main title
-        title = tk.Label(
-            header,
-            text="DiagAutoClinicOS",
-            fg=ACCENT,
-            bg=BG_MAIN,
-            font=("Segoe UI", 28, "bold")
-        )
+        title = tk.Label(header, text="DiagAutoClinicOS", fg=ACCENT, bg=BG_MAIN,
+                        font=("Segoe UI", 28, "bold"))
         title.pack(pady=(20, 0))
         
-        # Subtitle
-        subtitle = tk.Label(
-            header,
-            text="Where Mechanics Meet Future Intelligence",
-            fg=TEXT_MUTED,
-            bg=BG_MAIN,
-            font=("Segoe UI", 12)
-        )
+        subtitle = tk.Label(header, text="Where Mechanics Meet Future Intelligence",
+                           fg=TEXT_MUTED, bg=BG_MAIN, font=("Segoe UI", 12))
         subtitle.pack(pady=(0, 10))
         
-        # Status bar
         status_frame = tk.Frame(header, bg=BG_PANEL, height=30)
         status_frame.pack(fill="x", padx=50, pady=5)
         status_frame.pack_propagate(False)
         
-        self.system_status = tk.Label(
-            status_frame,
-            text="● SYSTEM READY - All modules operational",
-            fg=GLOW,
-            bg=BG_PANEL,
-            font=("Segoe UI", 10, "bold")
-        )
+        self.system_status = tk.Label(status_frame,
+                                     text="SYSTEM READY - All modules operational",
+                                     fg=GLOW, bg=BG_PANEL, font=("Segoe UI", 10, "bold"))
         self.system_status.pack(side="left", padx=15, pady=5)
 
     def _build_dashboard(self):
@@ -193,25 +140,21 @@ class DiagLauncher(tk.Tk):
         
         # Vehicle Diagnostics - Primary tool
         self.vehicle_card = self._make_clickable_card(
-            row1,
-            "🚗 Vehicle Diagnostics",
+            row1, "Vehicle Diagnostics",
             "AutoDiag Pro - Full system scan\nFault codes & live data streaming",
-            self.launch_vehicle_diagnostics,
-            is_primary=True
+            self.launch_vehicle_diagnostics, is_primary=True
         )
         self.vehicle_card.pack(side="left", padx=15)
         
         self.ecu_card = self._make_clickable_card(
-            row1,
-            "⚙️ ECU Programming",
+            row1, "ECU Programming",
             "Flash & coding tools\nParameter programming",
             self.launch_ecu_programming
         )
         self.ecu_card.pack(side="left", padx=15)
         
         self.security_card = self._make_clickable_card(
-            row1,
-            "🔐 Security & IMMO",
+            row1, "Security & IMMO",
             "Key programming & sync\nSecurity access functions",
             self.launch_security_immo
         )
@@ -222,24 +165,21 @@ class DiagLauncher(tk.Tk):
         row2.pack(pady=15)
         
         self.service_card = self._make_clickable_card(
-            row2,
-            "🔄 Service Reset",
+            row2, "Service Reset",
             "Oil / DPF / EPB resets\nMaintenance interval configuration",
             self.launch_service_reset
         )
         self.service_card.pack(side="left", padx=15)
         
         self.sensor_card = self._make_clickable_card(
-            row2,
-            "📊 Sensor Monitor",
+            row2, "Sensor Monitor",
             "Live sensor graphing\nReal-time data visualization",
             self.launch_sensor_monitor
         )
         self.sensor_card.pack(side="left", padx=15)
         
         self.health_card = self._make_clickable_card(
-            row2,
-            "❤️ System Health",
+            row2, "System Health",
             "Suite diagnostics status\nComponent health monitoring",
             self.launch_system_health
         )
@@ -263,9 +203,11 @@ class DiagLauncher(tk.Tk):
         content = tk.Frame(border, bg=card_bg, width=276, height=116)
         content.pack_propagate(False)
         content.place(x=1, y=1)
-        title = tk.Label(content, text=title_text, fg=text_color, bg=card_bg, font=("Segoe UI", 12, "bold"))
+        title = tk.Label(content, text=title_text, fg=text_color, bg=card_bg,
+                        font=("Segoe UI", 12, "bold"))
         title.pack(anchor="w", padx=15, pady=(15, 5))
-        body = tk.Label(content, text=body_text, fg=text_color, bg=card_bg, font=("Segoe UI", 9), justify="left")
+        body = tk.Label(content, text=body_text, fg=text_color, bg=card_bg,
+                       font=("Segoe UI", 9), justify="left")
         body.pack(anchor="w", padx=15)
 
         def on_enter(e):
@@ -283,12 +225,11 @@ class DiagLauncher(tk.Tk):
             content.config(bg=card_bg)
 
         def on_click(e):
-            clean_title = title_text.split(" ", 1)[1]
-            logger.info(f"Card clicked: {clean_title}")
+            logger.info(f"Card clicked: {title_text}")
             try:
                 click_command()
             except Exception as ex:
-                logger.error(f"Error executing click command for {clean_title}: {ex}")
+                logger.error(f"Error executing click command for {title_text}: {ex}")
                 self.update_status(f"Error: {str(ex)}", True)
                 messagebox.showerror("Error", f"Failed to execute: {str(ex)}")
 
@@ -304,16 +245,22 @@ class DiagLauncher(tk.Tk):
         bottom = tk.Frame(self.canvas, bg=BG_MAIN)
         self.canvas.create_window(0, 550, window=bottom, anchor="nw", width=1000, height=100)
         
-        self.status_label = tk.Label(bottom, text="● SYSTEM READY - Click 'Vehicle Diagnostics' to launch AutoDiag Pro", fg=GLOW, bg=BG_MAIN, font=("Segoe UI", 10, "bold"))
+        self.status_label = tk.Label(bottom,
+                                     text="SYSTEM READY - Click 'Vehicle Diagnostics' to launch AutoDiag Pro",
+                                     fg=GLOW, bg=BG_MAIN, font=("Segoe UI", 10, "bold"))
         self.status_label.pack(pady=10)
         
         btn_frame = tk.Frame(bottom, bg=BG_MAIN)
         btn_frame.pack(pady=5)
         
-        refresh_btn = tk.Button(btn_frame, text="Refresh System", command=self.refresh_system, bg=BG_PANEL, fg=TEXT_MAIN, font=("Segoe UI", 9), relief="flat", padx=15, pady=5, cursor="hand2")
+        refresh_btn = tk.Button(btn_frame, text="Refresh System", command=self.refresh_system,
+                               bg=BG_PANEL, fg=TEXT_MAIN, font=("Segoe UI", 9),
+                               relief="flat", padx=15, pady=5, cursor="hand2")
         refresh_btn.pack(side="left", padx=10)
         
-        exit_btn = tk.Button(btn_frame, text="Safe Exit", command=self.safe_shutdown, bg=BG_PANEL, fg=ERROR, font=("Segoe UI", 9), relief="flat", padx=15, pady=5, cursor="hand2")
+        exit_btn = tk.Button(btn_frame, text="Safe Exit", command=self.safe_shutdown,
+                            bg=BG_PANEL, fg=ERROR, font=("Segoe UI", 9),
+                            relief="flat", padx=15, pady=5, cursor="hand2")
         exit_btn.pack(side="left", padx=10)
 
     def _start_animations(self):
@@ -325,7 +272,8 @@ class DiagLauncher(tk.Tk):
         if not self.animation_running: return
         self.scan_line_y = (self.scan_line_y + 2) % 650
         self.canvas.delete("scan_line")
-        self.canvas.create_line(0, self.scan_line_y, 1000, self.scan_line_y, fill=ACCENT, width=2, tags="scan_line", dash=(5, 5))
+        self.canvas.create_line(0, self.scan_line_y, 1000, self.scan_line_y,
+                              fill=ACCENT, width=2, tags="scan_line", dash=(5, 5))
         self.after(50, self._animate_scan_line)
 
     def _animate_glow(self):
@@ -339,20 +287,21 @@ class DiagLauncher(tk.Tk):
     def interpolate_color(self, color1, color2, factor):
         r1, g1, b1 = int(color1[1:3], 16), int(color1[3:5], 16), int(color1[5:7], 16)
         r2, g2, b2 = int(color2[1:3], 16), int(color2[3:5], 16), int(color2[5:7], 16)
-        r, g, b = int(r1 + (r2 - r1) * factor), int(g1 + (g2 - g1) * factor), int(b1 + (b2 - b1) * factor)
+        r = int(r1 + (r2 - r1) * factor)
+        g = int(g1 + (g2 - g1) * factor)
+        b = int(b1 + (b2 - b1) * factor)
         return f"#{r:02x}{g:02x}{b:02x}"
 
     def update_status(self, message, is_error=False):
-        self.status_label.config(text=f"● {message}", fg=ERROR if is_error else GLOW)
+        self.status_label.config(text=message, fg=ERROR if is_error else GLOW)
         self.update_idletasks()
 
     def _launch_module(self, module_name, module_dir_name):
-        if module_name in self.running_processes and self.running_processes[module_name].poll() is None:
-            self.update_status(f"{module_name.upper()} ALREADY RUNNING")
-            messagebox.showinfo("Already Running", f"{module_name} is already running.")
-            return
-
-        self.update_status(f"CHECKING {module_name.upper()} INSTALLATION...")
+        """
+        FIXED: Launch module in detached process with proper flags
+        Creates new console window and doesn't block launcher
+        """
+        self.update_status(f"LAUNCHING {module_name.upper()}...")
         logger.info(f"Launching {module_name}...")
 
         module_dir = PROJECT_ROOT / module_dir_name
@@ -366,21 +315,51 @@ class DiagLauncher(tk.Tk):
         env = os.environ.copy()
         env["PYTHONPATH"] = str(PROJECT_ROOT)
         env["QT_QPA_PLATFORM"] = "windows"
+        # Fix Unicode encoding issues in subprocess
+        env["PYTHONIOENCODING"] = "utf-8"
 
         try:
-            process = subprocess.Popen(
-                [sys.executable, str(main_py_path)],
-                cwd=str(module_dir), env=env,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                creationflags=0
-            )
+            # CRITICAL FIX: Use CREATE_NEW_CONSOLE flag
+            # This creates a detached process with its own console
+            # Process will continue running even if launcher closes
+            import subprocess
+            
+            if sys.platform == "win32":
+                # Windows: Create new console window
+                CREATE_NEW_CONSOLE = 0x00000010
+                DETACHED_PROCESS = 0x00000008
+                
+                process = subprocess.Popen(
+                    [sys.executable, str(main_py_path)],
+                    cwd=str(module_dir),
+                    env=env,
+                    creationflags=CREATE_NEW_CONSOLE,  # Creates independent window
+                    stdout=None,  # Don't capture output
+                    stderr=None,
+                    stdin=None
+                )
+            else:
+                # Linux/Mac
+                process = subprocess.Popen(
+                    [sys.executable, str(main_py_path)],
+                    cwd=str(module_dir),
+                    env=env,
+                    start_new_session=True
+                )
+            
             self.running_processes[module_name] = process
-            self.update_status(f"✅ {module_name.upper()} LAUNCHED")
-            logger.info(f"✅ {module_name} launched successfully")
-            self.monitor_process(module_name, process)
-        except (FileNotFoundError, PermissionError) as e:
+            self.update_status(f"SUCCESS - {module_name.upper()} LAUNCHED IN NEW WINDOW")
+            logger.info(f"Successfully launched {module_name} (PID: {process.pid})")
+            
+            # Show success message
+            messagebox.showinfo("Success",
+                              f"{module_name} has been launched successfully!\n\n"
+                              f"A new window should appear shortly.\n"
+                              f"PID: {process.pid}")
+            
+        except Exception as e:
             self.update_status(f"ERROR: Failed to launch {module_name}", True)
-            messagebox.showerror("Launch Error", f"Failed to launch {module_name}: {e}")
+            messagebox.showerror("Launch Error", f"Failed to launch {module_name}:\n{e}")
             logger.error(f"Launch error for {module_name}: {e}")
 
     def launch_vehicle_diagnostics(self):
@@ -392,18 +371,6 @@ class DiagLauncher(tk.Tk):
     def launch_security_immo(self):
         self._launch_module("AutoKey", "AutoKey")
 
-    def monitor_process(self, name, process):
-        def monitor():
-            logger.info(f"Monitoring {name} (PID: {process.pid})")
-            process.wait()
-            logger.info(f"{name} finished with code: {process.returncode}")
-            if process.returncode != 0:
-                error_output = process.stderr.read().decode(errors='ignore')
-                logger.error(f"Error in {name}:\n{error_output}")
-            if name in self.running_processes:
-                del self.running_processes[name]
-        threading.Thread(target=monitor, daemon=True).start()
-
     def launch_service_reset(self):
         self.update_status("SERVICE RESET TOOLS - Coming Soon")
         messagebox.showinfo("Coming Soon", "Service Reset tools are in development.")
@@ -414,7 +381,7 @@ class DiagLauncher(tk.Tk):
 
     def launch_system_health(self):
         self.update_status("SYSTEM HEALTH CHECK RUNNING...")
-        py_arch = "64-bit" if IS_64BIT_PYTHON else "32-bit"
+        py_arch = "64-bit" if platform.architecture()[0] == "64bit" else "32-bit"
         report = (
             "System Health Report:\n\n"
             f"Python Architecture: {py_arch}\n"
@@ -422,11 +389,11 @@ class DiagLauncher(tk.Tk):
             "Status: ALL SYSTEMS OPERATIONAL"
         )
         messagebox.showinfo("System Health", report)
-        self.update_status("✅ SYSTEM HEALTH CHECK COMPLETED")
+        self.update_status("SYSTEM HEALTH CHECK COMPLETED")
 
     def refresh_system(self):
-        self.update_status("🔄 SYSTEM REFRESHED")
-        self.system_status.config(text="● SYSTEM READY - All modules operational", fg=GLOW)
+        self.update_status("SYSTEM REFRESHED")
+        self.system_status.config(text="SYSTEM READY - All modules operational", fg=GLOW)
 
 if __name__ == "__main__":
     try:

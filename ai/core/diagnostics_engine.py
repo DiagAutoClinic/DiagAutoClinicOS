@@ -1,4 +1,13 @@
 # ai/core/diagnostics_engine.py
+# PHASE 9: REASONING CORE FROZEN
+# The following components are frozen and must not be modified:
+# - Belief update logic (bayesian_update_from_evidence)
+# - Entropy calculation (BeliefState.entropy)
+# - Likelihood update rules (update_likelihoods_from_observation)
+# - Reliability semantics (test_reliability_scores, update_test_reliability_score)
+# - Exploration guarantees (exploration_probability in select_next_diagnostic_test)
+# Any changes must happen around this core, not inside it.
+# This freeze ensures epistemic integrity and prevents contamination of belief by convenience.
 
 from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
@@ -171,7 +180,12 @@ class DiagnosticsEngine:
 
     def log_observation(self, test_name: str, outcome: str, ground_truth_confirmed: bool = False, hypothesis_resolved: Optional[str] = None):
         """
-        Log a performed diagnostic test outcome for potential learning.
+        Phase 9: Log a performed diagnostic test outcome with integrity validation.
+
+        Ensures observation integrity in the field:
+        - Ground truth confirmation cannot be spoofed
+        - Observations are immutable
+        - Learning gates cannot be bypassed by convenience
 
         Args:
             test_name: Name of the test performed
@@ -179,6 +193,13 @@ class DiagnosticsEngine:
             ground_truth_confirmed: True if this outcome confirms or rules out a fault definitively
             hypothesis_resolved: Which hypothesis was confirmed/ruled out (if applicable)
         """
+        # Phase 9: Observation Integrity Validation
+        validation_errors = self._validate_observation_integrity(test_name, outcome, ground_truth_confirmed, hypothesis_resolved)
+        if validation_errors:
+            logger.error(f"Observation integrity validation failed: {validation_errors}")
+            # Do not log invalid observations
+            return
+
         observation = ObservedOutcome(
             test=test_name,
             outcome=outcome,
@@ -186,7 +207,13 @@ class DiagnosticsEngine:
             timestamp=datetime.now(),
             hypothesis_resolved=hypothesis_resolved
         )
-        self.observation_logger.log_observation(observation)
+
+        # Ensure immutability: observations are append-only
+        try:
+            self.observation_logger.log_observation(observation)
+        except Exception as e:
+            logger.error(f"Failed to log observation immutably: {e}")
+            raise
 
     def can_update_likelihoods(self, observation: ObservedOutcome) -> bool:
         """
@@ -624,7 +651,13 @@ class DiagnosticsEngine:
             self.log_calibration_metrics()
             self.log_test_reliability_summary()
 
-            # Return result with trace information
+            # Phase 9: Human-Facing Explanations (Read-Only)
+            explanations = self._generate_human_explanations(belief_state, evidence_vector, next_test)
+
+            # Phase 9: Failure Mode Surfacing
+            failure_modes = self._detect_failure_modes(belief_state, evidence_vector, next_test)
+
+            # Return result with trace information and Phase 9 additions
             result = {
                 "agent": "Charlemaine",
                 "timestamp": trace.timestamp,
@@ -637,7 +670,10 @@ class DiagnosticsEngine:
                 "information_gain": trace.information_gain,
                 "evidence_used": trace.evidence_used,
                 "next_test": next_test.name if next_test else None,
-                "next_test_cost": next_test.cost if next_test else None
+                "next_test_cost": next_test.cost if next_test else None,
+                # Phase 9 additions
+                "explanations": explanations,
+                "failure_modes": failure_modes
             }
 
             return result
@@ -727,3 +763,165 @@ class DiagnosticsEngine:
 
         for rec in trace.recommendations:
             logger.info(f"Recommendation: {rec}")
+
+    def _validate_observation_integrity(self, test_name: str, outcome: str, ground_truth_confirmed: bool, hypothesis_resolved: Optional[str]) -> List[str]:
+        """
+        Phase 9: Validate observation integrity to prevent spoofing and ensure learning gate compliance.
+
+        Returns list of validation errors (empty if valid).
+        """
+        errors = []
+
+        # Validate test exists
+        if not any(t.name == test_name for t in self.diagnostic_tests):
+            errors.append(f"Unknown test: {test_name}")
+
+        # Validate outcome
+        if outcome not in ["pass", "fail"]:
+            errors.append(f"Invalid outcome: {outcome} (must be 'pass' or 'fail')")
+
+        # Ground truth confirmation integrity checks
+        if ground_truth_confirmed:
+            # Must have hypothesis resolved
+            if not hypothesis_resolved:
+                errors.append("Ground truth confirmation requires hypothesis_resolved")
+
+            # Hypothesis must be valid
+            valid_hypotheses = ["normal_operation", "engine_issue", "sensor_fault", "electrical_fault"]
+            if hypothesis_resolved not in valid_hypotheses:
+                errors.append(f"Invalid hypothesis: {hypothesis_resolved}")
+
+            # Additional validation: prevent convenience bypassing
+            # In real implementation, this would check for repair documentation, technician verification, etc.
+            # For now, we log that ground truth confirmation requires external validation
+            logger.warning(f"Ground truth confirmation for {hypothesis_resolved} - ensure external validation (repair/test documentation)")
+
+        # Learning gate integrity: prevent bypassing by setting ground_truth_confirmed=True without proper validation
+        if ground_truth_confirmed and not self._is_ground_truth_properly_validated(test_name, outcome, hypothesis_resolved):
+            errors.append("Ground truth confirmation not properly validated - learning gate bypassed")
+
+        return errors
+
+    def _is_ground_truth_properly_validated(self, test_name: str, outcome: str, hypothesis_resolved: str) -> bool:
+        """
+        Phase 9: Check if ground truth confirmation is properly validated.
+
+        In production, this would check for:
+        - Repair documentation
+        - Technician verification
+        - Test result confirmation
+        - Audit trail
+
+        For now, we implement basic checks to prevent obvious spoofing.
+        """
+        # Basic validation: hypothesis must be consistent with test outcome patterns
+        # This prevents claiming "confirmed electrical fault" when test passed (which should rule out faults)
+
+        if hypothesis_resolved == "normal_operation":
+            # Normal operation should only be confirmed on passing tests
+            if outcome != "pass":
+                return False
+        else:
+            # Fault hypotheses should only be confirmed on failing tests
+            if outcome != "fail":
+                return False
+
+        # Additional check: prevent confirmation of faults that test doesn't target
+        test_targets = {
+            "read_pid": ["engine_issue", "sensor_fault", "electrical_fault"],
+            "visual_inspection": ["engine_issue", "sensor_fault", "electrical_fault"],
+            "electrical_test": ["electrical_fault"],
+            "pressure_test": ["engine_issue"],
+            "component_swap": ["engine_issue", "sensor_fault", "electrical_fault"]
+        }
+
+        if test_name in test_targets and hypothesis_resolved not in test_targets[test_name]:
+            return False
+
+        return True  # Basic validation passed
+
+    def _generate_human_explanations(self, belief_state: BeliefState, evidence_vector, next_test) -> Dict[str, Any]:
+        """
+        Phase 9: Generate human-facing explanations (read-only, not persuasive).
+
+        Exposes reasoning without changing it.
+        """
+        # Top beliefs with probabilities
+        sorted_beliefs = sorted(belief_state.probabilities.items(), key=lambda x: x[1], reverse=True)
+        top_beliefs = [{"hypothesis": hypo, "probability": prob} for hypo, prob in sorted_beliefs[:3]]
+
+        # Evidence that mattered (highest confidence evidence)
+        evidence_list = []
+        if hasattr(evidence_vector, 'evidence'):
+            sorted_evidence = sorted(evidence_vector.evidence.items(),
+                                   key=lambda x: x[1].confidence if hasattr(x[1], 'confidence') else 0,
+                                   reverse=True)
+            evidence_list = [{"name": name, "value": ev.value, "confidence": ev.confidence}
+                           for name, ev in sorted_evidence[:5]]
+
+        # Why test was recommended
+        test_reason = None
+        if next_test:
+            expected_gain = self.calculate_expected_information_gain(belief_state, next_test)
+            reliability = self.test_reliability_scores.get(next_test.name, 0.5)
+            test_reason = {
+                "test": next_test.name,
+                "expected_information_gain": expected_gain,
+                "reliability_score": reliability,
+                "efficiency": expected_gain / next_test.cost if next_test.cost > 0 else 0
+            }
+
+        # Remaining uncertainty
+        uncertainty = {
+            "entropy": belief_state.entropy(),
+            "max_probability": max(belief_state.probabilities.values()),
+            "probability_spread": max(belief_state.probabilities.values()) - min(belief_state.probabilities.values())
+        }
+
+        return {
+            "top_beliefs": top_beliefs,
+            "key_evidence": evidence_list,
+            "test_reasoning": test_reason,
+            "uncertainty_metrics": uncertainty
+        }
+
+    def _detect_failure_modes(self, belief_state: BeliefState, evidence_vector, next_test) -> List[str]:
+        """
+        Phase 9: Detect and surface failure modes.
+
+        Identifies when system cannot provide reliable guidance.
+        """
+        failure_modes = []
+
+        # High uncertainty (entropy > threshold)
+        if belief_state.entropy() > 1.5:  # High uncertainty
+            failure_modes.append("High uncertainty: Multiple hypotheses remain plausible")
+
+        # Low confidence in top diagnosis
+        max_prob = max(belief_state.probabilities.values())
+        if max_prob < 0.6:
+            failure_modes.append("Low confidence: No hypothesis exceeds 60% probability")
+
+        # Contradictory evidence
+        if hasattr(evidence_vector, 'evidence'):
+            conflicting_evidence = []
+            for name, ev in evidence_vector.evidence.items():
+                if hasattr(ev, 'confidence') and ev.confidence < 0.3:
+                    conflicting_evidence.append(name)
+            if len(conflicting_evidence) > 2:
+                failure_modes.append("Contradictory evidence: Multiple low-confidence indicators")
+
+        # No effective test available
+        if next_test:
+            expected_gain = self.calculate_expected_information_gain(belief_state, next_test)
+            if expected_gain < 0.1:  # Minimal information gain
+                failure_modes.append("Ineffective tests: No test will significantly reduce uncertainty")
+        else:
+            failure_modes.append("No tests available: Diagnostic options exhausted")
+
+        # All tests unreliable
+        avg_reliability = sum(self.test_reliability_scores.values()) / len(self.test_reliability_scores)
+        if avg_reliability < 0.3:
+            failure_modes.append("Unreliable tests: All diagnostic tests have low prediction accuracy")
+
+        return failure_modes

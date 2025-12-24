@@ -1,5 +1,5 @@
 """
-Test script for COM2 hardware connection (GD101)
+Test script for COM2 hardware connection
 This script tests the actual hardware connection on COM2.
 """
 
@@ -24,8 +24,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def test_com2_connection():
-    """Test direct COM2 connection for GD101"""
-    logger.info("Testing COM2 hardware connection for GD101")
+    """Test direct COM2 connection for VCI device"""
+    logger.info("Testing COM2 hardware connection for VCI device")
     
     try:
         from AutoDiag.core.vci_manager import get_vci_manager
@@ -44,23 +44,23 @@ def test_com2_connection():
         
         logger.info(f"Found {len(devices)} VCI device(s)")
         
-        # Find GD101 on COM2 (including N32G42x Port)
-        gd101_device = None
+        # Find VCI device on COM2
+        vci_device = None
         for device in devices:
-            if ("GD101" in device.name or "N32G42x Port" in device.name) and device.port == "COM2":
-                gd101_device = device
+            if device.port == "COM2":
+                vci_device = device
                 break
         
-        if not gd101_device:
-            logger.error("GD101 device not found on COM2")
+        if not vci_device:
+            logger.error("VCI device not found on COM2")
             return False
         
-        logger.info(f"Found GD101 on COM2: {gd101_device.name}")
+        logger.info(f"Found VCI device on COM2: {vci_device.name}")
         
-        # Connect to GD101 on COM2
-        logger.info("Connecting to GD101 on COM2...")
-        if vci_manager.connect_to_device(gd101_device):
-            logger.info("Successfully connected to GD101 on COM2")
+        # Connect to VCI device on COM2
+        logger.info("Connecting to VCI device on COM2...")
+        if vci_manager.connect_to_device(vci_device):
+            logger.info("Successfully connected to VCI device on COM2")
             
             # Test connection status
             if vci_manager.is_connected():
@@ -75,14 +75,14 @@ def test_com2_connection():
                 
                 # Disconnect
                 vci_manager.disconnect()
-                logger.info("Disconnected from GD101")
+                logger.info("Disconnected from VCI device")
                 
                 return True
             else:
                 logger.error("Connection failed - device not connected")
                 return False
         else:
-            logger.error("Failed to connect to GD101 on COM2")
+            logger.error("Failed to connect to VCI device on COM2")
             return False
         
     except Exception as e:
@@ -128,7 +128,7 @@ def main():
     """Main test function"""
     logger.info("=" * 60)
     logger.info("COM2 Hardware Connection Test")
-    logger.info("Testing GD101 on COM2")
+    logger.info("Testing VCI device on COM2")
     logger.info("=" * 60)
     
     success = True
@@ -147,7 +147,7 @@ def main():
     logger.info("=" * 60)
     if success:
         logger.info("ALL COM2 HARDWARE TESTS PASSED")
-        logger.info("GD101 on COM2 is working correctly")
+        logger.info("VCI device on COM2 is working correctly")
     else:
         logger.error("SOME COM2 HARDWARE TESTS FAILED")
         logger.error("Please check the hardware connection")

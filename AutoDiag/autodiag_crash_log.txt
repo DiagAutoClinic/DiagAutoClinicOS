@@ -1,0 +1,28 @@
+
+=== CRASH DETECTED AT 2025-12-22 02:17:52.395179 ===
+Traceback (most recent call last):
+  File "C:\Users\DACOS\Documents\DACOS\DACOS\DiagAutoClinicOS-main\DiagAutoClinicOS\AutoDiag\ui\diagnostics_tab.py", line 373, in test_vci_system
+    QMessageBox.information(self, "VCI System Test",
+TypeError: information(parent: Optional[QWidget], title: Optional[str], text: Optional[str], buttons: QMessageBox.StandardButton = QMessageBox.Ok, defaultButton: QMessageBox.StandardButton = QMessageBox.NoButton): argument 1 has unexpected type 'DiagnosticsTab'
+
+LIKELY CAUSES:
+- Qt6/PyQt6 native DLL crash (0xCFFFFFFF)
+- Neural background animation
+- Gauge widget initialization
+- Theme stylesheet application
+- Blocking VCI scan in GUI thread
+==================================================
+
+=== CRASH DETECTED AT 2025-12-22 02:29:37.941696 ===
+Traceback (most recent call last):
+  File "C:\Users\DACOS\Documents\DACOS\DACOS\DiagAutoClinicOS-main\DiagAutoClinicOS\AutoDiag\ui\diagnostics_tab.py", line 336, in _on_vci_status_changed
+    self.results_text.appendPlainText(f"Status: {message}")
+AttributeError: 'QTextEdit' object has no attribute 'appendPlainText'
+
+LIKELY CAUSES:
+- Qt6/PyQt6 native DLL crash (0xCFFFFFFF)
+- Neural background animation
+- Gauge widget initialization
+- Theme stylesheet application
+- Blocking VCI scan in GUI thread
+==================================================

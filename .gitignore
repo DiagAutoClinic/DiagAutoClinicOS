@@ -51,6 +51,9 @@ users.json
 dacos_ai.sh
 dacos_ai.sh
 
+# Website (deployed separately)
+dacos_web/
+
 # Auto-approve configuration (should never be committed)
 # Large binaries and installers
 *.exe

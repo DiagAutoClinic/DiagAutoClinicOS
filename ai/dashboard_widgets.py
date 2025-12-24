@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, Q
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QColor
 import random
+from typing import List, Dict, Any
 
 class AIHealthMonitor(QWidget):
     """
