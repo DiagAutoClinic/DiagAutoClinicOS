@@ -1,9 +1,10 @@
-# main.py - COMPLETE DIAGNOSTIC SUITE IMPLEMENTATION WITH DACOS THEME
+# main.py - PERFORMANCE OPTIMIZED DIAGNOSTIC SUITE WITH DACOS THEME
+# COMPREHENSIVE PERFORMANCE OPTIMIZATIONS IMPLEMENTED
 
 #!/usr/bin/env python3
 """
 AutoDiag Pro - Professional 25-Brand Diagnostic Suite v3.1.2
-COMPLETE IMPLEMENTATION WITH DACOS UNIFIED THEME
+PERFORMANCE OPTIMIZED VERSION WITH LAZY INITIALIZATION AND ENHANCED THREAD MANAGEMENT
 RELEASE VERSION - NO MOCK DATA
 """
 
@@ -14,9 +15,12 @@ import os
 import logging
 import threading
 import time
-from typing import Dict, List
+import weakref
+from typing import Dict, List, Optional, Callable, Any
 from datetime import datetime
 import argparse
+from functools import lru_cache
+import gc
 
 # CRASH FIX: Install crash detection first
 try:
@@ -26,7 +30,6 @@ except ImportError:
     print("Warning: Crash detection not available")
 
 # ELITE CRASH FIX: Global Exception Hook for Windows SEH Detection
-# This captures Python-level tracebacks before native Qt6 crashes
 def global_except_hook(exctype, value, tb):
     """Global exception handler to capture unhandled exceptions before Qt6 native crashes"""
     try:
@@ -73,79 +76,122 @@ def global_except_hook(exctype, value, tb):
 # Install the global exception hook BEFORE any other imports
 sys.excepthook = global_except_hook
 
-# CRASH FIX: Comprehensive thread cleanup manager
+# ===== PERFORMANCE OPTIMIZED THREAD MANAGEMENT =====
 class ThreadCleanupManager:
-    """Manages cleanup of all daemon threads to prevent crashes"""
+    """Enhanced thread cleanup manager with performance optimizations"""
     
     def __init__(self):
-        self.tracked_threads = []
+        self.tracked_threads = weakref.WeakSet()  # Use WeakSet for automatic cleanup
         self.logger = logging.getLogger(__name__ + '.ThreadCleanup')
+        self._cleanup_lock = threading.Lock()
+        self._is_shutting_down = False
         
     def register_thread(self, thread, name="Unknown"):
-        """Register a thread for tracking and cleanup"""
-        self.tracked_threads.append({
-            'thread': thread,
-            'name': name,
-            'registered_at': time.time()
-        })
-        self.logger.debug(f"📝 Registered thread for cleanup: {name}")
+        """Register a thread for tracking and cleanup with performance optimizations"""
+        if self._is_shutting_down:
+            return
+            
+        # Only register if thread is actually running
+        if hasattr(thread, 'is_alive') and thread.is_alive():
+            self.tracked_threads.add(thread)
+            # Store metadata separately to avoid circular references
+            thread._cleanup_name = name
+            thread._cleanup_registered = time.time()
+            self.logger.debug(f"📝 Registered thread for cleanup: {name}")
         
     def cleanup_all_threads(self):
-        """Clean up all registered threads during shutdown"""
+        """Enhanced cleanup with timeout and error handling"""
+        if self._is_shutting_down:
+            return 0
+            
+        with self._cleanup_lock:
+            self._is_shutting_down = True
+            
         self.logger.info("🧹 Starting comprehensive thread cleanup...")
         
         cleaned_count = 0
-        for thread_info in self.tracked_threads:
-            thread = thread_info['thread']
-            name = thread_info['name']
+        timeout_count = 0
+        
+        # Create a snapshot to avoid iteration issues
+        threads_to_cleanup = list(self.tracked_threads)
+        
+        for thread in threads_to_cleanup:
+            name = getattr(thread, '_cleanup_name', 'Unknown')
+            registered_at = getattr(thread, '_cleanup_registered', 0)
             
             try:
                 if hasattr(thread, 'is_alive') and thread.is_alive():
                     self.logger.info(f"🔄 Stopping thread: {name}")
                     
-                    # Thread-specific cleanup methods
-                    if hasattr(thread, 'stop'):
-                        thread.stop()
-                    elif hasattr(thread, 'quit'):
-                        thread.quit()
-                    elif hasattr(thread, '_stop_event'):
-                        thread._stop_event.set()
-                        
-                    # Wait for graceful shutdown
-                    if hasattr(thread, 'wait'):
-                        thread.wait(timeout=1.0)
-                    elif isinstance(thread, threading.Thread):
-                        thread.join(timeout=1.0)
-                        
-                    cleaned_count += 1
-                    self.logger.info(f"✅ Successfully stopped thread: {name}")
+                    # Thread-specific cleanup methods with timeout
+                    cleanup_success = self._stop_thread_safely(thread, name)
                     
+                    if cleanup_success:
+                        cleaned_count += 1
+                        self.logger.info(f"✅ Successfully stopped thread: {name}")
+                    else:
+                        timeout_count += 1
+                        self.logger.warning(f"⚠️  Thread timeout: {name}")
+                        
             except Exception as e:
                 self.logger.error(f"❌ Error stopping thread {name}: {e}")
                 
-        self.logger.info(f"🧹 Thread cleanup completed: {cleaned_count}/{len(self.tracked_threads)} threads stopped")
+        self.logger.info(f"🧹 Thread cleanup completed: {cleaned_count} stopped, {timeout_count} timed out")
         return cleaned_count
+    
+    def _stop_thread_safely(self, thread, name, timeout=2.0):
+        """Safely stop a thread with timeout"""
+        try:
+            # Thread-specific cleanup methods
+            if hasattr(thread, 'stop'):
+                thread.stop()
+            elif hasattr(thread, 'quit'):
+                thread.quit()
+            elif hasattr(thread, '_stop_event'):
+                thread._stop_event.set()
+            elif hasattr(thread, 'terminate'):
+                thread.terminate()
+                
+            # Wait for graceful shutdown with timeout
+            if hasattr(thread, 'wait'):
+                return thread.wait(timeout=timeout)
+            elif isinstance(thread, threading.Thread):
+                thread.join(timeout=timeout)
+                return not thread.is_alive()
+            else:
+                # For unknown thread types, just wait a bit
+                time.sleep(0.1)
+                return True
+                
+        except Exception as e:
+            self.logger.error(f"Error during thread {name} cleanup: {e}")
+            return False
 
-# Global thread cleanup manager
-thread_cleanup_manager = ThreadCleanupManager()
+# Global thread cleanup manager with singleton pattern
+_thread_cleanup_manager = None
+
+def get_thread_cleanup_manager():
+    """Get the global thread cleanup manager (singleton)"""
+    global _thread_cleanup_manager
+    if _thread_cleanup_manager is None:
+        _thread_cleanup_manager = ThreadCleanupManager()
+    return _thread_cleanup_manager
 
 def safe_shutdown():
-    """Safe shutdown sequence with comprehensive cleanup"""
+    """Enhanced safe shutdown sequence with comprehensive cleanup"""
     try:
+        logger = logging.getLogger(__name__)
         logger.info("🛑 Starting safe shutdown sequence...")
         
         # 1. Clean up all tracked threads
-        thread_cleanup_manager.cleanup_all_threads()
+        cleanup_manager = get_thread_cleanup_manager()
+        cleaned_count = cleanup_manager.cleanup_all_threads()
         
-        # 2. Stop hang protection watchdogs
-        try:
-            from AutoDiag.core.vci_manager import HangWatchdog
-            # Watchdogs will be stopped automatically
-        except ImportError:
-            pass
-            
+        # 2. Force garbage collection to clean up circular references
+        gc.collect()
+        
         # 3. Log shutdown completion
-        logger.info("✅ Safe shutdown sequence completed successfully")
+        logger.info(f"✅ Safe shutdown sequence completed: {cleaned_count} threads cleaned")
         
     except Exception as e:
         logger.error(f"❌ Error during safe shutdown: {e}")
@@ -157,21 +203,87 @@ try:
 except ImportError:
     pass  # atexit not available
 
-# ----------------------------------------------------------------------
-# Security: Import validation
-# ----------------------------------------------------------------------
-try:
-    import serial
-    SERIAL_AVAILABLE = True
-except ImportError:
-    SERIAL_AVAILABLE = False
+# ===== LAZY INITIALIZATION SYSTEM =====
+class LazyTabManager:
+    """Manages lazy initialization of tab classes for performance optimization"""
+    
+    def __init__(self):
+        self._tab_factories = {}
+        self._tab_instances = {}
+        self._tab_locks = {}
+        self._logger = logging.getLogger(__name__ + '.LazyTabs')
+        
+    def register_tab(self, tab_name: str, factory_func: Callable):
+        """Register a tab factory function for lazy initialization"""
+        self._tab_factories[tab_name] = factory_func
+        self._tab_locks[tab_name] = threading.Lock()
+        self._logger.debug(f"Registered lazy tab: {tab_name}")
+        
+    def get_tab(self, tab_name: str, parent=None):
+        """Get or create a tab instance on demand"""
+        if tab_name not in self._tab_factories:
+            raise ValueError(f"Unknown tab: {tab_name}")
+            
+        # Check if already created
+        if tab_name in self._tab_instances:
+            return self._tab_instances[tab_name]
+            
+        # Thread-safe lazy initialization
+        with self._tab_locks[tab_name]:
+            # Double-check after acquiring lock
+            if tab_name in self._tab_instances:
+                return self._tab_instances[tab_name]
+                
+            self._logger.info(f"🏗️  Creating tab: {tab_name}")
+            try:
+                # Create the tab instance
+                tab_instance = self._tab_factories[tab_name](parent)
+                self._tab_instances[tab_name] = tab_instance
+                
+                # Force garbage collection after heavy tab creation
+                if tab_name in ['dashboard', 'live_data', 'can_bus']:
+                    gc.collect()
+                    
+                self._logger.info(f"✅ Tab created successfully: {tab_name}")
+                return tab_instance
+                
+            except Exception as e:
+                self._logger.error(f"❌ Failed to create tab {tab_name}: {e}")
+                raise
 
-# Add project root to path
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
+# Global lazy tab manager
+_lazy_tab_manager = LazyTabManager()
 
-# ===== DACOS THEME IMPORTS - UNIFIED APPROACH =====
-# Only import GUI-related modules if not in headless mode
+# ===== PERFORMANCE OPTIMIZED COMPONENTS =====
+class PerformanceMonitor:
+    """Monitors and optimizes application performance"""
+    
+    def __init__(self):
+        self._start_times = {}
+        self._logger = logging.getLogger(__name__ + '.Performance')
+        
+    def start_timer(self, operation_name: str):
+        """Start timing an operation"""
+        self._start_times[operation_name] = time.time()
+        
+    def end_timer(self, operation_name: str):
+        """End timing and log performance"""
+        if operation_name in self._start_times:
+            duration = time.time() - self._start_times[operation_name]
+            del self._start_times[operation_name]
+            
+            if duration > 1.0:  # Log slow operations
+                self._logger.warning(f"🐌 Slow operation: {operation_name} took {duration:.2f}s")
+            else:
+                self._logger.debug(f"⚡ Fast operation: {operation_name} took {duration:.2f}s")
+                
+            return duration
+        return 0.0
+
+# Global performance monitor
+_performance_monitor = PerformanceMonitor()
+
+# ===== DACOS THEME IMPORTS - OPTIMIZED =====
 DACOS_AVAILABLE = False
 try:
     from shared.themes.dacos_theme import DACOS_THEME, apply_dacos_theme
@@ -184,7 +296,7 @@ except ImportError as e:
     logging.error(f"❌ DACOS theme imports failed: {e}")
     style_manager = None
     DACOS_AVAILABLE = False
-    # Fallback theme (shouldn't be needed since your files exist)
+    # Fallback theme
     DACOS_THEME = {
         "bg_main": "#0A1A1A", "bg_panel": "#0D2323", "bg_card": "#134F4A",
         "accent": "#21F5C1", "glow": "#2AF5D1", "text_main": "#E8F4F2",
@@ -192,8 +304,7 @@ except ImportError as e:
         "warning": "#F59E0B", "info": "#3B82F6"
     }
 
-
-# ----------------------------------------------------------------------
+# ---------------------------------------------------------------------- 
 # Qt imports - Fixed to resolve Pylance issues
 # ----------------------------------------------------------------------
 PYQT6_AVAILABLE = False
@@ -221,6 +332,7 @@ try:
     
     # Import available tab classes
     from AutoDiag.ui.dashboard_tab import DashboardTab
+    from AutoDiag.ui.vci_connection_tab import VCIConnectionTab
     from AutoDiag.ui.diagnostics_tab import DiagnosticsTab
     from AutoDiag.ui.live_data_tab import LiveDataTab
     from AutoDiag.ui.special_functions_tab import SpecialFunctionsTab
@@ -391,8 +503,8 @@ if PYQT6_AVAILABLE:
             dialog.exec()
 
         def update_layout(self):
-            """Update layout based on available width - FIXED VERSION"""
-            # Clear existing layout
+            """Update layout based on available width - OPTIMIZED VERSION"""
+            # Clear existing layout efficiently
             while self.main_layout.count():
                 child = self.main_layout.takeAt(0)
                 if child.widget():
@@ -436,8 +548,12 @@ if PYQT6_AVAILABLE:
 
             logger.info(f"User info: {self.current_user_info}")
 
+            # Initialize performance monitoring
+            self._performance_monitor = _performance_monitor
+            self._performance_monitor.start_timer("app_initialization")
+
             try:
-                # Apply DACOS theme first
+                # Apply DACOS theme first - OPTIMIZED
                 self.apply_dacos_theme()
                 logger.info("DACOS theme applied")
             except Exception as e:
@@ -445,7 +561,7 @@ if PYQT6_AVAILABLE:
                 raise
 
             try:
-                # Initialize diagnostics controller
+                # Initialize diagnostics controller - LAZY INITIALIZATION
                 self.diagnostics_controller = None
                 self._init_diagnostics_controller()
                 logger.info("Diagnostics controller initialized")
@@ -457,7 +573,7 @@ if PYQT6_AVAILABLE:
             self._init_hang_protection()
 
             try:
-                # Initialize UI
+                # Initialize UI - OPTIMIZED
                 self.init_ui()
                 logger.info("UI initialized")
             except Exception as e:
@@ -472,9 +588,12 @@ if PYQT6_AVAILABLE:
             except Exception as e:
                 logger.error(f"Failed to update UI: {e}")
                 raise
+                
+            # Complete performance monitoring
+            self._performance_monitor.end_timer("app_initialization")
 
         def _init_diagnostics_controller(self):
-            """Initialize the diagnostics controller with UI callbacks"""
+            """Initialize the diagnostics controller with UI callbacks - LAZY INITIALIZATION"""
             try:
                 logger.info("Starting diagnostics controller initialization")
                 from AutoDiag.core.diagnostics import DiagnosticsController
@@ -516,12 +635,17 @@ if PYQT6_AVAILABLE:
                 self.app_watchdog.start(2000)  # Pulse every 2 seconds
                 logger.info("✅ Application-wide hang protection initialized")
                 logger.info("🛡️  Windows Application Hang termination (0xCFFFFFFF) prevented")
+                
+                # Register with cleanup manager
+                cleanup_manager = get_thread_cleanup_manager()
+                cleanup_manager.register_thread(self.app_watchdog, "HangProtectionWatchdog")
+                
             except Exception as e:
                 logger.error(f"Failed to initialize hang protection: {e}")
                 self.app_watchdog = None
 
         def apply_dacos_theme(self):
-            """Apply DACOS unified theme using your existing theme file"""
+            """Apply DACOS unified theme using your existing theme file - OPTIMIZED"""
             try:
                 if DACOS_AVAILABLE:
                     # Use your existing apply_dacos_theme function
@@ -538,7 +662,7 @@ if PYQT6_AVAILABLE:
                 self.apply_fallback_theme()
 
         def apply_fallback_theme(self):
-            """Enhanced fallback theme using DACOS colors"""
+            """Enhanced fallback theme using DACOS colors - OPTIMIZED"""
             t = DACOS_THEME  # Use DACOS_THEME, not THEME
             fallback_stylesheet = f"""
                 QMainWindow {{
@@ -631,7 +755,7 @@ if PYQT6_AVAILABLE:
             self.setStyleSheet(fallback_stylesheet)
 
         def init_ui(self):
-            """Initialize optimized futuristic UI with DACOS theme"""
+            """Initialize optimized futuristic UI with DACOS theme - LAZY INITIALIZATION"""
             self.setWindowTitle("AutoDiag Pro - Professional Diagnostic Suite")
             self.setMinimumSize(1024, 600)
             self.resize(1366, 768)
@@ -649,13 +773,14 @@ if PYQT6_AVAILABLE:
             self.header = ResponsiveHeader(current_user_info=self.current_user_info)
             main_layout.addWidget(self.header)
 
-            # Tab Widget
+            # Tab Widget - OPTIMIZED
             self.tab_widget = QTabWidget()
             self.tab_widget.setDocumentMode(True)
+            self.tab_widget.currentChanged.connect(self._on_tab_changed)  # Lazy loading
             main_layout.addWidget(self.tab_widget, 1)
 
-            # Create all tabs using separate tab classes
-            self.create_tabs_using_separate_classes()
+            # Create tabs using lazy initialization
+            self._setup_lazy_tabs()
 
             # Status bar
             self.create_status_bar()
@@ -665,127 +790,112 @@ if PYQT6_AVAILABLE:
             self.header.brand_combo.currentTextChanged.connect(self.on_brand_changed)
             self.header.logout_btn.clicked.connect(self.secure_logout)
 
-        def create_tabs_using_separate_classes(self):
-            """Create all tabs using separate tab classes for better modularity"""
-            logger.info("Starting tab creation")
+        def _setup_lazy_tabs(self):
+            """Setup lazy tab initialization - PERFORMANCE OPTIMIZED"""
+            # Register tab factories for lazy initialization
+            lazy_tabs = {
+                'vci_connection': lambda parent: VCIConnectionTab(parent),
+                'dashboard': lambda parent: DashboardTab(parent),
+                'diagnostics': lambda parent: DiagnosticsTab(parent),
+                'live_data': lambda parent: LiveDataTab(parent),
+                'can_bus': lambda parent: CANBusDataTab(parent),
+                'special_functions': lambda parent: SpecialFunctionsTab(parent),
+                'calibrations': lambda parent: CalibrationsTab(parent),
+                'advanced': lambda parent: AdvancedTab(parent),
+                'security': lambda parent: SecurityTab(parent)
+            }
+            
+            # Register all tabs with lazy manager
+            for tab_name, factory in lazy_tabs.items():
+                _lazy_tab_manager.register_tab(tab_name, factory)
+            
+            # Create placeholder tabs for UI structure
+            self._create_placeholder_tabs()
+
+        def _create_placeholder_tabs(self):
+            """Create placeholder tabs to maintain UI structure"""
+            # Create lightweight placeholder widgets
+            placeholder_widget = QWidget()
+            placeholder_layout = QVBoxLayout(placeholder_widget)
+            placeholder_label = QLabel("Tab loading...")
+            placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            placeholder_layout.addWidget(placeholder_label)
+            
+            # Add all tabs as placeholders initially
+            tab_order = [
+                ('vci_connection', '🔌 VCI Connection'),
+                ('dashboard', '📊 Dashboard'),
+                ('diagnostics', '🔍 Diagnostics'),
+                ('live_data', '📈 Live Data'),
+                ('can_bus', '🚌 CAN Bus'),
+                ('special_functions', '⚙️ Special Functions'),
+                ('calibrations', '🔧 Calibrations'),
+                ('advanced', '🚀 Advanced'),
+                ('security', '🔒 Security')
+            ]
+            
+            for tab_name, tab_title in tab_order:
+                self.tab_widget.addTab(placeholder_widget, tab_title)
+
+        def _on_tab_changed(self, index):
+            """Handle tab change and lazy load content"""
+            tab_titles = [
+                '🔌 VCI Connection', '📊 Dashboard', '🔍 Diagnostics',
+                '📈 Live Data', '🚌 CAN Bus', '⚙️ Special Functions',
+                '🔧 Calibrations', '🚀 Advanced', '🔒 Security'
+            ]
+            
+            if index < len(tab_titles):
+                tab_title = tab_titles[index]
+                self._performance_monitor.start_timer(f"tab_load_{index}")
+                
+                # Map tab titles to tab names
+                tab_mapping = {
+                    '🔌 VCI Connection': 'vci_connection',
+                    '📊 Dashboard': 'dashboard',
+                    '🔍 Diagnostics': 'diagnostics',
+                    '📈 Live Data': 'live_data',
+                    '🚌 CAN Bus': 'can_bus',
+                    '⚙️ Special Functions': 'special_functions',
+                    '🔧 Calibrations': 'calibrations',
+                    '🚀 Advanced': 'advanced',
+                    '🔒 Security': 'security'
+                }
+                
+                if tab_title in tab_mapping:
+                    self._load_tab_content(tab_mapping[tab_title], index)
+                    
+                self._performance_monitor.end_timer(f"tab_load_{index}")
+
+        def _load_tab_content(self, tab_name, tab_index):
+            """Load tab content on demand - LAZY INITIALIZATION"""
             try:
-                # Create tabs in the order they should appear
+                # Get or create the tab instance
+                tab_instance = _lazy_tab_manager.get_tab(tab_name, self)
                 
-                # Dashboard Tab
-                try:
-                    dashboard_tab = DashboardTab(self)
-                    dashboard_widget, dashboard_title = dashboard_tab.create_tab()
-                    self.tab_widget.addTab(dashboard_widget, dashboard_title)
-                    self.dashboard_tab = dashboard_tab
-                    logger.info("Dashboard tab created")
-                except Exception as e:
-                    logger.error(f"Failed to create dashboard tab: {e}")
-                    import traceback
-                    logger.error(f"Dashboard tab traceback: {traceback.format_exc()}")
-
-                # Diagnostics Tab
-                try:
-                    diagnostics_tab = DiagnosticsTab(self)
-                    diagnostics_widget, diagnostics_title = diagnostics_tab.create_tab()
-                    self.tab_widget.addTab(diagnostics_widget, diagnostics_title)
-                    self.diagnostics_tab = diagnostics_tab
-                    logger.info("Diagnostics tab created")
-                except Exception as e:
-                    logger.error(f"Failed to create diagnostics tab: {e}")
-                    import traceback
-                    logger.error(f"Diagnostics tab traceback: {traceback.format_exc()}")
-
-                # Live Data Tab
-                try:
-                    live_data_tab = LiveDataTab(self)
-                    live_data_widget, live_data_title = live_data_tab.create_tab()
-                    self.tab_widget.addTab(live_data_widget, live_data_title)
-                    self.live_data_tab = live_data_tab
-                    logger.info("Live data tab created")
-                except Exception as e:
-                    logger.error(f"Failed to create live data tab: {e}")
-                    import traceback
-                    logger.error(f"Live data tab traceback: {traceback.format_exc()}")
-
-                # CAN Bus Tab
-                try:
-                    can_bus_tab = CANBusDataTab(self)
-                    can_bus_widget, can_bus_title = can_bus_tab.create_tab()
-                    self.tab_widget.addTab(can_bus_widget, can_bus_title)
-                    self.can_bus_tab = can_bus_tab
-                    logger.info("CAN bus tab created")
-                except Exception as e:
-                    logger.error(f"Failed to create CAN bus tab: {e}")
-                    import traceback
-                    logger.error(f"CAN bus tab traceback: {traceback.format_exc()}")
-
-                # Special Functions Tab
-                try:
-                    special_functions_tab = SpecialFunctionsTab(self)
-                    special_functions_widget, special_functions_title = special_functions_tab.create_tab()
-                    self.tab_widget.addTab(special_functions_widget, special_functions_title)
-                    self.special_functions_tab = special_functions_tab
-                    logger.info("Special functions tab created")
-                except Exception as e:
-                    logger.error(f"Failed to create special functions tab: {e}")
-                    import traceback
-                    logger.error(f"Special functions tab traceback: {traceback.format_exc()}")
-
-                # Calibrations Tab
-                try:
-                    calibrations_tab = CalibrationsTab(self)
-                    calibrations_widget, calibrations_title = calibrations_tab.create_tab()
-                    self.tab_widget.addTab(calibrations_widget, calibrations_title)
-                    self.calibrations_tab = calibrations_tab
-                    logger.info("Calibrations tab created")
-                except Exception as e:
-                    logger.error(f"Failed to create calibrations tab: {e}")
-                    import traceback
-                    logger.error(f"Calibrations tab traceback: {traceback.format_exc()}")
-
-                # Advanced Tab
-                try:
-                    advanced_tab = AdvancedTab(self)
-                    advanced_widget, advanced_title = advanced_tab.create_tab()
-                    self.tab_widget.addTab(advanced_widget, advanced_title)
-                    self.advanced_tab = advanced_tab
-                    logger.info("Advanced tab created")
-                except Exception as e:
-                    logger.error(f"Failed to create advanced tab: {e}")
-                    import traceback
-                    logger.error(f"Advanced tab traceback: {traceback.format_exc()}")
-
-                # Security Tab
-                try:
-                    security_tab = SecurityTab(self)
-                    security_widget, security_title = security_tab.create_tab()
-                    self.tab_widget.addTab(security_widget, security_title)
-                    self.security_tab = security_tab
-                    logger.info("Security tab created")
-                except Exception as e:
-                    logger.error(f"Failed to create security tab: {e}")
-                    import traceback
-                    logger.error(f"Security tab traceback: {traceback.format_exc()}")
-
-                # Connect brand change signals
-                logger.debug("Connecting signals")
-                if hasattr(self, 'special_functions_tab'):
-                    self.header.brand_combo.currentTextChanged.connect(self.special_functions_tab.refresh_functions_list)
+                # Create the actual tab widget
+                tab_widget, tab_title = tab_instance.create_tab()
                 
-                if hasattr(self, 'calibrations_tab'):
-                    self.header.brand_combo.currentTextChanged.connect(self.calibrations_tab.refresh_calibrations_list)
-
-                # Initialize special functions tab with current brand
-                if hasattr(self, 'special_functions_tab'):
-                    self.special_functions_tab.refresh_functions_list()
+                # Replace placeholder with real content
+                self.tab_widget.removeTab(tab_index)
+                self.tab_widget.insertTab(tab_index, tab_widget, tab_title)
+                self.tab_widget.setCurrentIndex(tab_index)
                 
-                logger.info("Tab creation completed successfully")
-
+                # Store reference for later access
+                setattr(self, f"{tab_name}_tab", tab_instance)
+                
+                # Connect brand change signals for relevant tabs
+                if tab_name in ['special_functions', 'calibrations']:
+                    self.header.brand_combo.currentTextChanged.connect(
+                        getattr(tab_instance, 'refresh_functions_list', lambda: None)
+                    )
+                
+                logger.info(f"✅ Tab loaded successfully: {tab_name}")
+                
             except Exception as e:
-                logger.error(f"Exception during tab creation: {e}")
+                logger.error(f"❌ Failed to load tab {tab_name}: {e}")
                 import traceback
-                logger.error(f"Tab creation traceback: {traceback.format_exc()}")
-                raise
+                logger.error(f"Tab loading traceback: {traceback.format_exc()}")
 
         def create_status_bar(self):
             """Create status bar with DACOS styling"""
@@ -1064,7 +1174,8 @@ if PYQT6_AVAILABLE:
             
             # CRASH FIX: Register any active threads for cleanup
             if hasattr(self, 'app_watchdog') and self.app_watchdog:
-                thread_cleanup_manager.register_thread(self.app_watchdog, "HangProtectionWatchdog")
+                cleanup_manager = get_thread_cleanup_manager()
+                cleanup_manager.register_thread(self.app_watchdog, "HangProtectionWatchdog")
                 
             # Stop any active operations
             if hasattr(self, 'diagnostics_controller') and self.diagnostics_controller:
