@@ -5,12 +5,34 @@ Integrated with user database system
 """
 
 import logging
+import sys
+import os
+
+# Ensure shared modules can be imported
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(os.path.dirname(current_dir))
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QMessageBox
+    QPushButton, QMessageBox, QFrame, QWidget
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QPixmap, QIcon
+
+try:
+    from shared.themes.dacos_theme import DACOS_THEME, DACOS_STYLESHEET
+except ImportError:
+    # Fallback if theme not found
+    DACOS_THEME = {
+        "bg_main": "#0A1A1A",
+        "bg_panel": "#0D2323",
+        "accent": "#21F5C1",
+        "text_main": "#E8F4F2",
+        "error": "#FF4D4D"
+    }
+    DACOS_STYLESHEET = ""
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +45,17 @@ class LoginDialog(QDialog):
         self.setModal(True)
         self.setMinimumSize(500, 400)
         self.resize(550, 450)
+        
+        # Apply DACOS Theme
+        self.setStyleSheet(DACOS_STYLESHEET)
 
         # Security manager
-        from shared.security_manager import security_manager
-        self.user_db = security_manager
+        try:
+            from shared.security_manager import security_manager
+            self.user_db = security_manager
+        except ImportError:
+            logger.warning("Security manager not found, using dummy auth")
+            self.user_db = None
 
         self.init_ui()
     
@@ -42,6 +71,7 @@ class LoginDialog(QDialog):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_font = QFont("Segoe UI", 24, QFont.Weight.Bold)
         title.setFont(title_font)
+        title.setStyleSheet(f"color: {DACOS_THEME['accent']};")
         layout.addWidget(title)
         
         # Subtitle
@@ -49,54 +79,71 @@ class LoginDialog(QDialog):
         subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         subtitle_font = QFont("Segoe UI", 12)
         subtitle.setFont(subtitle_font)
+        subtitle.setStyleSheet(f"color: {DACOS_THEME['text_main']};")
         layout.addWidget(subtitle)
         
+        # Container for inputs
+        input_container = QFrame()
+        input_container.setObjectName("inputContainer")
+        input_container.setStyleSheet(f"""
+            QFrame#inputContainer {{
+                background-color: {DACOS_THEME['bg_panel']};
+                border-radius: 12px;
+                padding: 20px;
+                border: 1px solid rgba(33, 245, 193, 0.2);
+            }}
+        """)
+        input_layout = QVBoxLayout(input_container)
+        input_layout.setSpacing(15)
+
         # Username
-        username_layout = QVBoxLayout()
         username_label = QLabel("Username:")
+        username_label.setStyleSheet(f"color: {DACOS_THEME['text_main']}; font-weight: bold;")
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Enter username")
-        self.username_input.setMinimumHeight(35)
-        self.username_input.setStyleSheet("""
-            QLineEdit {
+        self.username_input.setMinimumHeight(40)
+        self.username_input.setStyleSheet(f"""
+            QLineEdit {{
                 padding: 8px;
-                border: 2px solid #21F5C1;
+                border: 2px solid {DACOS_THEME['accent']};
                 border-radius: 8px;
-                background-color: #0D2323;
-                color: #E8F4F2;
-                font-size: 12pt;
-            }
-            QLineEdit:focus {
-                border-color: #2AF5D1;
-            }
+                background-color: {DACOS_THEME['bg_main']};
+                color: {DACOS_THEME['text_main']};
+                font-size: 11pt;
+            }}
+            QLineEdit:focus {{
+                border-color: {DACOS_THEME['glow']};
+                background-color: {DACOS_THEME['bg_panel']};
+            }}
         """)
-        username_layout.addWidget(username_label)
-        username_layout.addWidget(self.username_input)
-        layout.addLayout(username_layout)
+        input_layout.addWidget(username_label)
+        input_layout.addWidget(self.username_input)
 
         # Password
-        password_layout = QVBoxLayout()
         password_label = QLabel("Password:")
+        password_label.setStyleSheet(f"color: {DACOS_THEME['text_main']}; font-weight: bold;")
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setPlaceholderText("Enter password")
-        self.password_input.setMinimumHeight(35)
-        self.password_input.setStyleSheet("""
-            QLineEdit {
+        self.password_input.setMinimumHeight(40)
+        self.password_input.setStyleSheet(f"""
+            QLineEdit {{
                 padding: 8px;
-                border: 2px solid #21F5C1;
+                border: 2px solid {DACOS_THEME['accent']};
                 border-radius: 8px;
-                background-color: #0D2323;
-                color: #E8F4F2;
-                font-size: 12pt;
-            }
-            QLineEdit:focus {
-                border-color: #2AF5D1;
-            }
+                background-color: {DACOS_THEME['bg_main']};
+                color: {DACOS_THEME['text_main']};
+                font-size: 11pt;
+            }}
+            QLineEdit:focus {{
+                border-color: {DACOS_THEME['glow']};
+                background-color: {DACOS_THEME['bg_panel']};
+            }}
         """)
-        password_layout.addWidget(password_label)
-        password_layout.addWidget(self.password_input)
-        layout.addLayout(password_layout)
+        input_layout.addWidget(password_label)
+        input_layout.addWidget(self.password_input)
+        
+        layout.addWidget(input_container)
 
         # Info notice
         info_label = QLabel("Super User: superuser\nDefault password must be changed on first login")

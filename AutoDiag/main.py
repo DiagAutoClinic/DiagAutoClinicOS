@@ -22,6 +22,20 @@ import argparse
 from functools import lru_cache
 import gc
 
+# FIXED: Enhanced import path resolution for shared modules
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+project_root = parent_dir  # DiagAutoClinicOS root
+
+# Add all possible paths
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)  # DiagAutoClinicOS root
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)   # AutoDiag directory
+shared_dir = os.path.join(project_root, 'shared')
+if shared_dir not in sys.path:
+    sys.path.insert(0, shared_dir)    # Shared modules
+
 # CRASH FIX: Install crash detection first
 try:
     from autodiag_crash_debug import install_crash_detection
