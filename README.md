@@ -1,6 +1,6 @@
 <!-- HEADER -->
 <p align="center">
-  <img src="https://diagautoclinic.co.za/assets/logo.png" alt="DiagAutoClinic Logo" width="900"/>
+  <img src="https://diagautoclinic.co.za/assets/dacos_logo.png" alt="DiagAutoClinic Logo" width="900"/>
 </p>
 
 <h1 align="center">DiagAuto Suite</h1>
