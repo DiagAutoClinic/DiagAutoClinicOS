@@ -83,7 +83,29 @@ class EnhancedSecurityManager:
         users = self._load_users_from_file()
         if users is None:
             users = self._create_default_users()
+            # Save defaults immediately
+            self.user_database = users
+            self._save_users_to_file()
         return users
+
+    def _save_users_to_file(self) -> None:
+        """Save user database to users.json file"""
+        try:
+            # Convert enums to strings for JSON serialization
+            serializable_users = {}
+            for username, data in self.user_database.items():
+                user_copy = data.copy()
+                if isinstance(data['security_level'], SecurityLevel):
+                    user_copy['security_level'] = data['security_level'].name
+                if isinstance(data['role'], UserRole):
+                    user_copy['role'] = data['role'].value
+                serializable_users[username] = user_copy
+            
+            with open('users.json', 'w') as f:
+                json.dump(serializable_users, f, indent=4)
+            logger.debug("User database saved to users.json")
+        except Exception as e:
+            logger.error(f"Failed to save users to file: {e}")
 
     def _load_users_from_file(self) -> Optional[Dict[str, Dict[str, Any]]]:
         """Load user database from users.json file"""
@@ -97,6 +119,7 @@ class EnhancedSecurityManager:
                 users[username] = {
                     "password_hash": user_data["password_hash"],
                     "salt": user_data["salt"],
+                    "hash_version": user_data.get("hash_version", "v1"),  # Default to v1 (SHA-256)
                     "security_level": SecurityLevel[user_data["security_level"]],
                     "role": UserRole(user_data["role"]),
                     "full_name": user_data["full_name"],
@@ -118,8 +141,9 @@ class EnhancedSecurityManager:
         # Create tech1 user
         tech1_salt = self._generate_salt()
         users["tech1"] = {
-            "password_hash": self._hash_password("tech123", tech1_salt),
+            "password_hash": self._hash_password("tech123", tech1_salt, "v2"),
             "salt": tech1_salt,
+            "hash_version": "v2",
             "security_level": SecurityLevel.STANDARD,
             "role": UserRole.TECHNICIAN,
             "full_name": "Technician One",
@@ -133,8 +157,9 @@ class EnhancedSecurityManager:
         # Create supervisor user
         super_salt = self._generate_salt()
         users["supervisor"] = {
-            "password_hash": self._hash_password("super789", super_salt),
+            "password_hash": self._hash_password("super789", super_salt, "v2"),
             "salt": super_salt,
+            "hash_version": "v2",
             "security_level": SecurityLevel.ADVANCED,
             "role": UserRole.SUPERVISOR,
             "full_name": "System Supervisor",
@@ -148,8 +173,9 @@ class EnhancedSecurityManager:
         # Create admin user
         admin_salt = self._generate_salt()
         users["admin"] = {
-            "password_hash": self._hash_password("admin345", admin_salt),
+            "password_hash": self._hash_password("admin345", admin_salt, "v2"),
             "salt": admin_salt,
+            "hash_version": "v2",
             "security_level": SecurityLevel.FACTORY,
             "role": UserRole.ADMIN,
             "full_name": "System Administrator",
@@ -166,10 +192,20 @@ class EnhancedSecurityManager:
         """Generate a random salt for password hashing"""
         return secrets.token_hex(32)  # 64 character hex string
 
-    def _hash_password(self, password: str, salt: str) -> str:
-        """Hash password with salt using SHA-256"""
-        combined = f"{password}{salt}".encode('utf-8')
-        return hashlib.sha256(combined).hexdigest()
+    def _hash_password(self, password: str, salt: str, version: str = 'v2') -> str:
+        """Hash password with salt using specified version"""
+        if version == 'v1':
+            # Legacy SHA-256
+            combined = f"{password}{salt}".encode('utf-8')
+            return hashlib.sha256(combined).hexdigest()
+        else:
+            # V2: PBKDF2-HMAC-SHA256 (100,000 iterations)
+            return hashlib.pbkdf2_hmac(
+                'sha256', 
+                password.encode('utf-8'), 
+                salt.encode('utf-8'), 
+                100000
+            ).hex()
 
     def _generate_session_token(self) -> str:
         """Generate a secure session token"""
@@ -222,7 +258,9 @@ class EnhancedSecurityManager:
                 return False, f"Account locked. Try again in {remaining} seconds.", None
 
             # Verify password
-            expected_hash = self._hash_password(password, user_data['salt'])
+            hash_version = user_data.get('hash_version', 'v1')
+            expected_hash = self._hash_password(password, user_data['salt'], hash_version)
+            
             if expected_hash != user_data['password_hash']:
                 user_data['failed_attempts'] = user_data.get('failed_attempts', 0) + 1
                 self.failed_attempts += 1
@@ -231,6 +269,7 @@ class EnhancedSecurityManager:
                 if user_data['failed_attempts'] >= 3:
                     user_data['locked_until'] = time.time() + self.security_config['lockout_duration']
                     self._log_audit_event('user_locked', username, {'reason': 'failed_attempts'})
+                    self._save_users_to_file()
                     return False, "Account locked due to multiple failed attempts", None
 
                 # Check for system lockout
@@ -240,9 +279,19 @@ class EnhancedSecurityManager:
                     return False, "System locked due to security policy", None
 
                 self._log_audit_event('login_failed_wrong_password', username)
+                # Save failed attempt count
+                self._save_users_to_file()
                 return False, "Invalid credentials", None
 
             # Successful authentication
+            
+            # MIGRATION: Upgrade legacy hashes to v2
+            if hash_version == 'v1':
+                logger.info(f"Migrating user {username} to v2 password hash")
+                user_data['password_hash'] = self._hash_password(password, user_data['salt'], 'v2')
+                user_data['hash_version'] = 'v2'
+                self._save_users_to_file()
+
             self.current_user = normalized_username  # Store normalized username
             self.security_level = user_data["security_level"]
             self.user_role = user_data["role"]
@@ -254,6 +303,9 @@ class EnhancedSecurityManager:
             user_data['failed_attempts'] = 0
             user_data['last_login'] = time.time()
             self.failed_attempts = 0
+            
+            # Save login timestamp
+            self._save_users_to_file()
 
             # Get user info for return
             user_info = self.get_user_info()
@@ -393,8 +445,9 @@ class EnhancedSecurityManager:
         # Create user
         salt = self._generate_salt()
         self.user_database[username] = {
-            "password_hash": self._hash_password(password, salt),
+            "password_hash": self._hash_password(password, salt, "v2"),
             "salt": salt,
+            "hash_version": "v2",
             "security_level": security_level,
             "role": role,
             "full_name": full_name,
@@ -403,6 +456,8 @@ class EnhancedSecurityManager:
             "last_login": None,
             "created_at": time.time()
         }
+        
+        self._save_users_to_file()
 
         self._log_audit_event('user_created', self.current_user, {'new_user': username})
         return True, f"User {username} created successfully"
@@ -416,7 +471,8 @@ class EnhancedSecurityManager:
 
         # Verify old password (skip if force password change)
         if not user_data.get('force_password_change', False):
-            expected_hash = self._hash_password(old_password, user_data['salt'])
+            hash_version = user_data.get('hash_version', 'v1')
+            expected_hash = self._hash_password(old_password, user_data['salt'], hash_version)
             if expected_hash != user_data['password_hash']:
                 return False, "Current password incorrect"
 
@@ -427,10 +483,13 @@ class EnhancedSecurityManager:
 
         # Update password
         salt = self._generate_salt()
-        user_data['password_hash'] = self._hash_password(new_password, salt)
+        user_data['password_hash'] = self._hash_password(new_password, salt, "v2")
         user_data['salt'] = salt
+        user_data['hash_version'] = "v2"
         user_data['failed_attempts'] = 0  # Reset failed attempts
         user_data['force_password_change'] = False  # Reset force change flag
+        
+        self._save_users_to_file()
 
         self._log_audit_event('password_changed', username)
         return True, "Password changed successfully"
@@ -467,6 +526,8 @@ class EnhancedSecurityManager:
         user_data = self.user_database[username]
         user_data['failed_attempts'] = 0
         user_data['locked_until'] = None
+        
+        self._save_users_to_file()
 
         self._log_audit_event('lockout_reset', self.current_user, {'target_user': username})
         return True, f"Lockout reset for user {username}"

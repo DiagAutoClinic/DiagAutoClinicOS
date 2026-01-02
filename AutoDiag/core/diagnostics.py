@@ -6,10 +6,24 @@ Handles diagnostic operations, DTC reading/clearing, and live data
 import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
-from PyQt6.QtCore import QTimer, pyqtSignal, QObject
-from PyQt6.QtWidgets import QWidget, QMessageBox, QTableWidgetItem
+from PyQt6.QtCore import QTimer, pyqtSignal, QObject, QThread
 
 logger = logging.getLogger(__name__)
+
+class VehicleLoaderThread(QThread):
+    """Background thread for loading vehicle list"""
+    vehicles_loaded = pyqtSignal(list)
+    
+    def run(self):
+        try:
+            if CAN_PARSER_AVAILABLE:
+                vehicles = list_all_vehicles()
+                self.vehicles_loaded.emit(vehicles)
+            else:
+                self.vehicles_loaded.emit([])
+        except Exception as e:
+            logger.error(f"Error in vehicle loader thread: {e}")
+            self.vehicles_loaded.emit([])
 
 # Import CAN bus REF parser
 try:
@@ -107,12 +121,22 @@ class DiagnosticsController(QObject):
 
     def _load_available_vehicles_later(self):
         """Load list of available vehicles from REF files - deferred to prevent startup hang"""
-        # Use QTimer to defer loading until after UI is initialized
-        from PyQt6.QtCore import QTimer
-        QTimer.singleShot(100, self._load_available_vehicles)
+        # Start background loader
+        self._vehicle_loader = VehicleLoaderThread()
+        self._vehicle_loader.vehicles_loaded.connect(self._on_vehicles_loaded)
+        self._vehicle_loader.start()
     
+    def _on_vehicles_loaded(self, vehicles):
+        """Handle loaded vehicles"""
+        self.available_vehicles = vehicles
+        self._vehicles_loaded = True
+        logger.info(f"Loaded {len(self.available_vehicles)} vehicles from REF files (background)")
+        
+        # If we have a vehicle selection UI waiting, we might need to notify it
+        # For now, just logging it is enough as the UI pulls this data on demand
+
     def _load_available_vehicles(self):
-        """Load list of available vehicles from REF files"""
+        """Load list of available vehicles from REF files (Synchronous fallback)"""
         try:
             if CAN_PARSER_AVAILABLE:
                 self.available_vehicles = list_all_vehicles()

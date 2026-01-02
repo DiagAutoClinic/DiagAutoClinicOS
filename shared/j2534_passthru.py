@@ -88,27 +88,53 @@ class J2534PassThru(ABC):
 
 # --- Real J2534 Implementation ---
 
-    def __init__(self, **kwargs):
+    def __init__(self, dll_path: Optional[str] = None, **kwargs):
         self._is_open = False
         self.channels: Dict[int, J2534Protocol] = {}
         self.dll_handle = None
         self.device_id = c_ulong(0)
-        self._load_driver()
+        self.dll_path = dll_path
+        if self.dll_path:
+            self._load_driver(self.dll_path)
 
-    def _load_driver(self):
-        """Load GODIAG J2534 driver DLL"""
+    def _load_driver(self, dll_path: str):
+        """Load J2534 driver DLL"""
         try:
-            # Correctly locate the DLL relative to this file
-            driver_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'drivers', 'GODIAG J2534 Driver', 'GODIAG_PT32.dll'))
-            if os.path.exists(driver_path):
-                self.dll_handle = ctypes.windll.LoadLibrary(driver_path)
+            if os.path.exists(dll_path):
+                self.dll_handle = ctypes.windll.LoadLibrary(dll_path)
                 self._define_api_prototypes()
-                logger.info(f"Loaded GODIAG J2534 driver from {driver_path}")
+                logger.info(f"Loaded J2534 driver from {dll_path}")
             else:
-                logger.error(f"GODIAG J2534 driver not found at {driver_path}")
+                logger.error(f"J2534 driver not found at {dll_path}")
         except Exception as e:
-            logger.error(f"Failed to load GODIAG J2534 driver: {e}")
+            logger.error(f"Failed to load J2534 driver from {dll_path}: {e}")
             self.dll_handle = None
+
+    @staticmethod
+    def scan_local_drivers(drivers_dir: str) -> List[str]:
+        """Scan a directory for DLL files, including common system paths"""
+        dlls = []
+        
+        # 1. Scan local drivers folder
+        if os.path.exists(drivers_dir):
+            for root, dirs, files in os.walk(drivers_dir):
+                for file in files:
+                    if file.lower().endswith(".dll"):
+                        dlls.append(os.path.join(root, file))
+        
+        # 2. Check common system locations for popular VCIs
+        common_paths = [
+            r"C:\Program Files (x86)\Scanmatik\sm2j2534.dll",
+            r"C:\Program Files\Scanmatik\sm2j2534.dll",
+            r"C:\Program Files (x86)\OpenECU\OpenPort 2.0\drivers\openport 2.0\op20pt32.dll",
+            r"C:\Program Files (x86)\Tactrix\OpenPort 2.0\op20pt32.dll"
+        ]
+        
+        for path in common_paths:
+            if os.path.exists(path) and path not in dlls:
+                dlls.append(path)
+                
+        return dlls
 
     def _define_api_prototypes(self):
         """Define ctypes function prototypes for the J2534 API"""

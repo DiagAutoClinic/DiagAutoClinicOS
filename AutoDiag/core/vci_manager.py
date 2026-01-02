@@ -45,6 +45,7 @@ class VCIDevice:
     last_seen: Optional[float] = None
     capabilities: List[str] = None
     bluetooth_address: Optional[str] = None  # Bluetooth MAC address for wireless devices
+    dll_path: Optional[str] = None  # Path to J2534 DLL
 
     def __post_init__(self):
         if self.capabilities is None:
@@ -454,12 +455,18 @@ class VCIManager(QObject):
                                 try:
                                     name = winreg.QueryValueEx(device_key, "Name")[0]
                                     vendor = winreg.QueryValueEx(device_key, "Vendor")[0]
+                                    try:
+                                        dll_path = winreg.QueryValueEx(device_key, "FunctionLibrary")[0]
+                                    except:
+                                        dll_path = None
 
                                     device = VCIDevice(
                                         device_type=VCITypes.J2534_GENERIC,
                                         name=f"{vendor} {name}",
-                                        status=VCIStatus.DISCONNECTED
+                                        status=VCIStatus.DISCONNECTED,
+                                        dll_path=dll_path
                                     )
+                                    device.capabilities = self._get_device_capabilities(VCITypes.J2534_GENERIC)
                                     devices_found.append(device)
                                     logger.info(f"✅ Found J2534 device: {device.name}")
 
@@ -511,6 +518,61 @@ class VCIManager(QObject):
                 logger.debug("J2534 registry not found")
             except Exception as e:
                 logger.error(f"J2534 registry scan failed: {e}")
+
+            # Also scan local drivers directory
+            try:
+                import os
+                from shared.j2534_passthru import J2534PassThru
+                
+                # Construct path to drivers directory relative to project root
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                # Go up from AutoDiag/core/vci_manager.py to DiagAutoClinicOS/
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+                drivers_dir = os.path.join(project_root, "drivers")
+                
+                # Fallback if path resolution looks wrong (e.g. if run from strange location)
+                if not os.path.exists(drivers_dir):
+                    drivers_dir = os.path.join(os.getcwd(), "drivers")
+                
+                if os.path.exists(drivers_dir):
+                    logger.info(f"🔍 Scanning local drivers directory: {drivers_dir}")
+                    local_dlls = J2534PassThru.scan_local_drivers(drivers_dir)
+                    
+                    for dll_path in local_dlls:
+                        try:
+                            name = os.path.basename(dll_path).replace(".dll", "")
+                            
+                            # Filter out known non-J2534 helper DLLs to keep UI clean
+                            skip_prefixes = ["ftd2xx", "ftbus", "ftcser", "ftlang", "ftser", "WdfCoInstaller", "libusb"]
+                            if any(name.lower().startswith(p) for p in skip_prefixes):
+                                continue
+
+                            # Check if already added via registry
+                            is_duplicate = False
+                            for existing in self.available_devices:
+                                if existing.dll_path and os.path.abspath(existing.dll_path) == os.path.abspath(dll_path):
+                                    is_duplicate = True
+                                    break
+                            
+                            if not is_duplicate:
+                                device = VCIDevice(
+                                    device_type=VCITypes.J2534_GENERIC,
+                                    name=f"Local Driver: {name}",
+                                    status=VCIStatus.DISCONNECTED,
+                                    dll_path=dll_path
+                                )
+                                device.capabilities = self._get_device_capabilities(VCITypes.J2534_GENERIC)
+                                self.available_devices.append(device)
+                                logger.info(f"✅ Found local J2534 driver: {name}")
+                        except Exception as e:
+                            logger.error(f"Error adding local driver {dll_path}: {e}")
+                else:
+                    logger.debug(f"Local drivers directory not found: {drivers_dir}")
+                        
+            except ImportError:
+                logger.warning("Could not import J2534PassThru for local driver scan")
+            except Exception as e:
+                logger.error(f"Local driver scan failed: {e}")
 
         except ImportError:
             logger.debug("Windows registry access not available")
@@ -882,6 +944,8 @@ class VCIManager(QObject):
                 success = self._connect_scanmatik_2_pro(device)
             elif device.device_type == VCITypes.HH_OBD_ADVANCE:
                 success = self._connect_hh_obd_advance(device)
+            elif device.device_type == VCITypes.J2534_GENERIC:
+                success = self._connect_j2534(device)
             else:
                 success = self._connect_generic_obd(device)
 
@@ -963,10 +1027,61 @@ class VCIManager(QObject):
         return False
 
     def _connect_scanmatik_2_pro(self, device: VCIDevice) -> bool:
-        """Connect to Scanmatik 2 Pro device"""
-        # Implementation would be similar to GoDiag
-        logger.info("Scanmatik 2 Pro connection not yet implemented")
-        return False
+        """Connect to Scanmatik 2 Pro device using J2534"""
+        try:
+            logger.info("Attempting Scanmatik 2 Pro connection via J2534...")
+            from shared.j2534_passthru import J2534PassThru
+            import os
+            
+            # 1. Check if we already have a specific DLL path
+            dll_path = getattr(device, 'dll_path', None)
+            
+            # 2. If not, try to find standard Scanmatik DLLs
+            if not dll_path:
+                possible_dlls = ["sm2j2534.dll", "sm2.dll"]
+                
+                # Check drivers directory
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+                drivers_dir = os.path.join(project_root, "drivers")
+                
+                if os.path.exists(drivers_dir):
+                    local_dlls = J2534PassThru.scan_local_drivers(drivers_dir)
+                    for local_dll in local_dlls:
+                        if any(name in os.path.basename(local_dll).lower() for name in ["sm2", "scanmatik"]):
+                            dll_path = local_dll
+                            logger.info(f"Found local Scanmatik DLL: {dll_path}")
+                            break
+            
+            # 3. If still not found, try common system paths (heuristic)
+            if not dll_path:
+                system_paths = [
+                    r"C:\Program Files (x86)\Scanmatik\sm2j2534.dll",
+                    r"C:\Program Files\Scanmatik\sm2j2534.dll"
+                ]
+                for path in system_paths:
+                    if os.path.exists(path):
+                        dll_path = path
+                        logger.info(f"Found system Scanmatik DLL: {dll_path}")
+                        break
+            
+            # 4. Connect
+            if dll_path:
+                j2534 = J2534PassThru(dll_path=dll_path)
+                if j2534.open():
+                    device._j2534_device = j2534
+                    logger.info("Scanmatik 2 Pro connected successfully via J2534")
+                    return True
+                else:
+                    logger.error("Failed to open Scanmatik J2534 channel")
+            else:
+                logger.warning("Scanmatik J2534 DLL not found. Please ensure drivers are installed or placed in drivers/ folder.")
+                
+            return False
+            
+        except Exception as e:
+            logger.error(f"Scanmatik connection error: {e}")
+            return False
 
     def _connect_hh_obd_advance(self, device: VCIDevice) -> bool:
         """Connect to HH OBD Advance device"""

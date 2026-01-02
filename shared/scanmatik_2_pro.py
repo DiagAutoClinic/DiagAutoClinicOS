@@ -229,7 +229,10 @@ class ScanMatik2Pro:
         logger.info(f"Mock device setup complete: {mock_device.name}")
     
     def detect_devices(self) -> List[Dict[str, str]]:
-        """Elite detection for ScanMatik 2 Pro + GRD dongle – finds any COM port"""
+        """
+        Passive detection for ScanMatik 2 Pro – finds ports by VID/PID/Description
+        Does NOT open the port to avoid conflict with J2534 driver
+        """
         devices = []
         try:
             ports = serial.tools.list_ports.comports()
@@ -240,6 +243,7 @@ class ScanMatik2Pro:
                 logger.debug(f"Port: {port.device} | Desc: {port.description} | HwID: {port.hwid}")
                 
                 # Match ScanMatik 2 Pro (FTDI chip) or GRD dongle
+                # Scanmatik 2 Pro uses FTDI FT232R/FT231X
                 if (port.vid == 0x0403 and port.pid in [0x6001, 0x6010, 0x6011, 0x6014, 0x6015]) \
                    or "FTDI" in (port.description or "") \
                    or "ScanMatik" in (port.description or "") \
@@ -251,34 +255,26 @@ class ScanMatik2Pro:
                         "type": "ScanMatik 2 Pro",
                         "vid_pid": f"{port.vid:04X}:{port.pid:04X}" if port.vid else "Unknown"
                     })
-                    logger.info(f"✓ ScanMatik 2 Pro detected on {port.device} ({port.description})")
+                    logger.info(f"✓ ScanMatik 2 Pro candidate detected on {port.device} ({port.description})")
                     
         except Exception as e:
             logger.error(f"Error scanning ports: {e}")
 
-        # If nothing found, show all ports so you can pick manually
-        if not devices:
-            logger.warning("No automatic match – listing all ports for manual selection")
-            for port in serial.tools.list_ports.comports():
-                devices.append({
-                    "port": port.device,
-                    "description": f"{port.description} (manual check)",
-                    "type": "Unknown USB-Serial"
-                })
-
-        # Store devices internally for compatibility
+        # Store devices internally
         self.detected_devices = []
         for device_dict in devices:
             device_info = ScanMatikDeviceInfo(
-                device_type=ScanMatikDeviceType.SCANMATIK_2_PRO if device_dict["type"] == "ScanMatik 2 Pro" else ScanMatikDeviceType.UNKNOWN,
+                device_type=ScanMatikDeviceType.SCANMATIK_2_PRO,
                 port=device_dict["port"],
                 name=f"{device_dict['type']} ({device_dict['port']})",
                 description=device_dict["description"],
-                firmware_version="Unknown",
+                firmware_version="Unknown", # Cannot query without opening port
                 features=[
                     ScanMatikFeature.BASIC_OBD,
                     ScanMatikFeature.DTC_CODES,
-                    ScanMatikFeature.LIVE_DATA
+                    ScanMatikFeature.LIVE_DATA,
+                    ScanMatikFeature.UDS_COMMANDS,
+                    ScanMatikFeature.CAN_SNIFFING
                 ],
                 is_real_hardware=True
             )
@@ -287,145 +283,22 @@ class ScanMatik2Pro:
         return devices
     
     def _detect_serial_devices(self) -> List[ScanMatikDeviceInfo]:
-        """Internal method for serial device detection (called in thread)"""
-        # Common ports for diagnostic devices
-        possible_ports = [
-            'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
-            '/dev/ttyUSB0', '/dev/ttyUSB1', '/dev/ttyUSB2', '/dev/ttyUSB3', '/dev/ttyUSB4',
-            '/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyACM2', '/dev/ttyACM3'
-        ]
-        
-        self.detected_devices.clear()
-        
-        for port in possible_ports:
-            device_info = self._probe_port_for_scanmatik(port)
-            if device_info:
-                self.detected_devices.append(device_info)
-                logger.info(f"Found ScanMatik device: {device_info.name} on {port}")
-        
-        logger.info(f"ScanMatik detection complete. Found {len(self.detected_devices)} device(s)")
+        """Internal method for serial device detection (deprecated/passive only)"""
+        # Just reuse the main detection which is now passive
+        self.detect_devices()
         return self.detected_devices
     
     def _probe_port_for_scanmatik(self, port: str, timeout: float = 2.0) -> Optional[ScanMatikDeviceInfo]:
-        """Probe a specific port for ScanMatik device with timeout protection"""
-        if self.mock_mode:
-            return self.detected_devices[0] if self.detected_devices else None
-        
-        try:
-            from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
-            
-            # Use thread pool for timeout protection
-            def port_probe():
-                return self._safe_probe_port(port)
-            
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(port_probe)
-                try:
-                    return future.result(timeout=timeout)
-                except FutureTimeoutError:
-                    logger.debug(f"Port probing timed out for {port}")
-                    return None
-                    
-        except Exception as e:
-            logger.debug(f"Error probing port {port}: {e}")
-        
+        """
+        Deprecated: Active probing removed to prevent port locking.
+        Returns None as we don't probe anymore.
+        """
         return None
     
     def _safe_probe_port(self, port: str) -> Optional[ScanMatikDeviceInfo]:
-        """Safe port probing (called in thread)"""
-        try:
-            ser = serial.Serial(
-                port=port,
-                baudrate=38400,
-                timeout=0.5,  # Reduced timeout for faster probing
-                bytesize=serial.EIGHTBITS,
-                parity=serial.PARITY_NONE,
-                stopbits=serial.STOPBITS_ONE
-            )
-            
-            # Send device identification commands with shorter delays
-            ser.write(b'ATZ\r\n')  # Reset
-            time.sleep(0.2)  # Reduced from 0.5
-            response = ser.read(512).decode('utf-8', errors='ignore').strip()
-            
-            ser.write(b'ATI\r\n')  # Version info
-            time.sleep(0.1)  # Reduced from 0.3
-            version_response = ser.read(512).decode('utf-8', errors='ignore').strip()
-            
-            ser.write(b'AT@1\r\n')  # Device description
-            time.sleep(0.1)  # Reduced from 0.3
-            desc_response = ser.read(512).decode('utf-8', errors='ignore').strip()
-            
-            ser.close()
-            
-            # Analyze responses for ScanMatik patterns
-            full_response = f"{response}\n{version_response}\n{desc_response}".upper()
-            
-            # Check for ScanMatik patterns
-            for pattern in self.scanmatik_patterns:
-                if re.search(pattern, full_response, re.IGNORECASE):
-                    # Determine device type
-                    if '2 PRO' in full_response:
-                        device_type = ScanMatikDeviceType.SCANMATIK_2_PRO
-                        features = [
-                            ScanMatikFeature.BASIC_OBD,
-                            ScanMatikFeature.ENHANCED_OBD,
-                            ScanMatikFeature.DTC_CODES,
-                            ScanMatikFeature.LIVE_DATA,
-                            ScanMatikFeature.BIDIRECTIONAL,
-                            ScanMatikFeature.PROGRAMMING,
-                            ScanMatikFeature.SECURITY_ACCESS,
-                            ScanMatikFeature.UDS_COMMANDS,
-                            ScanMatikFeature.CAN_SNIFFING,
-                            ScanMatikFeature.ADVANCED_DIAGNOSTICS
-                        ]
-                    elif '2' in full_response:
-                        device_type = ScanMatikDeviceType.SCANMATIK_2
-                        features = [
-                            ScanMatikFeature.BASIC_OBD,
-                            ScanMatikFeature.DTC_CODES,
-                            ScanMatikFeature.LIVE_DATA,
-                            ScanMatikFeature.VIN_READING
-                        ]
-                    else:
-                        device_type = ScanMatikDeviceType.SCANMATIK_PRO
-                        features = [
-                            ScanMatikFeature.BASIC_OBD,
-                            ScanMatikFeature.ENHANCED_OBD,
-                            ScanMatikFeature.DTC_CODES,
-                            ScanMatikFeature.LIVE_DATA,
-                            ScanMatikFeature.BIDIRECTIONAL
-                        ]
-                    
-                    return ScanMatikDeviceInfo(
-                        device_type=device_type,
-                        port=port,
-                        name=f"ScanMatik Device ({port})",
-                        description=desc_response or "ScanMatik Diagnostic Device",
-                        firmware_version=version_response or "Unknown",
-                        features=features,
-                        is_real_hardware=True
-                    )
-            
-            # Check for generic OBD device (ELM327 compatible)
-            if any(keyword in full_response for keyword in ['ELM327', 'OBD', 'STN']):
-                return ScanMatikDeviceInfo(
-                    device_type=ScanMatikDeviceType.ELM327_COMPATIBLE,
-                    port=port,
-                    name=f"ELM327 Compatible ({port})",
-                    description="ELM327-based OBD Adapter",
-                    firmware_version=version_response or "Unknown",
-                    features=[
-                        ScanMatikFeature.BASIC_OBD,
-                        ScanMatikFeature.DTC_CODES,
-                        ScanMatikFeature.LIVE_DATA
-                    ],
-                    is_real_hardware=True
-                )
-                
-        except Exception as e:
-            logger.debug(f"Error probing port {port}: {e}")
-        
+        """
+        Deprecated: Active probing removed.
+        """
         return None
     
     def connect_device(self, device_name: str = "ScanMatik 2 Pro") -> bool:

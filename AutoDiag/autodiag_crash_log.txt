@@ -40,3 +40,35 @@ LIKELY CAUSES:
 - Theme stylesheet application
 - Blocking VCI scan in GUI thread
 ==================================================
+
+=== CRASH DETECTED AT 2025-12-30 16:02:37.014198 ===
+Traceback (most recent call last):
+  File "C:\Users\DACOS\Documents\DACOS\DACOS\DiagAutoClinicOS-main\DiagAutoClinicOS\AutoDiag\main.py", line 349, in <module>
+    from AutoDiag.ui.vci_connection_tab import VCIConnectionTab
+  File "C:\Users\DACOS\Documents\DACOS\DACOS\DiagAutoClinicOS-main\DiagAutoClinicOS\AutoDiag\ui\vci_connection_tab.py", line 284
+    if not self.parent.diagnostics_controller:
+IndentationError: unexpected indent
+
+LIKELY CAUSES:
+- Qt6/PyQt6 native DLL crash (0xCFFFFFFF)
+- Neural background animation
+- Gauge widget initialization
+- Theme stylesheet application
+- Blocking VCI scan in GUI thread
+==================================================
+
+=== CRASH DETECTED AT 2025-12-30 16:44:49.648754 ===
+Traceback (most recent call last):
+  File "C:\Users\DACOS\Documents\DACOS\DACOS\DiagAutoClinicOS-main\DiagAutoClinicOS\AutoDiag\main.py", line 349, in <module>
+    from AutoDiag.ui.vci_connection_tab import VCIConnectionTab
+  File "C:\Users\DACOS\Documents\DACOS\DACOS\DiagAutoClinicOS-main\DiagAutoClinicOS\AutoDiag\ui\vci_connection_tab.py", line 284
+    if not self.parent.diagnostics_controller:
+IndentationError: unexpected indent
+
+LIKELY CAUSES:
+- Qt6/PyQt6 native DLL crash (0xCFFFFFFF)
+- Neural background animation
+- Gauge widget initialization
+- Theme stylesheet application
+- Blocking VCI scan in GUI thread
+==================================================
