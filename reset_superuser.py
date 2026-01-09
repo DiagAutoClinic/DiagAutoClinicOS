@@ -16,9 +16,17 @@ DATABASE_PATH = os.path.join(os.path.dirname(__file__), "diagautoclinic_users.db
 
 
 def hash_password(password: str) -> str:
-    """Hash a password using SHA-256 with salt"""
+    """Hash a password using Scrypt (High Security)"""
     salt = os.urandom(32)
-    key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+    # Scrypt: n=16384, r=8, p=1, dklen=64 (Memory hard, GPU resistant)
+    key = hashlib.scrypt(
+        password.encode('utf-8'), 
+        salt=salt, 
+        n=16384, 
+        r=8, 
+        p=1, 
+        dklen=64
+    )
     return salt.hex() + key.hex()
 
 

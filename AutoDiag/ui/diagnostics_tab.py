@@ -154,12 +154,8 @@ class DiagnosticsTab:
             if status == "connected":
                 device = status_info.get("device", {})
                 self.update_vci_status(f"Connected: {device.get('name', 'VCI Device')}")
-                self.vci_connect_btn.setEnabled(False)
-                self.vci_disconnect_btn.setEnabled(True)
             elif status == "disconnected":
                 self.update_vci_status("VCI Status: Not Connected")
-                self.vci_connect_btn.setEnabled(True)
-                self.vci_disconnect_btn.setEnabled(False)
             else:
                 self.update_vci_status(f"VCI Status: {status}")
                 

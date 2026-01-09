@@ -78,29 +78,36 @@ class ModelArchitecture:
         x = BatchNormalization()(x)
 
         # Output layer
-        output_layer = Dense(self.num_classes, activation='sigmoid', name='output_layer')(x)
+        activation = 'sigmoid' if self.num_classes == 1 else 'softmax'
+        output_layer = Dense(self.num_classes, activation=activation, name='output_layer')(x)
 
         # Create model
         model = Model(inputs=input_layer, outputs=output_layer)
 
         # Compile with enhanced optimizer
         optimizer = Adam(learning_rate=0.001, clipnorm=1.0)
-        model.compile(
-            optimizer=optimizer,
-            loss='binary_crossentropy',
-            metrics=[
-                'accuracy',
+        
+        loss = 'binary_crossentropy' if self.num_classes == 1 else 'sparse_categorical_crossentropy'
+        
+        metrics = ['accuracy']
+        if self.num_classes == 1:
+            metrics.extend([
                 tf.keras.metrics.AUC(name='auc'),
                 tf.keras.metrics.Precision(name='precision'),
                 tf.keras.metrics.Recall(name='recall')
-            ]
+            ])
+            
+        model.compile(
+            optimizer=optimizer,
+            loss=loss,
+            metrics=metrics
         )
 
         self.model_type = ModelType.SIMPLE_FEEDFORWARD
         return model
 
     def build_multi_input_model(self, dtc_input_shape: Tuple[int] = (10,),
-                              params_input_shape: Tuple[int] = (20,),
+                              params_input_shape: Tuple[int] = (22,),
                               vehicle_input_shape: Tuple[int] = (5,)) -> Model:
         """
         Build multi-input model for handling different data types separately
@@ -147,7 +154,8 @@ class ModelArchitecture:
         x = Dense(32, activation='relu')(x)
 
         # Output layer
-        output_layer = Dense(self.num_classes, activation='sigmoid', name='output_layer')(x)
+        activation = 'sigmoid' if self.num_classes == 1 else 'softmax'
+        output_layer = Dense(self.num_classes, activation=activation, name='output_layer')(x)
 
         # Create model
         model = Model(
@@ -157,15 +165,21 @@ class ModelArchitecture:
 
         # Compile with enhanced optimizer
         optimizer = Adam(learning_rate=0.0005, clipnorm=1.0)
-        model.compile(
-            optimizer=optimizer,
-            loss='binary_crossentropy',
-            metrics=[
-                'accuracy',
+        
+        loss = 'binary_crossentropy' if self.num_classes == 1 else 'sparse_categorical_crossentropy'
+        
+        metrics = ['accuracy']
+        if self.num_classes == 1:
+            metrics.extend([
                 tf.keras.metrics.AUC(name='auc'),
                 tf.keras.metrics.Precision(name='precision'),
                 tf.keras.metrics.Recall(name='recall')
-            ]
+            ])
+
+        model.compile(
+            optimizer=optimizer,
+            loss=loss,
+            metrics=metrics
         )
 
         self.model_type = ModelType.MULTI_INPUT
@@ -204,22 +218,29 @@ class ModelArchitecture:
         x = BatchNormalization()(x)
 
         # Output layer
-        output_layer = Dense(self.num_classes, activation='sigmoid', name='output_layer')(x)
+        activation = 'sigmoid' if self.num_classes == 1 else 'softmax'
+        output_layer = Dense(self.num_classes, activation=activation, name='output_layer')(x)
 
         # Create model
         model = Model(inputs=input_layer, outputs=output_layer)
 
         # Compile with enhanced optimizer
         optimizer = Adam(learning_rate=0.0008, clipnorm=1.0)
-        model.compile(
-            optimizer=optimizer,
-            loss='binary_crossentropy',
-            metrics=[
-                'accuracy',
+        
+        loss = 'binary_crossentropy' if self.num_classes == 1 else 'sparse_categorical_crossentropy'
+        
+        metrics = ['accuracy']
+        if self.num_classes == 1:
+            metrics.extend([
                 tf.keras.metrics.AUC(name='auc'),
                 tf.keras.metrics.Precision(name='precision'),
                 tf.keras.metrics.Recall(name='recall')
-            ]
+            ])
+
+        model.compile(
+            optimizer=optimizer,
+            loss=loss,
+            metrics=metrics
         )
 
         self.model_type = ModelType.TIME_SERIES
@@ -254,6 +275,10 @@ class ModelArchitecture:
         Returns:
             List of training callbacks
         """
+        # Determine monitor metric
+        monitor_metric = 'val_auc' if self.num_classes == 1 else 'val_accuracy'
+        mode = 'max'
+        
         return [
             EarlyStopping(
                 monitor='val_loss',
@@ -263,9 +288,9 @@ class ModelArchitecture:
             ),
             ModelCheckpoint(
                 model_path,
-                monitor='val_auc',
+                monitor=monitor_metric,
                 save_best_only=True,
-                mode='max',
+                mode=mode,
                 verbose=1
             )
         ]
@@ -287,17 +312,40 @@ class ModelArchitecture:
         try:
             # Make predictions
             y_pred = self.model.predict(X_test)
-            y_pred_binary = (y_pred > 0.5).astype(int)
+            
+            if self.num_classes == 1:
+                y_pred_binary = (y_pred > 0.5).astype(int)
 
-            # Calculate metrics
-            metrics = {
-                "accuracy": float(tf.keras.metrics.binary_accuracy(y_test, y_pred).numpy()),
-                "precision": float(precision_score(y_test, y_pred_binary)),
-                "recall": float(recall_score(y_test, y_pred_binary)),
-                "f1_score": float(f1_score(y_test, y_pred_binary)),
-                "roc_auc": float(roc_auc_score(y_test, y_pred)),
-                "loss": float(tf.keras.losses.binary_crossentropy(y_test, y_pred).numpy())
-            }
+                # Calculate metrics
+                metrics = {
+                    "accuracy": float(tf.keras.metrics.binary_accuracy(y_test, y_pred).numpy()),
+                    "precision": float(precision_score(y_test, y_pred_binary)),
+                    "recall": float(recall_score(y_test, y_pred_binary)),
+                    "f1_score": float(f1_score(y_test, y_pred_binary)),
+                    "roc_auc": float(roc_auc_score(y_test, y_pred)),
+                    "loss": float(tf.keras.losses.binary_crossentropy(y_test, y_pred).numpy())
+                }
+            else:
+                # Multi-class evaluation
+                y_pred_classes = np.argmax(y_pred, axis=1)
+                
+                # Handle sparse vs one-hot targets
+                if len(y_test.shape) > 1 and y_test.shape[1] > 1:
+                    y_test_classes = np.argmax(y_test, axis=1)
+                    loss_val = tf.keras.losses.categorical_crossentropy(y_test, y_pred).numpy()
+                else:
+                    y_test_classes = y_test.flatten() if hasattr(y_test, 'flatten') else y_test
+                    loss_val = tf.keras.losses.sparse_categorical_crossentropy(y_test, y_pred).numpy()
+                
+                metrics = {
+                    "accuracy": float(np.mean(y_pred_classes == y_test_classes)),
+                    "precision": float(precision_score(y_test_classes, y_pred_classes, average='macro', zero_division=0)),
+                    "recall": float(recall_score(y_test_classes, y_pred_classes, average='macro', zero_division=0)),
+                    "f1_score": float(f1_score(y_test_classes, y_pred_classes, average='macro', zero_division=0)),
+                    "loss": float(np.mean(loss_val))
+                }
+            
+            return metrics
 
             return metrics
 

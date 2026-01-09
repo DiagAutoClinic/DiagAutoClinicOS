@@ -154,6 +154,30 @@ class BrakeSystemEvidenceRule(EvidenceRule):
 
         return EvidenceResult(evidence_vector, confidence=0.90)
 
+class LeanConditionEvidenceRule(EvidenceRule):
+    """Rule to detect lean condition evidence (Lambda > 1.1)"""
+
+    def __init__(self):
+        super().__init__("Lean Condition Evidence")
+
+    def evaluate_evidence(self, data: Dict[str, Any]) -> Optional[EvidenceResult]:
+        # Extract lambda value (Phase 3: Governing Variable)
+        live_params = data.get('live_parameters', {})
+        lambda_val = live_params.get('lambda', {}).get('value')
+        
+        # If lambda is missing, check if we can infer it or just return None
+        if lambda_val is None:
+             return None
+
+        evidence_vector = EvidenceVector()
+        # Lambda > 1.1 is definitive evidence of lean condition
+        is_lean = lambda_val > 1.1
+        
+        # High confidence because lambda is the governing variable
+        evidence_vector.add_evidence("lean_condition_detected", is_lean, EvidenceType.BOOLEAN, confidence=0.99)
+
+        return EvidenceResult(evidence_vector, confidence=0.99)
+
 def create_evidence_rules() -> list:
     """Factory function to create all evidence-generating rules."""
     return [
@@ -166,4 +190,5 @@ def create_evidence_rules() -> list:
         OxygenSensorEvidenceRule(),
         TransmissionSlipEvidenceRule(),
         BrakeSystemEvidenceRule(),
+        LeanConditionEvidenceRule(),
     ]

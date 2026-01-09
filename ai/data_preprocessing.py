@@ -88,7 +88,8 @@ class DataPreprocessor:
                 'fuel_pressure': (0, 1000),
                 'oil_pressure': (0, 800),
                 'battery_voltage': (9, 16),
-                'speed': (0, 250)
+                'speed': (0, 250),
+                'lambda': (0.5, 1.5)
             },
             'chevrolet': {
                 'engine_rpm': (0, 7500),
@@ -100,7 +101,8 @@ class DataPreprocessor:
                 'fuel_pressure': (0, 800),
                 'oil_pressure': (0, 700),
                 'battery_voltage': (10, 15),
-                'speed': (0, 220)
+                'speed': (0, 220),
+                'lambda': (0.5, 1.5)
             },
             'toyota': {
                 'engine_rpm': (0, 7000),
@@ -112,7 +114,8 @@ class DataPreprocessor:
                 'fuel_pressure': (0, 900),
                 'oil_pressure': (0, 750),
                 'battery_voltage': (10, 15),
-                'speed': (0, 200)
+                'speed': (0, 200),
+                'lambda': (0.5, 1.5)
             }
         }
 
@@ -136,9 +139,29 @@ class DataPreprocessor:
             # Extract and preprocess vehicle context
             vehicle_features = self._extract_vehicle_features(session_data)
 
-            # Determine label (1 if faults detected, 0 if no faults)
-            has_faults = len(session_data.get('dtc_codes', [])) > 0
-            label = 1 if has_faults else 0
+            # Determine label
+            # Check for explicit label from training data (for Multi-Class/Falsification training)
+            if 'label' in session_data:
+                 # Ensure it's a one-hot vector or integer class
+                 raw_label = session_data['label']
+                 if isinstance(raw_label, (list, np.ndarray)):
+                     label = np.array(raw_label)
+                 else:
+                     # If it's an integer class, we might need to one-hot encode it later
+                     # But for now, let's assume the trainer handles sparse or we return it as is
+                     # The trainer expects numpy array
+                     label = int(raw_label)
+            else:
+                # Default Binary Logic
+                has_dtcs = len(session_data.get('dtc_codes', [])) > 0
+                
+                # Check for Lean Condition (Lambda > 1.1)
+                # We need to access the raw lambda value, not normalized
+                live_params = session_data.get('live_parameters', {})
+                lambda_val = live_params.get('lambda', {}).get('value', 1.0)
+                is_lean = lambda_val > 1.1
+                
+                label = 1 if (has_dtcs or is_lean) else 0
 
             return {
                 'dtc_input': dtc_features,
@@ -222,16 +245,16 @@ class DataPreprocessor:
     def _extract_parameter_features(self, session_data: Dict[str, Any]) -> np.ndarray:
         """
         Extract and preprocess live parameter features with vehicle-specific normalization
-
+        
         Args:
             session_data: Diagnostic session data
-
+            
         Returns:
             Array of parameter features
         """
         live_params = session_data.get('live_parameters', {})
         vehicle_info = session_data.get('vehicle_context', {})
-        param_features = np.zeros(20)  # 20 parameter features
+        param_features = np.zeros(22)  # 22 parameter features
 
         # Get vehicle-specific ranges
         make = vehicle_info.get('make', '').lower()
@@ -284,20 +307,30 @@ class DataPreprocessor:
         speed = live_params.get('speed', {}).get('value', 0.0)
         speed_min, speed_max = ranges['speed']
         param_features[9] = self._normalize_value(speed, speed_min, speed_max)
+        
+        # Feature 10: Lambda (normalized) - GOVERNING VARIABLE
+        lambda_val = live_params.get('lambda', {}).get('value', 1.0)
+        lambda_min, lambda_max = ranges.get('lambda', (0.5, 1.5))
+        param_features[10] = self._normalize_value(lambda_val, lambda_min, lambda_max)
 
-        # Feature 10-19: Parameter anomaly detection
+        # Feature 11-21: Parameter anomaly detection
         # Calculate how far each parameter is from expected range
         for i, (param_name, (param_min, param_max)) in enumerate(ranges.items()):
-            if i >= 10:  # Only use first 10 parameters for anomaly features
+            if i >= 11:  # Only use first 11 parameters for anomaly features
                 break
-
+            
             param_value = live_params.get(param_name, {}).get('value', 0.0)
-            normalized = self._normalize_value(param_value, param_min, param_max)
-
+            
             # Calculate anomaly score (distance from center of range)
             range_center = (param_min + param_max) / 2
-            anomaly_score = abs(param_value - range_center) / ((param_max - param_min) / 2)
-            param_features[10 + i] = min(anomaly_score, 2.0)  # Cap at 2.0
+            # Handle zero range
+            if param_max == param_min:
+                divisor = 1.0
+            else:
+                divisor = (param_max - param_min) / 2
+                
+            anomaly_score = abs(param_value - range_center) / divisor
+            param_features[11 + i] = min(anomaly_score, 2.0)  # Cap at 2.0
 
         # Apply parameters preprocessing pipeline
         return self.params_pipeline.transform([param_features])[0]

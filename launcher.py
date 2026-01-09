@@ -19,13 +19,23 @@ import platform
 from datetime import datetime
 
 # Configure logging
+log_file = 'launcher_debug.log'
+handlers = [logging.StreamHandler(sys.stdout)]
+
+try:
+    handlers.append(logging.FileHandler(log_file, encoding='utf-8'))
+except PermissionError:
+    try:
+        import tempfile
+        log_file = os.path.join(tempfile.gettempdir(), 'launcher_debug.log')
+        handlers.append(logging.FileHandler(log_file, encoding='utf-8'))
+    except Exception:
+        pass # Fallback to just stdout if even temp fails
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('launcher_debug.log', encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=handlers
 )
 
 logger = logging.getLogger("DiagLauncher")
