@@ -88,6 +88,42 @@ DiagAuto Suite is hardware-agnostic and operates through known, stable interface
 
 ---
 
+## 🚀 Installation & Setup
+
+### System Requirements
+* **OS:** Windows 10 / 11 (64-bit)
+* **Python:** 3.10 or higher
+* **Permissions:** Administrator privileges required for hardware access
+
+### Running from Source
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/YourUsername/DiagAutoClinicOS.git
+   cd DiagAutoClinicOS
+   ```
+
+2. **Set up a virtual environment:**
+   ```bash
+   python -m venv venv
+   .\venv\Scripts\activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+   *(Note: Ensure you have `PyQt6` and other required packages listed in requirements.txt)*
+
+4. **Run the application:**
+   ```bash
+   python AutoDiag/main.py
+   ```
+
+### Using the Installer
+An installer is available (`AutoDiag_Setup.exe`) which automates the setup of dependencies and creates desktop shortcuts.
+
+---
+
 ## Architecture Philosophy
 
 DiagAuto Suite separates concerns strictly:
@@ -98,6 +134,44 @@ DiagAuto Suite separates concerns strictly:
 * **Data** — CAN databases and logs
 
 This structure allows future expansion **without breaking v1.0 stability**.
+
+---
+
+## Charlemaine Fine-Tuning System
+
+This repository includes a physics-grounded synthetic training pipeline for fine-tuning Charlemaine on diagnostic reasoning.
+
+### Generate Training Data
+
+```bash
+python training_generator.py --train-size 2000 --val-size 200 --test-size 300 --augmentation 2 --output-dir training_data
+```
+
+Outputs:
+- `training_data/train.jsonl`, `training_data/val.jsonl`, `training_data/test.jsonl` (raw JSONL with ground truth + targets)
+- `training_data/train_openai.jsonl`, `training_data/val_openai.jsonl` (OpenAI fine-tuning format)
+- `training_data/train_anthropic.jsonl`, `training_data/val_anthropic.jsonl` (Anthropic-ready format)
+- `training_data/active_learning_candidates.json` (high-value examples by uncertainty/quality flags)
+
+### Fine-Tune on OpenAI
+
+```bash
+python finetune_runner.py openai --train-file training_data/train_openai.jsonl --val-file training_data/val_openai.jsonl --model gpt-4o-mini-2024-07-18 --monitor
+```
+
+### Evaluate Dataset or Models
+
+```bash
+python finetune_runner.py evaluate --test-file training_data/test.jsonl --model-type raw
+```
+
+```bash
+python finetune_runner.py evaluate --test-file training_data/test.jsonl --model-type openai --model-id ft:your-model-id --api-key $OPENAI_API_KEY --max-examples 200
+```
+
+```bash
+python finetune_runner.py compare --test-file training_data/test.jsonl --model-ids ft:modelA,ft:modelB --api-key $OPENAI_API_KEY --max-examples 200
+```
 
 ---
 
@@ -375,7 +449,7 @@ PERFORMANCE RECOMMENDATIONS:
 
 ---
 
-### ✅ What's New in v3.2.0
+### ✅ What's New in alpha_v0.0.1
 
 - **Windows Installer** - Professional Inno Setup installer with Afrikaans language support
 - **Validation System** - Comprehensive installer validation (92/100 score) with automated testing

@@ -109,6 +109,21 @@ class ModelTrainer:
                 training_results["status"] = "failed"
                 training_results["reason"] = "invalid_preprocessed_data"
                 return training_results
+            
+            # Detect num_classes from training data
+            num_classes = 1
+            if len(y.shape) > 1 and y.shape[1] > 1:
+                # One-hot encoded labels
+                num_classes = y.shape[1]
+            elif np.max(y) > 1:
+                # Sparse integer labels with multiple classes
+                num_classes = int(np.max(y) + 1)
+            
+            if num_classes > 1:
+                self.model_architecture.num_classes = num_classes
+                logger.info(f"Detected multi-class task with {num_classes} classes")
+            else:
+                logger.info("Detected binary classification task")
 
             # Split data into training and validation sets
             if use_cross_validation:
@@ -152,6 +167,42 @@ class ModelTrainer:
             training_results["reason"] = str(e)
             training_results["error_details"] = str(e)
             return training_results
+
+    def save_trained_model(self, filepath: str) -> bool:
+        """
+        Save the currently trained model
+        
+        Args:
+            filepath: Path to save model without extension
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self.current_model:
+            logger.warning("No model to save")
+            return False
+            
+        try:
+            # Save Keras model weights
+            weights_path = f"{filepath}.weights.h5"
+            self.current_model.save_weights(weights_path)
+            
+            # Save architecture/metadata
+            metadata = {
+                "model_type": self.model_type.value if self.model_type else "unknown",
+                "timestamp": datetime.now().isoformat(),
+                "num_classes": self.model_architecture.num_classes
+            }
+            
+            with open(f"{filepath}_metadata.json", 'w') as f:
+                json.dump(metadata, f, indent=4)
+                
+            logger.info(f"Model saved to {weights_path}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error saving model: {e}")
+            return False
 
     def _build_model_for_type(self, model_type: str) -> Optional[tf.keras.Model]:
         """
@@ -420,7 +471,7 @@ class ModelTrainer:
         try:
             # Save model architecture and weights
             model_arch_path = f"{model_path}_architecture.json"
-            model_weights_path = f"{model_path}_weights.h5"
+            model_weights_path = f"{model_path}.weights.h5"
 
             # Save architecture
             model_json = self.current_model.to_json()
@@ -465,7 +516,7 @@ class ModelTrainer:
 
         try:
             model_arch_path = f"{model_path}_architecture.json"
-            model_weights_path = f"{model_path}_weights.h5"
+            model_weights_path = f"{model_path}.weights.h5"
 
             # Load model architecture
             with open(model_arch_path, "r") as json_file:

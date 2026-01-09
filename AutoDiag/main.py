@@ -47,44 +47,18 @@ except ImportError:
 def global_except_hook(exctype, value, tb):
     """Global exception handler to capture unhandled exceptions before Qt6 native crashes"""
     try:
-        traceback_str = ''.join(traceback.format_exception(exctype, value, tb))
-        print("FATAL UNHANDLED EXCEPTION CAUGHT BY GLOBAL HOOK:")
-        print(traceback_str)
-        print("\nThis exception was caught before potential Qt6 native crash!")
-        print("Exit code 3489660927 (0xCFFFFFFF) suggests Windows SEH - native Qt6 DLL crash")
-        
-        # Log to file for debugging
+        print(f"FATAL UNHANDLED EXCEPTION: {exctype.__name__}: {value}")
+        # traceback_str = ''.join(traceback.format_exception(exctype, value, tb))
+        # print(traceback_str)
+        # Log to file for debugging - simple write
         try:
             with open('autodiag_crash_log.txt', 'a', encoding='utf-8') as f:
-                f.write(f"\n=== CRASH DETECTED AT {datetime.now()} ===\n")
-                f.write(traceback_str)
-                f.write("\nLIKELY CAUSES:\n")
-                f.write("- Qt6/PyQt6 native DLL crash (0xCFFFFFFF)\n")
-                f.write("- Neural background animation\n")
-                f.write("- Gauge widget initialization\n")
-                f.write("- Theme stylesheet application\n")
-                f.write("- Blocking VCI scan in GUI thread\n")
-                f.write("="*50 + "\n")
+                 f.write(f"\nCRASH: {exctype.__name__}: {value}\n")
         except:
             pass
-            
-        # Try to show Qt message box if available
-        try:
-            from PyQt6.QtWidgets import QApplication, QMessageBox
-            app = QApplication.instance()
-            if app:
-                QMessageBox.critical(None, "Critical Crash Detected", 
-                                   f"Unhandled exception caught by global hook:\n{str(value)}\n\n"
-                                   f"Details have been logged. This prevents the 0xCFFFFFFF crash.\n\n"
-                                   f"Exception type: {exctype.__name__}")
-        except:
-            pass
-            
-        # Exit gracefully
-        sys.exit(1)
         
-    except Exception as hook_error:
-        print(f"Global exception hook failed: {hook_error}")
+        sys.exit(1)
+    except:
         sys.exit(1)
 
 # Install the global exception hook BEFORE any other imports
@@ -194,8 +168,14 @@ def get_thread_cleanup_manager():
 def safe_shutdown():
     """Enhanced safe shutdown sequence with comprehensive cleanup"""
     try:
-        logger = logging.getLogger(__name__)
-        logger.info("🛑 Starting safe shutdown sequence...")
+        # Use print first to avoid recursion if logger is broken
+        print("🛑 Starting safe shutdown sequence...")
+        
+        try:
+            logger = logging.getLogger(__name__)
+            logger.info("🛑 Starting safe shutdown sequence...")
+        except:
+            pass
         
         # 1. Clean up all tracked threads
         cleanup_manager = get_thread_cleanup_manager()
@@ -205,10 +185,14 @@ def safe_shutdown():
         gc.collect()
         
         # 3. Log shutdown completion
-        logger.info(f"✅ Safe shutdown sequence completed: {cleaned_count} threads cleaned")
+        print(f"✅ Safe shutdown sequence completed: {cleaned_count} threads cleaned")
+        try:
+            logger.info(f"✅ Safe shutdown sequence completed: {cleaned_count} threads cleaned")
+        except:
+            pass
         
     except Exception as e:
-        logger.error(f"❌ Error during safe shutdown: {e}")
+        print(f"❌ Error during safe shutdown: {e}")
 
 # Register safe shutdown with atexit
 try:
@@ -344,16 +328,10 @@ try:
     from AutoDiag.ui.password_change_dialog import PasswordChangeDialog
     from shared.user_database_sqlite import user_database
     
-    # Import available tab classes
-    from AutoDiag.ui.dashboard_tab import DashboardTab
-    from AutoDiag.ui.vci_connection_tab import VCIConnectionTab
-    from AutoDiag.ui.diagnostics_tab import DiagnosticsTab
-    from AutoDiag.ui.live_data_tab import LiveDataTab
-    from AutoDiag.ui.special_functions_tab import SpecialFunctionsTab
-    from AutoDiag.ui.calibrations_tab import CalibrationsTab
-    from AutoDiag.ui.advanced_tab import AdvancedTab
-    from AutoDiag.ui.security_tab import SecurityTab
-    from AutoDiag.ui.can_bus_tab import CANBusDataTab
+    # Import available tab classes - REMOVED FOR LAZY LOADING
+    # Tabs are now imported inside their respective factory functions
+    # from AutoDiag.ui.dashboard_tab import DashboardTab
+    # ... etc
 except ImportError as e:
     logging.warning(f"Some modules not available: {e}")
 
@@ -437,10 +415,9 @@ if PYQT6_AVAILABLE:
 
             # Initialize with available manufacturers
             try:
-                # Try to get manufacturers from diagnostics controller
-                from AutoDiag.core.diagnostics import DiagnosticsController
-                temp_controller = DiagnosticsController()
-                manufacturers = temp_controller.get_available_manufacturers()
+                # Optimized: Get manufacturers directly from parser without initializing full controller
+                from AutoDiag.core.can_bus_ref_parser import get_all_manufacturers
+                manufacturers = get_all_manufacturers()
                 if manufacturers:
                     self.brand_combo.addItems(manufacturers)
                 else:
@@ -559,6 +536,9 @@ if PYQT6_AVAILABLE:
                 'tier': 'BASIC',
                 'permissions': []
             }
+
+            # Track loaded tabs to prevent recursion
+            self._loaded_tabs = set()
 
             logger.info(f"User info: {self.current_user_info}")
 
@@ -806,17 +786,55 @@ if PYQT6_AVAILABLE:
 
         def _setup_lazy_tabs(self):
             """Setup lazy tab initialization - PERFORMANCE OPTIMIZED"""
+            
+            # Define factories with local imports for TRUE lazy loading
+            def create_vci_tab(parent):
+                from AutoDiag.ui.vci_connection_tab import VCIConnectionTab
+                return VCIConnectionTab(parent)
+
+            def create_dashboard_tab(parent):
+                from AutoDiag.ui.dashboard_tab import DashboardTab
+                return DashboardTab(parent)
+
+            def create_diagnostics_tab(parent):
+                from AutoDiag.ui.diagnostics_tab import DiagnosticsTab
+                return DiagnosticsTab(parent)
+
+            def create_live_data_tab(parent):
+                from AutoDiag.ui.live_data_tab import LiveDataTab
+                return LiveDataTab(parent)
+
+            def create_can_bus_tab(parent):
+                from AutoDiag.ui.can_bus_tab import CANBusDataTab
+                return CANBusDataTab(parent)
+
+            def create_special_functions_tab(parent):
+                from AutoDiag.ui.special_functions_tab import SpecialFunctionsTab
+                return SpecialFunctionsTab(parent)
+
+            def create_calibrations_tab(parent):
+                from AutoDiag.ui.calibrations_tab import CalibrationsTab
+                return CalibrationsTab(parent)
+
+            def create_advanced_tab(parent):
+                from AutoDiag.ui.advanced_tab import AdvancedTab
+                return AdvancedTab(parent)
+
+            def create_security_tab(parent):
+                from AutoDiag.ui.security_tab import SecurityTab
+                return SecurityTab(parent)
+
             # Register tab factories for lazy initialization
             lazy_tabs = {
-                'vci_connection': lambda parent: VCIConnectionTab(parent),
-                'dashboard': lambda parent: DashboardTab(parent),
-                'diagnostics': lambda parent: DiagnosticsTab(parent),
-                'live_data': lambda parent: LiveDataTab(parent),
-                'can_bus': lambda parent: CANBusDataTab(parent),
-                'special_functions': lambda parent: SpecialFunctionsTab(parent),
-                'calibrations': lambda parent: CalibrationsTab(parent),
-                'advanced': lambda parent: AdvancedTab(parent),
-                'security': lambda parent: SecurityTab(parent)
+                'vci_connection': create_vci_tab,
+                'dashboard': create_dashboard_tab,
+                'diagnostics': create_diagnostics_tab,
+                'live_data': create_live_data_tab,
+                'can_bus': create_can_bus_tab,
+                'special_functions': create_special_functions_tab,
+                'calibrations': create_calibrations_tab,
+                'advanced': create_advanced_tab,
+                'security': create_security_tab
             }
             
             # Register all tabs with lazy manager
@@ -828,12 +846,6 @@ if PYQT6_AVAILABLE:
 
         def _create_placeholder_tabs(self):
             """Create placeholder tabs to maintain UI structure"""
-            # Create lightweight placeholder widgets
-            placeholder_widget = QWidget()
-            placeholder_layout = QVBoxLayout(placeholder_widget)
-            placeholder_label = QLabel("Tab loading...")
-            placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            placeholder_layout.addWidget(placeholder_label)
             
             # Add all tabs as placeholders initially
             tab_order = [
@@ -849,10 +861,20 @@ if PYQT6_AVAILABLE:
             ]
             
             for tab_name, tab_title in tab_order:
+                # Create NEW lightweight placeholder widget for EACH tab
+                placeholder_widget = QWidget()
+                placeholder_layout = QVBoxLayout(placeholder_widget)
+                placeholder_label = QLabel("Tab loading...")
+                placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                placeholder_layout.addWidget(placeholder_label)
+                
                 self.tab_widget.addTab(placeholder_widget, tab_title)
 
         def _on_tab_changed(self, index):
             """Handle tab change and lazy load content"""
+            if index < 0:
+                return
+
             tab_titles = [
                 '🔌 VCI Connection', '📊 Dashboard', '🔍 Diagnostics',
                 '📈 Live Data', '🚌 CAN Bus', '⚙️ Special Functions',
@@ -883,17 +905,34 @@ if PYQT6_AVAILABLE:
 
         def _load_tab_content(self, tab_name, tab_index):
             """Load tab content on demand - LAZY INITIALIZATION"""
+            # Check if tab is already loaded
+            if tab_name in self._loaded_tabs:
+                return
+
             try:
+                logger.info(f"Loading tab content for {tab_name} at index {tab_index}")
                 # Get or create the tab instance
                 tab_instance = _lazy_tab_manager.get_tab(tab_name, self)
+                logger.info(f"Got tab instance for {tab_name}")
                 
                 # Create the actual tab widget
                 tab_widget, tab_title = tab_instance.create_tab()
+                logger.info(f"Created tab widget for {tab_name}")
                 
                 # Replace placeholder with real content
-                self.tab_widget.removeTab(tab_index)
-                self.tab_widget.insertTab(tab_index, tab_widget, tab_title)
-                self.tab_widget.setCurrentIndex(tab_index)
+                # Block signals to prevent recursion during tab swap
+                self.tab_widget.blockSignals(True)
+                try:
+                    self.tab_widget.removeTab(tab_index)
+                    logger.info(f"Removed placeholder for {tab_name}")
+                    self.tab_widget.insertTab(tab_index, tab_widget, tab_title)
+                    logger.info(f"Inserted real tab for {tab_name}")
+                    self.tab_widget.setCurrentIndex(tab_index)
+                    
+                    # Mark as loaded
+                    self._loaded_tabs.add(tab_name)
+                finally:
+                    self.tab_widget.blockSignals(False)
                 
                 # Store reference for later access
                 setattr(self, f"{tab_name}_tab", tab_instance)

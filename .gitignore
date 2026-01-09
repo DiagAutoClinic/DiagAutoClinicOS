@@ -49,7 +49,48 @@ build/
 *.sqlite3
 users.json
 dacos_ai.sh
-dacos_ai.sh
+
+# Excluded AI components
+ai/
+ai_offline_training/
+charlemaine_training_data/
+training_data/
+training_data_smoke/
+vin_for_dacos/
+vin_storage/
+vin_storage_test/
+vin_truth_storage/
+*.h5
+*.keras
+*.pkl
+*.weights.h5
+
+# Tests
+tests/
+Windows Test/
+test_*.py
+performance_test*.py
+trash/
+live_tests/
+parsed_databases/
+
+# Security & Secrets
+*.env
+*.pem
+*.key
+*.p12
+credentials.json
+token.json
+client_secrets.json
+*.ps1
+
+# Backups & Crash Logs
+can_bus_data_backup/
+*_crash_log.txt
+*.bak
+
+# Documentation & Unnecessary Files
+*.pdf
 
 # Website (deployed separately)
 dacos.co.za/

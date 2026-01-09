@@ -276,7 +276,7 @@ class OBDLinkMXPlus:
             logger.error(f"Bluetooth connection failed: {e}")
             return False
     
-    def connect_serial(self, port: str, baudrate: int = 38400) -> bool:
+    def connect_serial(self, port: str, baudrate: int = None) -> bool:
         """Connect to OBDLink MX+ via serial port (USB)"""
         if self.mock_mode:
             self.serial_port = port
@@ -284,30 +284,47 @@ class OBDLinkMXPlus:
             logger.info(f"[MOCK] Connected to {port}")
             return True
 
-        logger.info(f"Attempting to connect to OBDLink MX+ on {port} at {baudrate} baud")
-        try:
-            import serial
+        baudrates = [115200, 38400, 9600, 500000, 2000000] if baudrate is None else [baudrate]
 
-            self.serial_port = serial.Serial(port, baudrate, timeout=2)
-            logger.info(f"Serial port {port} opened successfully")
+        for rate in baudrates:
+            logger.info(f"Attempting to connect to OBDLink MX+ on {port} at {rate} baud")
+            try:
+                import serial
 
-            # Initialize device
-            init_success = self._initialize_device()
-            if init_success:
-                logger.info(f"Successfully connected and initialized OBDLink MX+ on {port}")
-                self.is_connected = True
-            else:
-                logger.error(f"Device initialization failed on {port}")
-                self.serial_port.close()
-                self.serial_port = None
-            return init_success
+                if self.serial_port:
+                    try:
+                        self.serial_port.close()
+                    except:
+                        pass
 
-        except ImportError:
-            logger.error("pyserial module not available")
-            return False
-        except Exception as e:
-            logger.error(f"Serial connection failed on {port}: {e}")
-            return False
+                self.serial_port = serial.Serial(port, rate, timeout=2)
+                logger.info(f"Serial port {port} opened successfully at {rate} baud")
+
+                # Clear buffer
+                self.serial_port.reset_input_buffer()
+                self.serial_port.reset_output_buffer()
+
+                # Initialize device
+                init_success = self._initialize_device()
+                if init_success:
+                    logger.info(f"Successfully connected and initialized OBDLink MX+ on {port}")
+                    self.is_connected = True
+                    return True
+                else:
+                    logger.warning(f"Device initialization failed on {port} at {rate} baud")
+                    self.serial_port.close()
+                    self.serial_port = None
+            
+            except ImportError:
+                logger.error("pyserial module not available")
+                return False
+            except Exception as e:
+                logger.error(f"Serial connection failed on {port} at {rate} baud: {e}")
+                if self.serial_port:
+                    self.serial_port.close()
+                    self.serial_port = None
+        
+        return False
     
     def _initialize_device(self) -> bool:
         """Initialize OBDLink MX+ device"""
@@ -318,11 +335,20 @@ class OBDLinkMXPlus:
         logger.info("Starting OBDLink MX+ device initialization")
         try:
             # Send initialization commands
+            # ATZ needs more time to recover
+            logger.debug("Sending ATZ (Reset)")
+            self._send_command(b'ATZ\r\n')
+            time.sleep(2.0)  # Wait 2 seconds for reset
+            
+            # Flush any boot messages
+            if self.serial_port:
+                self.serial_port.reset_input_buffer()
+
             commands = [
-                (b'ATZ\r\n', 'Reset device'),
                 (b'ATE0\r\n', 'Disable echo'),
                 (b'ATL0\r\n', 'Linefeeds off'),
                 (b'ATH1\r\n', 'Headers on'),
+                (b'ATI\r\n', 'Get Device Info'), # Added ATI to verify device
             ]
 
             for cmd, desc in commands:
@@ -332,17 +358,27 @@ class OBDLinkMXPlus:
                     logger.error(f"Failed to send command: {cmd.decode().strip()}")
                     return False
                 time.sleep(0.5)
+                
+                # specific check for ATI
+                if b'ATI' in cmd:
+                    response = self._read_response()
+                    logger.info(f"Device Info (ATI): {response.strip()}")
 
-            # Check device response
-            logger.debug("Reading initialization response")
+            # Check device response (STP is standard for OBDLink)
+            logger.debug("Checking device identification")
+            self._send_command(b'ATI\r\n')
             response = self._read_response()
-            logger.info(f"Device response: {response.strip()}")
-            if 'ELM327' in response.upper() or 'OBDLINK' in response.upper():
+            logger.info(f"Device identification response: {response.strip()}")
+            
+            if any(x in response.upper() for x in ['ELM327', 'OBDLINK', 'STN', 'MX+']):
                 logger.info("OBDLink MX+ initialized successfully")
                 return True
             else:
                 logger.warning(f"Device initialization response unclear: '{response.strip()}'")
-                return True  # Continue anyway
+                # If we got ANY response, it might be working but just not what we expected
+                if len(response.strip()) > 0:
+                    return True
+                return False
 
         except Exception as e:
             logger.error(f"Device initialization failed: {e}")

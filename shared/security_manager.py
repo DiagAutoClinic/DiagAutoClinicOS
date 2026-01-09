@@ -12,6 +12,15 @@ import json
 from enum import Enum
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
+try:
+    from .build_info import BuildVerifier
+except ImportError:
+    # Fallback if build_info is missing (should not happen in prod)
+    class BuildVerifier:
+        @staticmethod
+        def verify_integrity() -> bool: return True
+        @staticmethod
+        def get_build_id() -> str: return "UNKNOWN"
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +54,17 @@ class EnhancedSecurityManager:
         self.failed_attempts = 0
         self.lockout_until = None
         self.audit_log: List[Dict[str, Any]] = []
+        self.is_restricted_mode = False  # Feature degradation flag
 
         # Load security configuration
         self.security_config = self._load_security_config(config_path)
 
         # Initialize user database
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.user_db_path = os.path.join(base_dir, 'users.json')
         self.user_database = self._initialize_user_database()
 
-        logger.info("EnhancedSecurityManager initialized")
+        logger.info(f"EnhancedSecurityManager initialized using DB at {self.user_db_path}")
 
     def _load_security_config(self, config_path: Optional[str] = None) -> Dict[str, Any]:
         """Load security configuration from file or use defaults"""
@@ -101,18 +113,18 @@ class EnhancedSecurityManager:
                     user_copy['role'] = data['role'].value
                 serializable_users[username] = user_copy
             
-            with open('users.json', 'w') as f:
+            with open(self.user_db_path, 'w') as f:
                 json.dump(serializable_users, f, indent=4)
-            logger.debug("User database saved to users.json")
+            logger.debug(f"User database saved to {self.user_db_path}")
         except Exception as e:
             logger.error(f"Failed to save users to file: {e}")
 
     def _load_users_from_file(self) -> Optional[Dict[str, Dict[str, Any]]]:
         """Load user database from users.json file"""
         try:
-            if not os.path.exists('users.json'):
+            if not os.path.exists(self.user_db_path):
                 return None
-            with open('users.json', 'r') as f:
+            with open(self.user_db_path, 'r') as f:
                 data = json.load(f)
             users = {}
             for username, user_data in data.items():
@@ -141,9 +153,9 @@ class EnhancedSecurityManager:
         # Create tech1 user
         tech1_salt = self._generate_salt()
         users["tech1"] = {
-            "password_hash": self._hash_password("tech123", tech1_salt, "v2"),
+            "password_hash": self._hash_password("tech123", tech1_salt, "v3"),
             "salt": tech1_salt,
-            "hash_version": "v2",
+            "hash_version": "v3",
             "security_level": SecurityLevel.STANDARD,
             "role": UserRole.TECHNICIAN,
             "full_name": "Technician One",
@@ -157,9 +169,9 @@ class EnhancedSecurityManager:
         # Create supervisor user
         super_salt = self._generate_salt()
         users["supervisor"] = {
-            "password_hash": self._hash_password("super789", super_salt, "v2"),
+            "password_hash": self._hash_password("super789", super_salt, "v3"),
             "salt": super_salt,
-            "hash_version": "v2",
+            "hash_version": "v3",
             "security_level": SecurityLevel.ADVANCED,
             "role": UserRole.SUPERVISOR,
             "full_name": "System Supervisor",
@@ -173,9 +185,9 @@ class EnhancedSecurityManager:
         # Create admin user
         admin_salt = self._generate_salt()
         users["admin"] = {
-            "password_hash": self._hash_password("admin345", admin_salt, "v2"),
+            "password_hash": self._hash_password("admin345", admin_salt, "v3"),
             "salt": admin_salt,
-            "hash_version": "v2",
+            "hash_version": "v3",
             "security_level": SecurityLevel.FACTORY,
             "role": UserRole.ADMIN,
             "full_name": "System Administrator",
@@ -192,13 +204,13 @@ class EnhancedSecurityManager:
         """Generate a random salt for password hashing"""
         return secrets.token_hex(32)  # 64 character hex string
 
-    def _hash_password(self, password: str, salt: str, version: str = 'v2') -> str:
+    def _hash_password(self, password: str, salt: str, version: str = 'v3') -> str:
         """Hash password with salt using specified version"""
         if version == 'v1':
             # Legacy SHA-256
             combined = f"{password}{salt}".encode('utf-8')
             return hashlib.sha256(combined).hexdigest()
-        else:
+        elif version == 'v2':
             # V2: PBKDF2-HMAC-SHA256 (100,000 iterations)
             return hashlib.pbkdf2_hmac(
                 'sha256', 
@@ -206,6 +218,22 @@ class EnhancedSecurityManager:
                 salt.encode('utf-8'), 
                 100000
             ).hex()
+        else:
+            # V3: Scrypt (High Security)
+            try:
+                salt_bytes = bytes.fromhex(salt)
+            except ValueError:
+                salt_bytes = salt.encode('utf-8')
+                
+            key = hashlib.scrypt(
+                password.encode('utf-8'), 
+                salt=salt_bytes, 
+                n=16384, 
+                r=8, 
+                p=1, 
+                dklen=64
+            )
+            return key.hex()
 
     def _generate_session_token(self) -> str:
         """Generate a secure session token"""
@@ -388,6 +416,7 @@ class EnhancedSecurityManager:
             "tier": self.security_level.name,
             "role": self.user_role.value,
             "permissions": permissions,
+            "is_restricted": self.is_restricted_mode,
             "session_expiry": self.session_expiry.timestamp() if self.session_expiry else 0,
             "last_login": user_data.get("last_login"),
             "force_password_change": user_data.get("force_password_change", False)

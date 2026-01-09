@@ -28,6 +28,7 @@ from ..utils.logging import logger
 import copy
 import json
 import os
+import random
 
 @dataclass
 class DiagnosticTest:
@@ -167,9 +168,44 @@ class DiagnosticsEngine:
                 "normal_operation": {"pass": 0.98, "fail": 0.02},
                 "engine_issue": {"pass": 0.3, "fail": 0.7},
                 "sensor_fault": {"pass": 0.4, "fail": 0.6},
-                "electrical_fault": {"pass": 0.8, "fail": 0.2}
+                "electrical_fault": {"pass": 0.8, "fail": 0.2},
+                # Phase 3: Lean Hypotheses Support
+                "vacuum_leak": {"pass": 0.5, "fail": 0.5}, # Swapping parts might not fix a leak unless it's a gasket
+                "fuel_starvation": {"pass": 0.2, "fail": 0.8}, # Swapping pump/filter/injector helps
+                "maf_bias": {"pass": 0.1, "fail": 0.9}, # Swapping MAF fixes it immediately
+                "exhaust_leak": {"pass": 0.5, "fail": 0.5} # Swapping O2 doesn't fix leak, swapping pipe does
             }
         }
+
+        # Extend other tests for new hypotheses (Phase 3)
+        # read_pid
+        self.test_outcomes["read_pid"].update({
+            "vacuum_leak": {"pass": 0.1, "fail": 0.9}, # High STFT/LTFT
+            "fuel_starvation": {"pass": 0.1, "fail": 0.9}, # High STFT/LTFT + Low Pressure
+            "maf_bias": {"pass": 0.2, "fail": 0.8}, # Skewed readings
+            "exhaust_leak": {"pass": 0.3, "fail": 0.7} # Skewed O2
+        })
+        # visual_inspection
+        self.test_outcomes["visual_inspection"].update({
+            "vacuum_leak": {"pass": 0.4, "fail": 0.6}, # Visible cracked hoses
+            "fuel_starvation": {"pass": 0.8, "fail": 0.2}, # Hard to see pump failure, maybe leaks
+            "maf_bias": {"pass": 0.9, "fail": 0.1}, # Usually internal, looks fine
+            "exhaust_leak": {"pass": 0.3, "fail": 0.7} # Soot marks visible
+        })
+        # electrical_test
+        self.test_outcomes["electrical_test"].update({
+            "vacuum_leak": {"pass": 0.9, "fail": 0.1}, # Mechanical issue
+            "fuel_starvation": {"pass": 0.7, "fail": 0.3}, # Pump voltage ok, pump mechanical fail
+            "maf_bias": {"pass": 0.6, "fail": 0.4}, # Sensor power/ground ok, signal biased
+            "exhaust_leak": {"pass": 0.9, "fail": 0.1} # Mechanical
+        })
+        # pressure_test
+        self.test_outcomes["pressure_test"].update({
+            "vacuum_leak": {"pass": 0.8, "fail": 0.2}, # Fuel pressure ok
+            "fuel_starvation": {"pass": 0.05, "fail": 0.95}, # Fails fuel pressure test hard
+            "maf_bias": {"pass": 0.9, "fail": 0.1}, # Fuel pressure ok
+            "exhaust_leak": {"pass": 0.9, "fail": 0.1} # Fuel pressure ok
+        })
 
     def _initialize_test_calibration_tracking(self):
         """Initialize per-test calibration history tracking for Phase 8."""
@@ -616,8 +652,23 @@ class DiagnosticsEngine:
 
             logger.info("Starting evidence-driven diagnostic analysis")
 
-            # Initialize belief state with uniform prior
-            belief_state = BeliefState(["normal_operation", "engine_issue", "sensor_fault", "electrical_fault"])
+            # Check for lean condition (Phase 3: Hypothesis Spread Mandate)
+            is_lean = False
+            lambda_val = None
+            if 'live_parameters' in live_data and 'lambda' in live_data['live_parameters']:
+                lambda_val = live_data['live_parameters']['lambda'].get('value')
+                if lambda_val is not None and lambda_val > 1.1:
+                    is_lean = True
+
+            # Initialize belief state
+            if is_lean:
+                # Phase 3: Mandatory lean hypotheses: Air-side, Fuel-side, Sensor-bias
+                logger.info(f"Phase 3: Lean condition detected (Lambda={lambda_val:.2f}). Enforcing hypothesis spread.")
+                initial_hypotheses = ["normal_operation", "vacuum_leak", "fuel_starvation", "maf_bias", "exhaust_leak"]
+            else:
+                initial_hypotheses = ["normal_operation", "engine_issue", "sensor_fault", "electrical_fault"]
+
+            belief_state = BeliefState(initial_hypotheses)
 
             # Create diagnostic trace
             trace = DiagnosticTrace.create_initial_trace(belief_state.probabilities)
@@ -630,6 +681,23 @@ class DiagnosticsEngine:
 
             # Select diagnosis based on updated beliefs
             diagnosis_result = self._select_diagnosis_from_beliefs(belief_state)
+
+            # Phase 5: Confidence Humiliation
+            # If lambda > 1.1 and not falsification (initial pass has no active tests): confidence = min(confidence, 0.65)
+            if is_lean and diagnosis_result["confidence"] > 0.65:
+                # We only cap if we are not saying "normal" (Phase 8 handles normal)
+                # Actually, Phase 5 says "Initial confidence cap under lean".
+                logger.info(f"Phase 5: Capping initial lean confidence {diagnosis_result['confidence']:.2f} -> 0.65")
+                diagnosis_result["confidence"] = 0.65
+
+            # Phase 8: Lean-Only Kill Switch
+            # If lambda > 1.15 AND "normal operation" is stated -> Immediate KILL
+            if is_lean and lambda_val > 1.15 and diagnosis_result["severity"] == "NORMAL":
+                logger.critical(f"PHASE 8 KILL SWITCH: Lambda {lambda_val:.2f} > 1.15 but diagnosis is Normal. TERMINATING.")
+                diagnosis_result["diagnosis"] = "KILL SWITCH ACTIVATED: FATAL LOGIC ERROR (Normal diagnosed during Lean condition)"
+                diagnosis_result["severity"] = "FATAL"
+                diagnosis_result["confidence"] = 1.0
+                diagnosis_result["recommendations"] = ["IMMEDIATE SYSTEM HALT", "CONTACT DEVELOPER", "RETRAIN MODEL"]
 
             # Select next diagnostic test for active diagnostics
             next_test = self.select_next_diagnostic_test(belief_state)
@@ -730,6 +798,27 @@ class DiagnosticsEngine:
                 "diagnosis": "Electrical system fault detected.",
                 "severity": "HIGH",
                 "recommendations": ["Check battery voltage.", "Inspect charging system.", "Verify electrical connections."]
+            },
+            # Phase 3 Lean Hypotheses
+            "vacuum_leak": {
+                "diagnosis": "Intake system vacuum leak detected.",
+                "severity": "MEDIUM",
+                "recommendations": ["Perform smoke test.", "Check intake manifold gaskets.", "Inspect vacuum hoses."]
+            },
+            "fuel_starvation": {
+                "diagnosis": "Fuel system starvation detected.",
+                "severity": "HIGH",
+                "recommendations": ["Check fuel pressure.", "Inspect fuel filter.", "Verify fuel pump operation."]
+            },
+            "maf_bias": {
+                "diagnosis": "Mass Air Flow sensor bias detected.",
+                "severity": "MEDIUM",
+                "recommendations": ["Clean MAF sensor.", "Check MAF sensor wiring.", "Replace MAF sensor."]
+            },
+            "exhaust_leak": {
+                "diagnosis": "Exhaust system leak detected.",
+                "severity": "MEDIUM",
+                "recommendations": ["Inspect exhaust manifold.", "Check exhaust gaskets.", "Verify O2 sensor seating."]
             }
         }
 
@@ -828,11 +917,11 @@ class DiagnosticsEngine:
 
         # Additional check: prevent confirmation of faults that test doesn't target
         test_targets = {
-            "read_pid": ["engine_issue", "sensor_fault", "electrical_fault"],
-            "visual_inspection": ["engine_issue", "sensor_fault", "electrical_fault"],
-            "electrical_test": ["electrical_fault"],
-            "pressure_test": ["engine_issue"],
-            "component_swap": ["engine_issue", "sensor_fault", "electrical_fault"]
+            "read_pid": ["engine_issue", "sensor_fault", "electrical_fault", "vacuum_leak", "fuel_starvation", "maf_bias", "exhaust_leak"],
+            "visual_inspection": ["engine_issue", "sensor_fault", "electrical_fault", "vacuum_leak", "exhaust_leak"],
+            "electrical_test": ["electrical_fault", "maf_bias", "fuel_starvation"],
+            "pressure_test": ["engine_issue", "fuel_starvation", "vacuum_leak"],
+            "component_swap": ["engine_issue", "sensor_fault", "electrical_fault", "maf_bias", "fuel_starvation"]
         }
 
         if test_name in test_targets and hypothesis_resolved not in test_targets[test_name]:
@@ -842,47 +931,68 @@ class DiagnosticsEngine:
 
     def _generate_human_explanations(self, belief_state: BeliefState, evidence_vector, next_test) -> Dict[str, Any]:
         """
-        Phase 9: Generate human-facing explanations (read-only, not persuasive).
-
-        Exposes reasoning without changing it.
+        Phase 7: Retrain the Explanation Engine.
+        Explanations must follow: Constraint -> Causes -> Ranking -> Falsifiers -> Uncertainty.
+        Phase 4: Falsification Bootcamp included.
         """
-        # Top beliefs with probabilities
+        # 1. Constraint
+        constraint = None
+        is_lean = False
+        if hasattr(evidence_vector, 'evidence'):
+             # Check for lean condition evidence
+             # In evidence_rules.py we added 'lean_condition_detected'
+             if 'lean_condition_detected' in evidence_vector.evidence and evidence_vector.evidence['lean_condition_detected'].value:
+                 constraint = "Lambda > 1.1 indicates excess oxygen or fuel deficit."
+                 is_lean = True
+
+        # 2. Causes & 3. Ranking
         sorted_beliefs = sorted(belief_state.probabilities.items(), key=lambda x: x[1], reverse=True)
         top_beliefs = [{"hypothesis": hypo, "probability": prob} for hypo, prob in sorted_beliefs[:3]]
 
-        # Evidence that mattered (highest confidence evidence)
-        evidence_list = []
-        if hasattr(evidence_vector, 'evidence'):
-            sorted_evidence = sorted(evidence_vector.evidence.items(),
-                                   key=lambda x: x[1].confidence if hasattr(x[1], 'confidence') else 0,
-                                   reverse=True)
-            evidence_list = [{"name": name, "value": ev.value, "confidence": ev.confidence}
-                           for name, ev in sorted_evidence[:5]]
-
-        # Why test was recommended
-        test_reason = None
-        if next_test:
-            expected_gain = self.calculate_expected_information_gain(belief_state, next_test)
-            reliability = self.test_reliability_scores.get(next_test.name, 0.5)
-            test_reason = {
-                "test": next_test.name,
-                "expected_information_gain": expected_gain,
-                "reliability_score": reliability,
-                "efficiency": expected_gain / next_test.cost if next_test.cost > 0 else 0
+        # 4. Falsifiers (Phase 4)
+        falsifiers = {}
+        if is_lean:
+            # Hard-coded falsifiers for Phase 4
+            falsifiers_map = {
+                "vacuum_leak": "If STFT remains > +20% at idle but normalizes at load, intake leak is confirmed.",
+                "fuel_starvation": "If fuel pressure drops under load, fuel starvation is confirmed.",
+                "maf_bias": "If MAF g/s deviates from calculated theoretical airflow, MAF bias is confirmed.",
+                "exhaust_leak": "If O2 sensor voltage oscillates rapidly or stays low despite enrichment, exhaust leak is confirmed."
             }
+            for hypo, _ in sorted_beliefs:
+                if hypo in falsifiers_map:
+                    falsifiers[hypo] = falsifiers_map[hypo]
 
-        # Remaining uncertainty
+        # 5. Uncertainty
         uncertainty = {
             "entropy": belief_state.entropy(),
             "max_probability": max(belief_state.probabilities.values()),
             "probability_spread": max(belief_state.probabilities.values()) - min(belief_state.probabilities.values())
         }
 
+        # Test reasoning (Cheap/Decisive test identification for Phase 4)
+        test_info = None
+        if next_test:
+             test_type = "Standard"
+             if next_test.cost < 1.0:
+                 test_type = "Cheap Test"
+             elif self.calculate_expected_information_gain(belief_state, next_test) > 0.5:
+                 test_type = "Decisive Test"
+
+             test_info = {
+                 "test": next_test.name,
+                 "type": test_type,
+                 "expected_gain": self.calculate_expected_information_gain(belief_state, next_test),
+                 "reliability_score": self.test_reliability_scores.get(next_test.name, 0.5)
+             }
+
         return {
-            "top_beliefs": top_beliefs,
-            "key_evidence": evidence_list,
-            "test_reasoning": test_reason,
-            "uncertainty_metrics": uncertainty
+            "constraint": constraint,
+            "causes": [b["hypothesis"] for b in top_beliefs],
+            "ranking": top_beliefs,
+            "falsifiers": falsifiers,
+            "uncertainty_metrics": uncertainty,
+            "next_test_analysis": test_info
         }
 
     def _detect_failure_modes(self, belief_state: BeliefState, evidence_vector, next_test) -> List[str]:

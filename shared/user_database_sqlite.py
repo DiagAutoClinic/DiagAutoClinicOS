@@ -187,17 +187,40 @@ class UserDatabase:
             logger.error(f"Failed to create or unlock super user: {e}")
 
     def _hash_password(self, password: str) -> str:
-        """Hash a password using SHA-256 with salt"""
+        """Hash a password using Scrypt (High Security)"""
         salt = os.urandom(32)
-        key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+        # Scrypt: n=16384, r=8, p=1, dklen=64 (Memory hard, GPU resistant)
+        key = hashlib.scrypt(
+            password.encode('utf-8'), 
+            salt=salt, 
+            n=16384, 
+            r=8, 
+            p=1, 
+            dklen=64
+        )
         return salt.hex() + key.hex()
 
     def _verify_password(self, password: str, hash_str: str) -> bool:
-        """Verify a password against its hash"""
+        """Verify a password against its hash (supports legacy SHA-256)"""
         try:
+            # Legacy SHA-256 (128 chars: 64 salt + 64 key)
+            if len(hash_str) == 128:
+                salt = bytes.fromhex(hash_str[:64])
+                stored_key = bytes.fromhex(hash_str[64:])
+                key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+                return key == stored_key
+            
+            # Scrypt (192 chars: 64 salt + 128 key)
             salt = bytes.fromhex(hash_str[:64])
             stored_key = bytes.fromhex(hash_str[64:])
-            key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+            key = hashlib.scrypt(
+                password.encode('utf-8'), 
+                salt=salt, 
+                n=16384, 
+                r=8, 
+                p=1, 
+                dklen=64
+            )
             return key == stored_key
         except Exception:
             return False
@@ -302,6 +325,17 @@ class UserDatabase:
                                   (attempts, username))
                     conn.commit()
                     return False, f"Invalid password ({3-attempts} attempts remaining)", {}
+
+                # Security Upgrade: Migrate legacy hashes to Scrypt
+                if len(password_hash) == 128:
+                    try:
+                        new_hash = self._hash_password(password)
+                        cursor.execute('UPDATE users SET password_hash = ? WHERE username = ?', 
+                                     (new_hash, username))
+                        conn.commit()
+                        logger.info(f"Security Upgrade: Migrated user {username} to Scrypt hashing.")
+                    except Exception as e:
+                        logger.error(f"Failed to migrate hash for {username}: {e}")
 
                 # Reset login attempts on successful login
                 cursor.execute('''

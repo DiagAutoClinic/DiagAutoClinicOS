@@ -36,9 +36,7 @@ def setup_bluetooth_elm327():
                 logger.info("Bluetooth ELM327 bound to /dev/rfcomm0")
                 return True
             else:
-                logger.error(
-                    f"Failed to bind Bluetooth device: {
-                        result.stderr}")
+                logger.error(f"Failed to bind Bluetooth device: {result.stderr}")
 
         return False
 
