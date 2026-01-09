@@ -1,0 +1,169 @@
+; ================= Tactrix Openport 2.0 Driver / J2534 DLL INF =====================
+
+[Version]
+Signature = "$WINDOWS NT$"
+Provider = %TACTRIX%
+Class = VehiclePassThru
+ClassGUID = {FB1CF0C4-B412-451f-9F04-DF7537A5003C}
+CatalogFile = openport2.cat
+DriverVer=04/07/2014,1.0.0.4227
+
+
+; ================= Class section =====================
+
+[ClassInstall32]
+Addreg 		= PassThruClassReg     
+
+[PassThruClassReg]
+HKR,,,0,%ClassName%
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+
+; ================= Device section =====================
+
+[Manufacturer]
+%MfgName% = Tactrix,ntamd64
+
+[Tactrix]
+%USB\VID_0403&PID_CC4B.DeviceDesc% = openport.Dev, USB\VID_0403&PID_CC4B  
+%USB\VID_0403&PID_CC4C.DeviceDesc% = openport.Dev, USB\VID_0403&PID_CC4C&MI_00   
+%USB\VID_0403&PID_CC4D.DeviceDesc% = openport.Dev, USB\VID_0403&PID_CC4D  
+[Tactrix.ntamd64]
+%USB\VID_0403&PID_CC4B.DeviceDesc% = openport.Dev, USB\VID_0403&PID_CC4B  
+%USB\VID_0403&PID_CC4C.DeviceDesc% = openport.Dev, USB\VID_0403&PID_CC4C&MI_00   
+%USB\VID_0403&PID_CC4D.DeviceDesc% = openport.Dev, USB\VID_0403&PID_CC4D  
+
+[SourceDisksNames]
+1 = %Disk_Description%
+
+[SourceDisksFiles.x86]
+openport.sys = 1,\x86
+[SourceDisksFiles.amd64]
+openport.sys = 1,\x64
+
+[openport.Dev.ntx86]
+AddProperty 	= openport.AddProperty
+CopyFiles 		= @openport.sys
+[openport.Dev.ntamd64]
+AddProperty 	= openport.AddProperty
+CopyFiles 		= @openport.sys
+
+[openport.AddProperty]
+DeviceModel,,,,"Openport 2.0"
+DeviceVendorWebsite,,,,%OurVendorWebsite%
+DeviceDetailedDescription,,,,%DeviceDescription%
+DeviceDocumentationLink,,,,%DeviceDocs%
+
+[openport.Dev.ntx86.Services]
+Addservice 		= openport, 0x00000002, openport.AddService
+[openport.Dev.ntamd64.Services]
+Addservice 		= openport, 0x00000002, openport.AddService
+
+[openport.AddService]
+DisplayName    	= %openport.SvcDesc%
+ServiceType    	= 1                  ; SERVICE_KERNEL_DRIVER
+StartType      	= 3                  ; SERVICE_DEMAND_START
+ErrorControl   	= 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  	= %12%\openport.sys
+AddReg         	= openport.AddReg
+LoadOrderGroup 	= Base
+
+[openport.AddReg]
+HKR,"Parameters","MaximumTransferSize",0x10001,65536
+HKR,"Parameters","DebugLevel",0x10001,2
+
+
+; ================= J2534 DLL section =====================
+
+[openport.Dev.ntx86]
+AddReg         	= openport.DLL.AddReg
+AddReg         	= openport.DLL.AddReg32
+CopyFiles      	= openport.DLL.CopyFiles32 
+[openport.Dev.ntamd64]
+AddReg         	= openport.DLL.AddReg
+AddReg         	= openport.DLL.AddReg64
+CopyFiles 		= openport.DLL.CopyFiles64 
+
+[SourceDisksFiles]
+op20pt32.dll = 1
+
+[DestinationDirs]
+openport.DLL.CopyFiles64 = 16425
+openport.DLL.CopyFiles32 = 11
+
+[openport.DLL.CopyFiles32]
+op20pt32.dll
+[openport.DLL.CopyFiles64]
+op20pt32.dll
+
+[openport.DLL.AddReg]
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",Name,0x00004000,"OpenPort 2.0 J2534 ISO/CAN/VPW/PWM"
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",Vendor,0x00004000,"Tactrix Inc."
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ConfigApplication,0x00004000,""
+
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",DeviceId,0x00014001,0x0
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",CAN,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ISO9141,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ISO9141_CH1,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ISO9141_CH2,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ISO9141_CH3,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ISO14230,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ISO14230_CH1,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ISO14230_CH2,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ISO14230_CH3,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",ISO15765,0x00014001,0x1
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",J1850PWM,0x00014001,0x0
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",J1850VPW,0x00014001,0x0
+
+[openport.DLL.AddReg32]
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",FunctionLibrary,0x00004000,"%11%\op20pt32.dll"
+
+[openport.DLL.AddReg64]
+HKLM,"SOFTWARE\PassThruSupport.04.04\Tactrix Inc. - OpenPort 2.0 J2534 ISO/CAN/VPW/PWM",FunctionLibrary,0x00004000,"%16425%\op20pt32.dll"
+   
+; ================= WDF Coinstaller installation =====================
+[SourceDisksFiles.x86]
+WdfCoInstaller01009.dll = 1,\x86
+[SourceDisksFiles.amd64]
+WdfCoInstaller01009.dll = 1,\x64
+
+[DestinationDirs]
+CoInstaller_CopyFiles = 11
+
+[openport.Dev.ntx86.CoInstallers]
+AddReg 			= CoInstaller_AddReg
+CopyFiles 		= CoInstaller_CopyFiles
+[openport.Dev.ntamd64.CoInstallers]
+AddReg 			= CoInstaller_AddReg
+CopyFiles 		= CoInstaller_CopyFiles
+
+[CoInstaller_CopyFiles]
+WdfCoInstaller01009.dll
+
+[CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller01009.dll,WdfCoInstaller"
+
+[openport.Dev.ntx86.Wdf]
+KmdfService = openport, openport_wdfsect
+[openport.Dev.ntamd64.Wdf]
+KmdfService = openport, openport_wdfsect
+
+[openport_wdfsect]
+KmdfLibraryVersion = 1.9
+
+; ================= Strings =====================
+
+[Strings]
+TACTRIX                          = "Tactrix Inc."
+MfgName                          = "Tactrix Inc."
+Disk_Description                 = "Openport 2.0 Installation Disk"
+openport.SvcDesc                 = "Openport 2.0 Driver"
+ClassName                        = "Vehicle PassThru Interfaces"
+USB\VID_0403&PID_CC4B.DeviceDesc = "Tactrix Openport 2.0 Bootloader"
+USB\VID_0403&PID_CC4C.DeviceDesc = "Tactrix Openport 2.0 J2534 Vehicle Interface"
+USB\VID_0403&PID_CC4D.DeviceDesc = "Tactrix Openport 2.0 J2534 Vehicle Interface"
+OurVendorWebsite                 = "http://www.tactrix.com"
+DeviceDocs                       = "http://www.tactrix.com"
+DeviceDescription                = "Tactrix Openport 2.0 J2534 Vehicle Interface"

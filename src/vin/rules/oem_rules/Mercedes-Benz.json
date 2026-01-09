@@ -1,0 +1,108 @@
+{
+  "oem_profiles": {
+    "Mercedes-Benz": {
+      "markets": ["EU", "ZA", "US"],
+      "vds_strategies": {
+        "US": "medium-strong",
+        "EU": "weak-medium",
+        "ZA": "weak-medium"
+      },
+      "vds_rules": [
+        {
+          "id": "om654_chassis_w206",
+          "markets": ["EU", "ZA"],
+          "position": [4, 6],
+          "pattern": {
+            "type": "prefix",
+            "value": "206"
+          },
+          "meaning": {
+            "likely_engine_family": "OM654",
+            "displacement_cc": 1950
+          },
+          "confidence": 0.85
+        },
+        {
+          "id": "om656_chassis_w213",
+          "markets": ["EU", "ZA", "US"],
+          "position": [4, 6],
+          "pattern": {
+            "type": "prefix",
+            "value": "213"
+          },
+          "meaning": {
+            "likely_engine_family": "OM656",
+            "displacement_cc": 2925
+          },
+          "confidence": 0.88
+        },
+        {
+          "id": "mb_c_class_w206_series",
+          "markets": ["EU", "ZA", "US"],
+          "position": [1, 2, 3],
+          "pattern": {
+            "type": "prefix",
+            "value": "206"
+          },
+          "meaning": {
+            "series": "C-Class (W206)",
+            "trim_level": "AMG Line"
+          },
+          "confidence": 0.78
+        },
+        {
+          "id": "mb_e_class_w213_series",
+          "markets": ["EU", "ZA", "US"],
+          "position": [1, 2, 3],
+          "pattern": {
+            "type": "prefix",
+            "value": "213"
+          },
+          "meaning": {
+            "series": "E-Class (W213)",
+            "body_type": "Sedan"
+          },
+          "confidence": 0.84
+        },
+        {
+          "id": "mb_gle_w167_series",
+          "markets": ["EU", "ZA", "US"],
+          "position": [1, 2, 3],
+          "pattern": {
+            "type": "prefix",
+            "value": "167"
+          },
+          "meaning": {
+            "series": "GLE (W167)",
+            "body_type": "SUV"
+          },
+          "confidence": 0.84
+        }
+      ],
+      "engine_priority": ["ECU", "BUILD_SHEET", "COMMERCIAL_DB", "VIN_VDS"]
+    }
+  },
+  "wmi_plant_mappings": {
+    "Mercedes-Benz": {
+      "wmi": {
+        "W1K": {
+          "manufacturer": "Mercedes-Benz",
+          "country": "Germany"
+        },
+        "WDB": {
+          "manufacturer": "Mercedes-Benz",
+          "country": "Germany/South Africa"
+        },
+        "4JG": {
+          "manufacturer": "Mercedes-Benz USA",
+          "country": "USA"
+        }
+      },
+      "plants": {
+        "F": "Bremen, Germany",
+        "R": "East London, South Africa",
+        "J": "Tuscaloosa, USA"
+      }
+    }
+  }
+}

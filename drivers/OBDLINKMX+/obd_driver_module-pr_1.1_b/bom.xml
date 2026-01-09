@@ -1,0 +1,1499 @@
+﻿<?xml version='1.0'?>
+<?mso-application progid='Excel.Sheet'?>
+<s:Workbook xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:s="urn:schemas-microsoft-com:office:spreadsheet">
+  <o:DocumentProperties>
+    <o:LastAuthor>ScanTool.net LLC</o:LastAuthor>
+    <o:Created>2013-09-17T12:34:32</o:Created>
+    <o:LastSaved>2013-09-17T12:34:32</o:LastSaved>
+    <o:Version>11.9999</o:Version>
+  </o:DocumentProperties>
+  <x:ExcelWorkbook>
+    <x:WindowHeight>8190</x:WindowHeight>
+    <x:WindowTopX>0</x:WindowTopX>
+    <x:WindowTopY>0</x:WindowTopY>
+    <x:WindowWidth>16380</x:WindowWidth>
+    <x:ProtectStructure>False</x:ProtectStructure>
+    <x:ProtectWindows>False</x:ProtectWindows>
+  </x:ExcelWorkbook>
+  <s:Styles>
+    <s:Style s:ID="Default" s:Name="Normal">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" />
+    </s:Style>
+    <s:Style s:ID="Title" s:Parent="Default">
+      <s:Font s:Bold="1" s:Size="16" />
+    </s:Style>
+    <s:Style s:ID="Description" s:Parent="Default">
+      <s:Font s:Size="12" />
+    </s:Style>
+    <s:Style s:ID="Heading" s:Parent="Default">
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Bold="1" s:Size="14" />
+    </s:Style>
+    <s:Style s:ID="PartsHeader" s:Parent="Default">
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Bold="1" s:Size="6" />
+      <s:Interior s:Color="#C0C0C0" s:Pattern="Solid" />
+    </s:Style>
+    <s:Style s:ID="PartsTopLeftCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsTopMiddleCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsTopRightCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsLeftCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsMiddleCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsRightCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsBottomLeftCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsBottomMiddleCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsBottomRightCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsSingleRowLeftCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsSingleRowMiddleCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsSingleRowRightCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsTopFirstSubCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsFirstSubCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsSubCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsLastSubCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PartsBottomLastSubCell" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PCBSpecsHeader" s:Parent="Default">
+      <s:Alignment s:Horizontal="Right" s:Indent="1" s:Vertical="Center" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Bold="1" s:Size="6" />
+      <s:Interior s:Color="#C0C0C0" s:Pattern="Solid" />
+    </s:Style>
+    <s:Style s:ID="PCBSpecsFirstLine" s:Parent="Default">
+      <s:Alignment s:Horizontal="Left" s:Indent="1" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PCBSpecsLine" s:Parent="Default">
+      <s:Alignment s:Horizontal="Left" s:Indent="1" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="1" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="PCBSpecsLastLine" s:Parent="Default">
+      <s:Alignment s:Horizontal="Left" s:Indent="1" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="1" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="6" />
+    </s:Style>
+    <s:Style s:ID="NotesHeader" s:Parent="Default">
+      <s:Alignment s:Horizontal="Left" s:Indent="1" s:Vertical="Center" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Bold="1" s:Size="8" />
+      <s:Interior s:Color="#C0C0C0" s:Pattern="Solid" />
+    </s:Style>
+    <s:Style s:ID="NotesFirstLine" s:Parent="Default">
+      <s:Alignment s:Horizontal="Left" s:Indent="1" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Top" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="8" />
+    </s:Style>
+    <s:Style s:ID="NotesLine" s:Parent="Default">
+      <s:Alignment s:Horizontal="Left" s:Indent="1" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="8" />
+    </s:Style>
+    <s:Style s:ID="NotesLastLine" s:Parent="Default">
+      <s:Alignment s:Horizontal="Left" s:Indent="1" s:Vertical="Center" s:WrapText="1" />
+      <s:Borders>
+        <s:Border s:Position="Left" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Right" s:LineStyle="Continuous" s:Weight="2" />
+        <s:Border s:Position="Bottom" s:LineStyle="Continuous" s:Weight="2" />
+      </s:Borders>
+      <s:Font s:Size="8" />
+    </s:Style>
+    <s:Style s:ID="Copyright" s:Parent="Default">
+      <s:Alignment s:Horizontal="Center" s:Vertical="Bottom" />
+      <s:Font s:Size="8" />
+    </s:Style>
+  </s:Styles>
+  <s:Worksheet s:Name="BOM">
+    <s:Table s:ExpandedColumnCount="11" s:ExpandedRowCount="53" x:FullColumns="1" x:FullRows="1">
+      <s:Column s:Width="20" />
+      <s:Column s:Width="80" />
+      <s:Column s:Width="70" />
+      <s:Column s:Width="70" />
+      <s:Column s:Width="85" />
+      <s:Column s:Width="85" />
+      <s:Column s:Width="85" />
+      <s:Column s:Width="20" />
+      <s:Column s:Width="85" />
+      <s:Column s:Width="85" />
+      <s:Column s:Width="20" />
+      <s:Row s:Height="26" s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="10" s:StyleID="Title">
+          <s:Data s:Type="String">Bill of Materials - OBD Driver Module, Rev 1.1/B</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:Height="15">
+        <s:Cell s:MergeAcross="10" s:StyleID="Description">
+          <s:Data s:Type="String">OBD-II, MS CAN, SW CAN Drivers</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:Height="15">
+        <s:Cell s:MergeAcross="10" />
+      </s:Row>
+      <s:Row s:Height="20">
+        <s:Cell s:MergeAcross="10" s:StyleID="Heading">
+          <s:Data s:Type="String">Mount Parts</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:Height="15">
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Line</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Description</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Designators</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Value</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Package</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Manufacturer</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Manufacturer P/N</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Sub</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Supplier</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Supplier P/N</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Qty</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsTopLeftCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopMiddleCell">
+          <s:Data s:Type="String">Capacitor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopMiddleCell">
+          <s:Data s:Type="String">C5</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopMiddleCell">
+          <s:Data s:Type="String">150pF</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsTopRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">2</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Capacitor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">C2, C3, C8, C9</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">560pF</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">4</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">3</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Capacitor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">C6</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0.1uF 25V</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">4</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Capacitor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">C1, C7</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">1uF</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">2</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">5</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Capacitor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">C4</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">4.7uF 25V</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0805</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">6</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Diode, Schottky</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">D1, D2, D3, D4, D5, D6, D7</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">BAT54XV2</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">SOD-523F</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Fairchild</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">BAT54XV2</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Digikey</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">BAT54XV2TR-ND</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">7</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">7</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">IC, CAN Transceiver</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">IC1, IC5</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">MCP2551</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">SO-8</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Microchip Technology</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">MCP2551-I/SN</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Digikey</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">MCP2551-I/SN-ND</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">2</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">8</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">IC, Comparator, Quad</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">IC4</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">LM339PWR</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">TSSOP-14</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Texas Instruments</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">LM339PWR</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Digikey</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">296-6607-1-ND</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">9</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">IC, Single Wire CAN</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">IC2</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">TH8056KDCA8</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">SO-8</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Melexis</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">TH8056KDCA8</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Digikey</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">TH8056KDC-A8CT-ND</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">10</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R3, R4, R39, R40</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">100</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">4</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">11</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R9</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">130 1W</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">2512</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">12</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R17</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">240</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">13</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R19</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">374</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">14</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R30, R31</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">510 0.5W</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">1210</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">2</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">15</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R16</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">866</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">16</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R1, R7, R29, R32, R37</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">1k</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">5</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">17</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R22</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">1.5k</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">18</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R21</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">2.2k</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">19</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R5, R41</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">4.7k</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">2</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">20</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R8</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">6.49k 0.12W</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">21</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R10, R11, R12, R13, R14, R15, R20, R23, R24, R26, R27, R33, R34, R35, R36</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">10k</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">15</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">22</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">R2, R18, R25, R28, R38</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">100k</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">5</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">23</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Socket</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">CN1</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">DIP44_0.1"_0.9"</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">DIP44_0.1"_0.9"</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">DIP 44 Pin Socket</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">24</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Transistor, N-Channel</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Q1, Q2, Q3, Q5, Q6, Q10</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">7002</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">SOT323-3</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">ON Semiconductor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">2N7002WT1G</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">No</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Digikey</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">2N7002WT1GOSCT-ND</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">6</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">25</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Transistor, NPN</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Q7, Q9</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">3904</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">SOT323-3</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">ON Semiconductor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">MMBT3904WT1G</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Digikey</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">MMBT3904WT1GOSCT-ND</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">2</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsLeftCell">
+          <s:Data s:Type="Number">26</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Transistor, P-Channel</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Q4, Q8</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">RSU002P03</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">SOT323-3</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Rohm Semiconductor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">RSU002P03T106</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">Digikey</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsMiddleCell">
+          <s:Data s:Type="String">RSU002P03T106CT-ND</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsRightCell">
+          <s:Data s:Type="Number">2</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsBottomLeftCell">
+          <s:Data s:Type="Number">27</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomMiddleCell">
+          <s:Data s:Type="String">Voltage Reg. Adj.</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomMiddleCell">
+          <s:Data s:Type="String">IC3</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomMiddleCell">
+          <s:Data s:Type="String">LM317</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomMiddleCell">
+          <s:Data s:Type="String">TSSOP-8</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomMiddleCell">
+          <s:Data s:Type="String">Texas Instruments</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomMiddleCell">
+          <s:Data s:Type="String">LM317LCPWR</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomMiddleCell">
+          <s:Data s:Type="String">Digikey</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomMiddleCell">
+          <s:Data s:Type="String">296-17222-1-ND</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsBottomRightCell">
+          <s:Data s:Type="Number">1</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:Height="20">
+        <s:Cell s:MergeAcross="10" s:StyleID="Heading">
+          <s:Data s:Type="String">Do Not Mount Parts</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:Height="15">
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Line</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Description</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Designators</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Value</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Package</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Manufacturer</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Manufacturer P/N</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Sub</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Supplier</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Supplier P/N</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsHeader">
+          <s:Data s:Type="String">Qty</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row>
+        <s:Cell s:StyleID="PartsSingleRowLeftCell">
+          <s:Data s:Type="Number">28</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowMiddleCell">
+          <s:Data s:Type="String">Resistor</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowMiddleCell">
+          <s:Data s:Type="String">R6, R42</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowMiddleCell">
+          <s:Data s:Type="String">100k</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowMiddleCell">
+          <s:Data s:Type="String">0603</s:Data>
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowMiddleCell">
+          <s:Data s:Type="String" />
+        </s:Cell>
+        <s:Cell s:StyleID="PartsSingleRowRightCell">
+          <s:Data s:Type="Number">2</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:Height="15">
+        <s:Cell s:MergeAcross="10" />
+      </s:Row>
+      <s:Row s:Height="20">
+        <s:Cell s:MergeAcross="10" s:StyleID="Heading">
+          <s:Data s:Type="String">PCB</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="1" s:StyleID="PCBSpecsHeader">
+          <s:Data s:Type="String">TH Pad Count</s:Data>
+        </s:Cell>
+        <s:Cell s:MergeAcross="8" s:StyleID="PCBSpecsFirstLine">
+          <s:Data s:Type="Number">44</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="1" s:StyleID="PCBSpecsHeader">
+          <s:Data s:Type="String">Via Count</s:Data>
+        </s:Cell>
+        <s:Cell s:MergeAcross="8" s:StyleID="PCBSpecsLine">
+          <s:Data s:Type="Number">86</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="1" s:StyleID="PCBSpecsHeader">
+          <s:Data s:Type="String">SMD Pad Count</s:Data>
+        </s:Cell>
+        <s:Cell s:MergeAcross="8" s:StyleID="PCBSpecsLine">
+          <s:Data s:Type="String">195 (top only)</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="1" s:StyleID="PCBSpecsHeader">
+          <s:Data s:Type="String">Hole Count</s:Data>
+        </s:Cell>
+        <s:Cell s:MergeAcross="8" s:StyleID="PCBSpecsLine">
+          <s:Data s:Type="Number">0</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="1" s:StyleID="PCBSpecsHeader">
+          <s:Data s:Type="String">Total Drill Count</s:Data>
+        </s:Cell>
+        <s:Cell s:MergeAcross="8" s:StyleID="PCBSpecsLastLine">
+          <s:Data s:Type="Number">130</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:Height="15">
+        <s:Cell s:MergeAcross="10" />
+      </s:Row>
+      <s:Row s:Height="15">
+        <s:Cell s:MergeAcross="10" s:StyleID="NotesHeader">
+          <s:Data s:Type="String">Notes</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="10" s:StyleID="NotesFirstLine">
+          <s:Data s:Type="String">- Assembly must be RoHS compliant.</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="10" s:StyleID="NotesLine">
+          <s:Data s:Type="String">- OK to substitute equivalent parts, unless marked with "No" in Sub column.</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="10" s:StyleID="NotesLine">
+          <s:Data s:Type="String">- Resistors:</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="10" s:StyleID="NotesLine">
+          <s:Data s:Type="String">    - If power dissipation (W) is not specified, assume it's not critical.</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="10" s:StyleID="NotesLine">
+          <s:Data s:Type="String">    - If tolerance (%) is not specified, assume 5%. OK to substitute 1% parts as long as value remains within range.</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="10" s:StyleID="NotesLine">
+          <s:Data s:Type="String">- Capacitors:</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="10" s:StyleID="NotesLine">
+          <s:Data s:Type="String">    - If minimum voltage rating (V) is not specified, assume 6V.</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:AutoFitHeight="0">
+        <s:Cell s:MergeAcross="10" s:StyleID="NotesLastLine">
+          <s:Data s:Type="String">    - If tolerance (%) is not specified, assume 20%.</s:Data>
+        </s:Cell>
+      </s:Row>
+      <s:Row s:Height="18">
+        <s:Cell s:MergeAcross="10" s:StyleID="Copyright">
+          <s:Data s:Type="String">© 2013 ScanTool.net LLC</s:Data>
+        </s:Cell>
+      </s:Row>
+    </s:Table>
+    <x:WorksheetOptions>
+      <x:Selected />
+      <x:FitToPage />
+      <x:ProtectObjects>False</x:ProtectObjects>
+      <x:ProtectScenarios>False</x:ProtectScenarios>
+      <x:PageSetup>
+        <x:Layout x:Orientation="Landscape" x:CenterHorizontal="1" />
+        <x:PageMargins x:Bottom="0.5" x:Left="0.5" x:Right="0.5" x:Top="0.5" />
+      </x:PageSetup>
+      <x:Print>
+        <x:HorizontalResolution>600</x:HorizontalResolution>
+        <x:VerticalResolution>600</x:VerticalResolution>
+        <x:FitHeight>99</x:FitHeight>
+        <x:ValidPrinterInfo />
+      </x:Print>
+    </x:WorksheetOptions>
+  </s:Worksheet>
+</s:Workbook>

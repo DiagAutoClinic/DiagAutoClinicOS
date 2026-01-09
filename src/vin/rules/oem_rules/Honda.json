@@ -1,0 +1,84 @@
+{
+  "oem_profiles": {
+    "Honda": {
+      "markets": ["US", "EU", "ZA", "JP"],
+      "vds_strategies": {
+        "US": "strong",
+        "EU": "medium",
+        "ZA": "medium",
+        "JP": "medium"
+      },
+      "vds_rules": [
+        {
+          "id": "honda_civic_fc1_sedan",
+          "markets": ["US", "EU", "ZA"],
+          "position": [4, 5, 6],
+          "pattern": {
+            "type": "exact",
+            "value": "FC1"
+          },
+          "meaning": {
+            "model": "Civic",
+            "generation": "10th Gen",
+            "body_type": "Sedan",
+            "trim_level": "LX/EX",
+            "engine_family": "L15B7"
+          },
+          "confidence": 0.90
+        },
+        {
+          "id": "honda_civic_fk8_type_r",
+          "markets": ["US", "EU", "ZA"],
+          "position": [4, 5, 6],
+          "pattern": {
+            "type": "exact",
+            "value": "FK8"
+          },
+          "meaning": {
+            "model": "Civic Type R",
+            "generation": "10th Gen",
+            "body_type": "Hatchback",
+            "series": "Type R",
+            "engine_family": "K20C1"
+          },
+          "confidence": 0.95
+        },
+        {
+          "id": "honda_crv_rw1_turbo",
+          "markets": ["US", "EU", "ZA"],
+          "position": [4, 5, 6],
+          "pattern": {
+            "type": "exact",
+            "value": "RW1"
+          },
+          "meaning": {
+            "model": "CR-V",
+            "generation": "5th Gen",
+            "body_type": "SUV",
+            "series": "Turbo"
+          },
+          "confidence": 0.90
+        }
+      ],
+      "engine_priority": ["ECU", "VIN_VDS", "COMMERCIAL_DB"]
+    }
+  },
+  "wmi_plant_mappings": {
+    "Honda": {
+      "wmi": {
+        "1HG": {
+          "manufacturer": "Honda",
+          "country": "USA"
+        },
+        "JHM": {
+          "manufacturer": "Honda",
+          "country": "Japan"
+        }
+      },
+      "plants": {
+        "A": "Marysville, Ohio, USA",
+        "H": "Suzuka, Japan"
+      }
+    }
+  }
+}

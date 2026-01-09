@@ -1,0 +1,93 @@
+{
+  "oem_profiles": {
+    "Volvo": {
+      "markets": [
+        "EU",
+        "ZA",
+        "US"
+      ],
+      "vds_strategies": {
+        "US": "medium-strong",
+        "EU": "weak-medium",
+        "ZA": "weak-medium"
+      },
+      "vds_rules": [
+        {
+          "id": "volvo_drive_e_2_0_turbo_t",
+          "markets": [
+            "US",
+            "EU",
+            "ZA"
+          ],
+          "position": [
+            8
+          ],
+          "pattern": {
+            "type": "exact",
+            "value": "T"
+          },
+          "meaning": {
+            "engine_family": "Drive-E",
+            "displacement_cc": 1969,
+            "fuel": "Petrol",
+            "aspiration": "Turbo"
+          },
+          "confidence": 0.85,
+          "notes": "Common in XC60, S60 T5"
+        },
+        {
+          "id": "volvo_diesel_d4_d5_d_e",
+          "markets": [
+            "EU",
+            "ZA"
+          ],
+          "position": [
+            5
+          ],
+          "pattern": {
+            "type": "one_of",
+            "values": [
+              "D",
+              "E"
+            ]
+          },
+          "meaning": {
+            "engine_family": "Drive-E Diesel",
+            "displacement_cc_range": "1900-2400"
+          },
+          "confidence": 0.75,
+          "force_verification": true
+        }
+      ],
+      "engine_priority": [
+        "ECU",
+        "BUILD_SHEET",
+        "COMMERCIAL_DB",
+        "VIN_VDS"
+      ]
+    }
+  },
+  "wmi_plant_mappings": {
+    "Volvo": {
+      "wmi": {
+        "YV1": {
+          "manufacturer": "Volvo Cars",
+          "country": "Sweden"
+        },
+        "YV4": {
+          "manufacturer": "Volvo Cars",
+          "country": "Sweden"
+        },
+        "4V4": {
+          "manufacturer": "Volvo",
+          "country": "USA"
+        }
+      },
+      "plants": {
+        "T": "Torslanda, Sweden",
+        "G": "Ghent, Belgium",
+        "C": "Chengdu, China (some exports)"
+      }
+    }
+  }
+}

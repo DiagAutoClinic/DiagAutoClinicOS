@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<dpInst>
+	<legacyMode />
+    <language code="0x0409">
+        <dpinstTitle>Openport 2.0 Device Installer</dpinstTitle>
+    
+        <welcomeTitle>Welcome to the Openport 2.0 Installer!</welcomeTitle>
+        <welcomeIntro>This wizard will walk you through updating the drivers for your OpenPort device.</welcomeIntro>
+    
+        <eulaHeaderTitle>End User License Agreement</eulaHeaderTitle>
+        <eulaYesButton>I &amp;accept this EULA</eulaYesButton>
+        <eulaNoButton>I do &amp;not accept this EULA</eulaNoButton>
+
+        <installHeaderTitle>Installing the software for your Openport 2.0...</installHeaderTitle>
+
+        <finishTitle>Congratulations! You are finished installing your Openport 2.0 drivers.</finishTitle>
+
+        <eula type="txt" path="License.txt" />
+    </language>
+</dpInst>

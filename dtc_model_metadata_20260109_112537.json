@@ -1,0 +1,42 @@
+{
+  "features": [
+    "alternator_load",
+    "battery_voltage",
+    "boost_kpa",
+    "cam_sync",
+    "can_error_rate",
+    "coolant_pressure",
+    "coolant_temp_c",
+    "crank_voltage",
+    "egt_c",
+    "engine_sync",
+    "fan_duty",
+    "heater_temp",
+    "idle_rpm",
+    "injector_pulse",
+    "ltft_percent",
+    "maf_gps",
+    "map_kpa",
+    "module_latency",
+    "o2_lambda",
+    "oil_temp_c",
+    "rpm",
+    "sensor_freeze",
+    "stft_percent",
+    "throttle_position",
+    "wastegate_duty"
+  ],
+  "classes": [
+    "BATTERY_INTERNAL_RESISTANCE",
+    "BOOST_CONTROL_FAULT",
+    "CAN_INTERMITTENT_DROPOUT",
+    "COOLING_PRESSURE_LOSS",
+    "CRANK_SENSOR_HEAT_FAILURE",
+    "INTAKE_AIR_LEAK"
+  ],
+  "timestamp": "20260109_112537",
+  "metrics": {
+    "final_acc": 0.5833333134651184,
+    "final_val_acc": 0.8500000238418579
+  }
+}

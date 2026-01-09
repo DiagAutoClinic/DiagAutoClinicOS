@@ -1,0 +1,97 @@
+AUTO DIAG PRO - VCI INSTALLATION GUIDE
+=====================================
+
+This guide helps you install and configure VCI (Vehicle Communication Interface) devices for AutoDiag Pro.
+
+SUPPORTED VCI DEVICES
+---------------------
+AutoDiag Pro supports:
+- J2534 PassThru devices (most professional scanners)
+- ELM327-based OBD-II adapters
+- Custom VCI protocols
+
+AUTOMATIC INSTALLATION
+----------------------
+During setup, select "Install common VCI device drivers" to automatically install:
+- J2534 PassThru drivers
+- ELM327 chipset drivers
+- Generic USB-to-serial drivers
+
+MANUAL INSTALLATION
+-------------------
+If automatic installation fails:
+
+1. Open Device Manager (search in Start menu)
+2. Look for your VCI device under "Ports" or "Universal Serial Bus"
+3. Right-click and select "Update driver"
+4. Choose "Browse my computer for drivers"
+5. Point to: C:\Program Files\AutoDiag Pro\drivers\
+6. Install the appropriate driver
+
+COMMON VCI DEVICES
+------------------
+J2534 Devices:
+- Bosch MTECH
+- Drew Technologies
+- Dearborn Group DPA5
+- Most professional OBD-II scanners
+
+ELM327 Devices:
+- Most cheap OBD-II Bluetooth/WiFi adapters
+- USB ELM327 clones
+- Some phone apps with ELM327 adapters
+
+TROUBLESHOOTING VCI CONNECTIONS
+--------------------------------
+ISSUE: Device not detected
+SOLUTION:
+1. Try different USB port
+2. Check USB cable and power
+3. Verify device appears in Device Manager
+4. Install correct drivers
+5. Restart computer
+
+ISSUE: Communication errors
+SOLUTION:
+1. Check vehicle ignition is ON
+2. Verify OBD-II port is working
+3. Try different vehicle
+4. Check VCI device compatibility
+5. Update device firmware if available
+
+ISSUE: Protocol not supported
+SOLUTION:
+1. Some vehicles require specific VCI devices
+2. Check vehicle manufacturer's requirements
+3. Use professional-grade J2534 device for best compatibility
+
+DRIVER COMPATIBILITY
+--------------------
+Windows 10/11:
+- All drivers in the drivers folder are compatible
+- Run installer as Administrator
+- Disable antivirus during installation
+
+Windows 7/8:
+- May require older driver versions
+- Contact manufacturer for legacy drivers
+
+TESTING VCI CONNECTION
+----------------------
+1. Start AutoDiag Pro
+2. Go to Diagnostics tab
+3. Click "Connect to Vehicle"
+4. Select appropriate protocol
+5. Check connection status
+
+If connection fails:
+- Try different protocols (CAN, KWP2000, etc.)
+- Check vehicle-specific requirements
+- Verify VCI device is powered and connected
+
+CONTACT SUPPORT
+---------------
+For VCI device compatibility:
+- Check: https://diagautoclinic.co.za/vci-support
+- Email: support@diagautoclinic.co.za
+- Include device model and vehicle information

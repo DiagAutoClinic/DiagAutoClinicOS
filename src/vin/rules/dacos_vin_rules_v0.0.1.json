@@ -1,0 +1,257 @@
+{
+  "version": "v0.0.1",
+  "generated": "2025-12-28",
+  "title": "DACOS VIN Decoding Rules – Combined WMI/Plant + VDS + ZA-local Profiles",
+  "description": "Layer 0–2 VIN decoding rules covering 14 major OEMs + South Africa local assembly patterns",
+  
+  "philosophy": {
+    "core_principle": "VIN is a compressed foreign key into multiple uncontrolled databases – NOT a self-describing schema.",
+    "repeated_question": "Do I know this, or am I inferring it?",
+    "engine_truth": "There is no mathematical way to derive engine capacity from a VIN. Only manufacturer symbol tables, market-specific mappings, historical production patterns.",
+    "verification_rule": "engine.displacement.status = 'verified' only after at least two independent confirmations (ECU + market/commercial)",
+    "never_return_naked_values": true,
+    "return_epistemology": true,
+    "epistemology_first": "Never return naked values — always return source, confidence, state (verified/confirmed/inferred/conflicted/unknown), and audit trail."
+  },
+
+  "architecture_layers": {
+    "layer_0": {
+      "name": "Sanity & Physics",
+      "description": "Binary truth. Length=17, charset (no I,O,Q), Mod-11 check digit (ISO 3779). Fails → stop."
+    },
+    "layer_1": {
+      "name": "Deterministic ISO Decode",
+      "description": "WMI (1-3), Model year (10), Plant (11), Serial (12-17)"
+    },
+    "layer_2": {
+      "name": "OEM Grammar Decoder (VDS)",
+      "description": "Digits 4-8: manufacturer-defined grammar – declarative rules with confidence"
+    },
+    "layer_3": {
+      "name": "Market Context Resolver",
+      "description": "Critical for ZA local variations. Inputs: VIN + market hint + WMI + plant"
+    }
+  },
+
+  "common": {
+    "pattern_types": ["exact", "prefix", "one_of", "regex", "contains", "starts_with", "any"],
+    "default_engine_priority": ["ECU", "PR_CODES", "BUILD_SHEET", "COMMERCIAL_DB", "VIN_VDS"]
+  },
+
+  "wmi_plant_mappings": {
+    "BMW": {
+      "wmi": {
+        "WBA": {"manufacturer": "BMW AG", "country": "Germany"},
+        "WBS": {"manufacturer": "BMW M", "country": "Germany"},
+        "5UX": {"manufacturer": "BMW USA", "country": "USA", "plant_default": "L"},
+        "WBY": {"manufacturer": "BMW i", "country": "Germany"}
+      },
+      "plants": {
+        "A": "Munich, Germany",
+        "B": "Dingolfing, Germany",
+        "L": "Spartanburg, USA",
+        "N": "Rosslyn, South Africa"
+      }
+    },
+    "VAG": {
+      "wmi": {
+        "WVW": {"manufacturer": "Volkswagen", "country": "Germany"},
+        "WAU": {"manufacturer": "Audi", "country": "Germany"},
+        "TMB": {"manufacturer": "Škoda", "country": "Czech Republic"},
+        "VSS": {"manufacturer": "SEAT", "country": "Spain"}
+      },
+      "plants": {
+        "W": "Wolfsburg, Germany",
+        "E": "Emden, Germany",
+        "7": "Kariega, South Africa"
+      }
+    },
+    "Mercedes-Benz": {
+      "wmi": {
+        "W1K": {"manufacturer": "Mercedes-Benz", "country": "Germany"},
+        "WDB": {"manufacturer": "Mercedes-Benz", "country": "Germany/South Africa"},
+        "4JG": {"manufacturer": "Mercedes-Benz USA", "country": "USA"}
+      },
+      "plants": {
+        "F": "Bremen, Germany",
+        "R": "East London, South Africa",
+        "J": "Tuscaloosa, USA"
+      }
+    },
+    "Toyota": {
+      "wmi": {
+        "4T1": {"manufacturer": "Toyota", "country": "USA"},
+        "5TD": {"manufacturer": "Toyota", "country": "USA"},
+        "JTD": {"manufacturer": "Toyota", "country": "Japan"}
+      },
+      "plants": {
+        "U": "Georgetown, Kentucky, USA",
+        "0": "Tahara, Japan"
+      }
+    },
+    "Honda": {
+      "wmi": {
+        "1HG": {"manufacturer": "Honda", "country": "USA"},
+        "JHM": {"manufacturer": "Honda", "country": "Japan"}
+      },
+      "plants": {
+        "A": "Marysville, Ohio, USA",
+        "H": "Suzuka, Japan"
+      }
+    }
+  },
+
+  "oem_profiles": {
+    "BMW": {
+      "markets": ["EU", "ZA", "US"],
+      "vds_strategies": {"US": "strong", "EU": "medium", "ZA": "medium-weak"},
+      "vds_rules": [
+        {"id": "b58_early_c", "markets": ["US","EU","ZA"], "position": [8], "pattern": {"type": "exact", "value": "C"}, "meaning": {"engine_family": "B58", "displacement_cc": 2998}, "confidence": 0.92},
+        {"id": "b58_g_m_sport_d", "markets": ["US","EU"], "position": [8], "pattern": {"type": "exact", "value": "D"}, "meaning": {"engine_family": "B58", "displacement_cc": 2998}, "confidence": 0.88},
+        {"id": "s58_main_s", "markets": ["US","EU","ZA"], "position": [8], "pattern": {"type": "exact", "value": "S"}, "meaning": {"engine_family": "S58", "displacement_cc": 2993}, "confidence": 0.95}
+      ],
+      "engine_priority": ["ECU", "BUILD_SHEET", "COMMERCIAL_DB", "VIN_VDS"]
+    },
+
+    "AAU": {
+      "name": "BMW South Africa (Rosslyn)",
+      "markets": ["ZA", "export"],
+      "vds_rules": [
+        {
+          "rule_id": "bmw_x3_rosslyn_g01",
+          "description": "BMW X3 G01 - Rosslyn assembly (ZA market)",
+          "markets": ["ZA"],
+          "position": [4,5,6,7,8],
+          "pattern": {"type": "starts_with", "value": "59"},
+          "meaning": {
+            "model": "X3 G01",
+            "plant": "Rosslyn",
+            "engine_family": "B48/B58 variants",
+            "assembly": "South Africa"
+          },
+          "confidence": 0.96,
+          "notes": "Prefer when WMI=AAU and market=ZA; plant code often N"
+        }
+      ]
+    },
+
+    "VAG": {
+      "markets": ["EU", "ZA", "US"],
+      "vds_strategies": {"EU": "weak", "ZA": "weak", "US": "strong"},
+      "vds_rules": [
+        {"id": "platform_pq35", "markets": ["EU","ZA"], "position": [4,5], "pattern": {"type": "exact", "value": "1K"}, "meaning": {"platform": "PQ35"}, "confidence": 0.85},
+        {"id": "filler_zzz_eu", "markets": ["EU","ZA"], "pattern": {"type": "regex", "value": "^ZZZ"}, "meaning": {"note": "Filler - defer to external"}, "confidence": 0.0, "force_defer": true}
+      ]
+    },
+
+    "AAV": {
+      "name": "Volkswagen South Africa (Kariega/Uitenhage)",
+      "markets": ["ZA"],
+      "vds_rules": [
+        {
+          "rule_id": "vw_polo_vivo_local",
+          "description": "VW Polo Vivo - local assembly",
+          "markets": ["ZA"],
+          "position": [4,5,6,7,8],
+          "pattern": {"type": "starts_with", "value": "ZZZ6R"},
+          "meaning": {
+            "model": "Polo Vivo",
+            "platform": "6R/9N variants",
+            "plant": "Kariega",
+            "assembly": "South Africa"
+          },
+          "confidence": 0.93,
+          "notes": "Common for ZA market; plant code often U"
+        }
+      ]
+    },
+
+    "Mercedes-Benz": {
+      "markets": ["EU", "ZA", "US"],
+      "vds_strategies": {"US": "medium-strong", "EU": "weak-medium", "ZA": "weak-medium"},
+      "vds_rules": [
+        {"id": "om654_chassis_w206", "markets": ["EU","ZA"], "position": [4,6], "pattern": {"type": "prefix", "value": "206"}, "meaning": {"likely_engine_family": "OM654", "displacement_cc": 1950}, "confidence": 0.85},
+        {"id": "om656_chassis_w213", "markets": ["EU","ZA","US"], "position": [4,6], "pattern": {"type": "prefix", "value": "213"}, "meaning": {"likely_engine_family": "OM656", "displacement_cc": 2925}, "confidence": 0.88}
+      ]
+    },
+
+    "ADM": {
+      "name": "Mercedes-Benz South Africa (East London)",
+      "markets": ["ZA"],
+      "vds_rules": [
+        {
+          "rule_id": "mb_c_class_eastlondon",
+          "description": "Mercedes-Benz C-Class - East London assembly",
+          "markets": ["ZA"],
+          "position": [4,5,6,7,8],
+          "pattern": {"type": "starts_with", "value": "205"},
+          "meaning": {
+            "model": "C-Class (W205/W206)",
+            "plant": "East London",
+            "assembly": "South Africa"
+          },
+          "confidence": 0.95,
+          "notes": "Plant code often E"
+        }
+      ]
+    },
+
+    "Toyota": {
+      "markets": ["US", "CA", "MX", "EU", "ZA"],
+      "vds_strategies": {"US": "strong-medium", "EU": "weak-medium", "ZA": "weak-medium"},
+      "vds_rules": [
+        {"id": "engine_2gr_position5_k", "markets": ["US","CA","MX"], "position": [5], "pattern": {"type": "exact", "value": "K"}, "meaning": {"engine_family": "2GR", "displacement_cc": 3456}, "confidence": 0.88}
+      ]
+    },
+
+    "AHT": {
+      "name": "Toyota South Africa (Prospecton)",
+      "markets": ["ZA"],
+      "vds_rules": [
+        {
+          "rule_id": "toyota_hilux_prospecton",
+          "description": "Toyota Hilux - Prospecton assembly",
+          "markets": ["ZA"],
+          "position": [4,5,6,7,8],
+          "pattern": {"type": "regex", "value": "^FR[0-9][A-Z]G"},
+          "meaning": {
+            "model": "Hilux",
+            "plant": "Prospecton",
+            "engine": "2GD-FTV / 1GD-FTV diesel variants",
+            "assembly": "South Africa"
+          },
+          "confidence": 0.94,
+          "notes": "Unique diesel configs common in ZA builds"
+        }
+      ]
+    },
+
+    "AFA": {
+      "name": "Ford South Africa (Silverton)",
+      "markets": ["ZA"],
+      "vds_rules": [
+        {
+          "rule_id": "ford_ranger_silverton",
+          "description": "Ford Ranger - Silverton assembly",
+          "markets": ["ZA"],
+          "position": [4,5,6,7,8],
+          "pattern": {"type": "starts_with", "value": "XXMJ"},
+          "meaning": {
+            "model": "Ranger (T6/T9)",
+            "plant": "Silverton",
+            "engine": "2.0L bi-turbo / 3.2L Duratorq variants",
+            "assembly": "South Africa"
+          },
+          "confidence": 0.92,
+          "notes": "Local spec often different from Thai builds"
+        }
+      ]
+    }
+  },
+
+  "notes": [
+    "ZA-specific profiles (AAU, AAV, ADM, AHT, AFA) are kept separate to emphasize local assembly differences",
+    "Global profiles contain market-aware rules where available",
+    "Engine displacement values should always be treated as high-confidence only when multiple sources agree"
+  ]
+}

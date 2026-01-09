@@ -1,0 +1,114 @@
+{
+  "oem_profiles": {
+    "Mazda": {
+      "markets": ["US", "EU", "ZA", "JP"],
+      "vds_strategies": {
+        "US": "medium-strong",
+        "EU": "weak-medium",
+        "ZA": "weak",
+        "JP": "medium"
+      },
+      "vds_rules": [
+        {
+          "id": "mazda_skyactiv_g_2_0_p",
+          "markets": ["US", "EU"],
+          "position": [8],
+          "pattern": {
+            "type": "exact",
+            "value": "P"
+          },
+          "meaning": {
+            "engine_family": "Skyactiv-G",
+            "displacement_cc": 1998
+          },
+          "confidence": 0.85,
+          "notes": "Mazda3, CX-5"
+        },
+        {
+          "id": "mazda_skyactiv_d_2_2_d",
+          "markets": ["EU", "ZA"],
+          "position": [8],
+          "pattern": {
+            "type": "exact",
+            "value": "D"
+          },
+          "meaning": {
+            "engine_family": "Skyactiv-D",
+            "displacement_cc": 2191
+          },
+          "confidence": 0.80,
+          "force_verification": true
+        },
+        {
+          "id": "mazda_cx5_kf_gen2",
+          "markets": ["EU", "ZA", "US"],
+          "position": [4, 5],
+          "pattern": {
+            "type": "exact",
+            "value": "KF"
+          },
+          "meaning": {
+            "model": "CX-5",
+            "generation": "2nd Gen (KF)",
+            "body_type": "SUV"
+          },
+          "confidence": 0.88
+        },
+        {
+          "id": "mazda_3_bp_gen4",
+          "markets": ["EU", "ZA", "US"],
+          "position": [4, 5],
+          "pattern": {
+            "type": "exact",
+            "value": "BP"
+          },
+          "meaning": {
+            "model": "Mazda3",
+            "generation": "4th Gen (BP)",
+            "series": "Skyactiv"
+          },
+          "confidence": 0.88
+        },
+        {
+          "id": "mazda_cx30_dm_series",
+          "markets": ["EU", "ZA", "US", "JP"],
+          "position": [4, 5],
+          "pattern": {
+            "type": "exact",
+            "value": "DM"
+          },
+          "meaning": {
+            "model": "CX-30",
+            "series": "DM",
+            "body_type": "SUV"
+          },
+          "confidence": 0.88
+        }
+      ],
+      "engine_priority": ["ECU", "BUILD_SHEET", "COMMERCIAL_DB", "VIN_VDS"]
+    }
+  },
+  "wmi_plant_mappings": {
+    "Mazda": {
+      "wmi": {
+        "JM1": {
+          "manufacturer": "Mazda",
+          "country": "Japan"
+        },
+        "JM3": {
+          "manufacturer": "Mazda",
+          "country": "Japan"
+        },
+        "1YV": {
+          "manufacturer": "Mazda USA",
+          "country": "USA"
+        }
+      },
+      "plants": {
+        "A": "Hiroshima, Japan",
+        "F": "Flat Rock, Michigan, USA",
+        "Y": "Yamaguchi, Japan"
+      }
+    }
+  }
+}

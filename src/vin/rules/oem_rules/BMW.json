@@ -1,0 +1,150 @@
+{
+  "oem_profiles": {
+    "BMW": {
+      "markets": ["EU", "ZA", "US"],
+      "vds_strategies": {
+        "US": "strong",
+        "EU": "medium",
+        "ZA": "medium-weak"
+      },
+      "vds_rules": [
+        {
+          "id": "b58_early_c",
+          "markets": ["US", "EU", "ZA"],
+          "position": [8],
+          "pattern": {
+            "type": "exact",
+            "value": "C"
+          },
+          "meaning": {
+            "engine_family": "B58",
+            "displacement_cc": 2998
+          },
+          "confidence": 0.92
+        },
+        {
+          "id": "b58_g_m_sport_d",
+          "markets": ["US", "EU"],
+          "position": [8],
+          "pattern": {
+            "type": "exact",
+            "value": "D"
+          },
+          "meaning": {
+            "engine_family": "B58",
+            "displacement_cc": 2998
+          },
+          "confidence": 0.88
+        },
+        {
+          "id": "s58_main_s",
+          "markets": ["US", "EU", "ZA"],
+          "position": [8],
+          "pattern": {
+            "type": "exact",
+            "value": "S"
+          },
+          "meaning": {
+            "engine_family": "S58",
+            "displacement_cc": 2993
+          },
+          "confidence": 0.95
+        },
+        {
+          "id": "bmw_series_3_g20_hint",
+          "markets": ["EU", "ZA", "US"],
+          "position": [2, 3],
+          "pattern": {
+            "type": "exact",
+            "value": "G2"
+          },
+          "meaning": {
+            "series": "3 Series (G20/G21)",
+            "trim_level": "M Sport"
+          },
+          "confidence": 0.70
+        },
+        {
+          "id": "bmw_series_x5_g05_hint",
+          "markets": ["EU", "US"],
+          "position": [2, 3],
+          "pattern": {
+            "type": "exact",
+            "value": "G0"
+          },
+          "meaning": {
+            "series": "X5 (G05)",
+            "trim_level": "xLine"
+          },
+          "confidence": 0.68
+        },
+        {
+          "id": "b48_g_h",
+          "markets": ["US", "EU", "ZA"],
+          "position": [8],
+          "pattern": { "type": "one_of", "values": ["G", "H"] },
+          "meaning": { "engine_family": "B48", "displacement_cc": 1998, "cylinders": 4, "config": "Inline-4", "fuel": "Petrol", "aspiration": "Turbocharged" },
+          "confidence": 0.90
+        },
+        {
+          "id": "n55_k",
+          "markets": ["US", "EU", "ZA"],
+          "position": [8],
+          "pattern": { "type": "exact", "value": "K" },
+          "meaning": { "engine_family": "N55", "displacement_cc": 2979, "cylinders": 6, "config": "Inline-6", "fuel": "Petrol", "aspiration": "Turbocharged" },
+          "confidence": 0.88
+        },
+        {
+          "id": "n20_p",
+          "markets": ["US", "EU", "ZA"],
+          "position": [8],
+          "pattern": { "type": "exact", "value": "P" },
+          "meaning": { "engine_family": "N20", "displacement_cc": 1997, "cylinders": 4, "config": "Inline-4", "fuel": "Petrol", "aspiration": "Turbocharged" },
+          "confidence": 0.85
+        },
+        {
+          "id": "b47_t_u",
+          "markets": ["US", "EU", "ZA"],
+          "position": [8],
+          "pattern": { "type": "one_of", "values": ["T", "U"] },
+          "meaning": { "engine_family": "B47", "displacement_cc": 1995, "cylinders": 4, "config": "Inline-4", "fuel": "Diesel", "aspiration": "Turbocharged" },
+          "confidence": 0.90
+        }
+      ],
+      "engine_priority": ["ECU", "BUILD_SHEET", "COMMERCIAL_DB", "VIN_VDS"]
+    }
+  },
+  "wmi_plant_mappings": {
+    "BMW": {
+      "wmi": {
+        "WBA": {
+          "manufacturer": "BMW AG",
+          "country": "Germany"
+        },
+        "WBS": {
+          "manufacturer": "BMW M",
+          "country": "Germany"
+        },
+        "5UX": {
+          "manufacturer": "BMW USA",
+          "country": "USA",
+          "plant_default": "L"
+        },
+        "AAU": {
+          "manufacturer": "BMW South Africa",
+          "country": "South Africa"
+        },
+        "WBY": {
+          "manufacturer": "BMW i",
+          "country": "Germany"
+        }
+      },
+      "plants": {
+        "A": "Munich, Germany",
+        "B": "Dingolfing, Germany",
+        "L": "Spartanburg, USA",
+        "N": "Rosslyn, South Africa"
+      }
+    }
+  }
+}

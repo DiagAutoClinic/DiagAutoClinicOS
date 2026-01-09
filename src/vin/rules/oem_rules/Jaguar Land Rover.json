@@ -1,0 +1,90 @@
+{
+  "oem_profiles": {
+    "Jaguar Land Rover": {
+      "markets": [
+        "EU",
+        "ZA",
+        "US"
+      ],
+      "vds_strategies": {
+        "US": "medium-strong",
+        "EU": "weak-medium",
+        "ZA": "weak-medium"
+      },
+      "vds_rules": [
+        {
+          "id": "jlr_ingenium_2_0_diesel_d",
+          "markets": [
+            "EU",
+            "ZA"
+          ],
+          "position": [
+            8
+          ],
+          "pattern": {
+            "type": "exact",
+            "value": "D"
+          },
+          "meaning": {
+            "engine_family": "Ingenium",
+            "displacement_cc": 1999,
+            "fuel": "Diesel"
+          },
+          "confidence": 0.80,
+          "notes": "Common in Discovery Sport, Range Rover Evoque"
+        },
+        {
+          "id": "jlr_range_rover_l405",
+          "markets": [
+            "EU",
+            "ZA",
+            "US"
+          ],
+          "position": [
+            7,
+            8
+          ],
+          "pattern": {
+            "type": "starts_with",
+            "value": "L40"
+          },
+          "meaning": {
+            "model": "Range Rover",
+            "series": "L405",
+            "body_type": "SUV"
+          },
+          "confidence": 0.87
+        }
+      ],
+      "engine_priority": [
+        "ECU",
+        "BUILD_SHEET",
+        "COMMERCIAL_DB",
+        "VIN_VDS"
+      ]
+    }
+  },
+  "wmi_plant_mappings": {
+    "Jaguar Land Rover": {
+      "wmi": {
+        "SAJ": {
+          "manufacturer": "Jaguar",
+          "country": "United Kingdom"
+        },
+        "SAL": {
+          "manufacturer": "Land Rover",
+          "country": "United Kingdom"
+        },
+        "SAD": {
+          "manufacturer": "Jaguar Land Rover",
+          "country": "United Kingdom"
+        }
+      },
+      "plants": {
+        "A": "Solihull, UK (most JLR)",
+        "B": "Halewood, UK",
+        "G": "Castle Bromwich, UK"
+      }
+    }
+  }
+}

@@ -1,0 +1,322 @@
+OBDLink MX+ [STN2255] ChangeLog
+OBD Solutions LLC
+
+
+v5.12.2 - 2025/10/30
+--------------------
+
+- BUG: Fixed an issue where CAN multi-frame message transmission would cause the device to lock up after 35 minutes of uptime
+
+
+
+v5.12.1 - 2025/10/16
+--------------------
+
+- NEW: Added the Batched Commands feature, which supports sending multiple commands/requests in a single prompt
+- NEW: Added the STBC command for enabling and disabling the Batched Commands feature
+- NEW: Added the STBCOF command, which sets the output format for batched commands
+- NEW: Added an optional parameter to STM and STMA commands to exit monitoring after reaching the specified message count
+- NEW: Added the STITW command to set ISO protocol W timings
+- NEW: Added the STBTI and STBTIX commands for retrieving modem details and current configuration status
+
+- CHG: STCSTM now also sets ISO 11898 inter-frame delay for segmented messages
+
+- BUG: Fixed handling of ATCRA, ATCF, and ATCM so their values are preserved when ATSP or ATTP are issued, matching ELM327 behavior
+- BUG: Fixed rare issue where an overflow condition could reduce message delay times
+- BUG: Fixed rare ISO 15765 flow-control frame transmission failure during concurrent multi-frame reception
+- BUG: Fixed INTERNAL ERROR when receiving more multi-frame messages than specified
+- BUG: Fixed ATCRA not restoring default filters when used without a parameter
+- BUG: Fixed bug, STPX now properly sends 29-bit CAN messages when the AT/ST protocol is configured to 11-bit CAN
+
+
+
+v5.10.3 - 2024/02/01
+--------------------
+
+- NEW: Added the STIP command to set message parity for ISO-14230 protocols
+- NEW: Added the STIIAP command to set initialization address parity for ISO-14230 protocols
+
+- CHG: Changed STIFI command to keep ISO-14230 connection open post-initialization
+
+- BUG: Fixed command prompt printing when using STSLEEP without specifying a delay
+- BUG: Fixed user input validation for STPPMA
+- BUG: Fixed an INTERNAL ERROR when the periodic message protocol doesn't match the current protocol
+- BUG: Fixed an issue with the Bluetooth LED turning on when it was disabled
+
+
+
+v5.9.4 - 2023/05/25
+-------------------
+
+- BUG: Fixed bug that could occasionally cause the connection to fail
+- BUG: Fixed bug that failed to enter legacy/manual pairing mode (set by STBTPM)
+
+
+
+v5.9.2 - 2023/04/27
+-------------------
+
+- NEW: Pairing mode is enabled for 2 minutes if the user wakes the device by pushing the button
+- NEW: Pairing mode is enabled for 2 minutes after a factory reset is complete
+- NEW: iOS auto-connect is active right after power-up (does not wait for pairing mode to end)
+
+- CHG: Changed button presses to enable pairing mode if connection is idle (no data in the last 3 seconds)
+- CHG: Changed button presses to be ignored if connection is active in the last 3 seconds
+- CHG: Reduced the time it took to start pairing mode after the button is pressed
+
+- BUG: Fixed pairing mode enabled after connection dropped under certain conditions
+- BUG: Fixed a bug where the device would erroneously wake itself from sleep
+- BUG: Fixed bug where the modem would sometimes become unresponsive
+- BUG: Fixed iOS auto-connect working with only 1 iOS device under certain conditions
+
+
+
+v5.8.1 - 2023/03/29
+-------------------
+
+- BUG: Fixed a bug where STI/STDI/STDIX may return the wrong device ID or hardware revision
+- BUG: Fixed ATCF not setting filter properly
+- BUG: Fixed <DATA ERROR for multi-frame messages while in monitoring mode
+
+
+
+v5.8.0 - 2022/11/16
+-------------------
+
+- NEW: Added STBTPM command to set Bluetooth Pairing Mode
+
+
+
+v5.7.1 - 2022/09/20
+-------------------
+
+- BUG: Fixed factory reset issue
+
+
+
+v5.7.0 - 2022/09/16
+-------------------
+
+- NEW: Added support for PP 1D
+- NEW: Added support for PP 1C
+- NEW: Added support for PP 14
+
+- CHG: PP 0C sets UART baud rate to 9600 when value is 00
+- CHG: ATCRA now accepts "X" as a don't care
+- CHG: Relaxed ISO initialization timing to work better with non-compliant ECUs
+- CHG: Changed STIP4 to saturate at 262 ms
+- CHG: Removed 13V sleep inhibitor
+
+- BUG: Fixed CAN baud rate divisors for Programmable Parameter 2D and 2F
+- BUG: Fixed bug with user entering invalid SW-CAN mode selection with STCSWM
+
+
+
+v5.6.24 - 2022/03/22
+--------------------
+
+- NEW: Implemented STPFEPS command to control FEPS adapter over L-Line
+- NEW: Implemented HS CAN wakeup
+
+- BUG: Fixed async CAN not handling cancellation and not reporting the error from aborted frames
+- BUG: Fixed async CAN memory leak caused by bus stuck in dominant state
+- BUG: Fixed STPPMD locking up with non-existent handles
+- BUG: Fixed STPPMA not working for 29 bit CAN protocols
+- BUG: Fixed ATMP not working with J1939 configured USER1 preset until protocol was opened
+- BUG: Fixed OUT OF MEMORY issue related to async CAN processing
+
+
+
+v5.6.19 - 2021/06/30
+--------------------
+
+- NEW: Added support for assembly revision format
+
+
+
+v5.6.18 - 2021/06/21
+--------------------
+
+- NEW: Added support for OBDLink MX+ revision 3.0
+
+- BUG: Fixed FATAL ERROR caused by reception of multi-frame message in monitor mode
+
+
+
+v5.6.16 - 2021/05/11
+--------------------
+
+- NEW: Added ATIB baud rate presets 12 and 15
+
+- CHG: Improved Bluetooth driver
+- CHG: Changed manufacturer string to OBD Solutions LLC
+
+- BUG: Fixed INTERNAL ERROR when using STIFI with ISO9141 protocols
+
+
+
+v5.6.15 - 2021/03/02
+--------------------
+
+- CHG: Improved Bluetooth driver
+
+- BUG: Fixed connectivity issue
+
+
+
+v5.6.11 - 2020/12/02
+--------------------
+
+- NEW: Added support for new Bluetooth modem firmware and hardware
+
+- CHG: Made a small optimization to STPX to improve UART processing speed
+
+- BUG: Fixed issue with iOS AutoConnect preventing sleep
+
+
+
+v5.6.5 - 2020/10/14
+-------------------
+
+- BUG: Fixed ISO protocol detection failure
+
+
+
+v5.6.4 - 2020/10/06
+-------------------
+
+- CHG: Improved module detection for Enhanced Diagnostics
+
+- BUG: Fixed a BUFFER FULL caused by the CAN RX buffer getting filled while waiting for a FC frame during a multi-frame transmission
+
+
+
+v5.6.1 - 2020/09/18
+-------------------
+
+- CHG: Changed STCTOR to accept 2 parameters
+- CHG: Changed STCSTM precision to milliseconds
+
+
+
+v5.6.0 - 2020/09/16
+-------------------
+
+- NEW: Enabled Bluetooth pairing upon power up
+- NEW: Added command to change CAN consecutive and flow control frame reception timeouts
+- NEW: Added command to specify additional STmin delay
+- NEW: Added support for 4 byte header to ATSH
+
+- CHG: Removed CAN deaf time after sending a CAN message
+- CHG: Improved module detection for Enhanced Diagnostics
+
+- BUG: Fixed response pending messages (7F xx 78) being counted when using STPTO 0
+- BUG: Fixed STSLU, STSLVL, and STSLX not working
+
+
+
+v5.5.3 - 2020/06/09
+-------------------
+
+- BUG: Fixed inability to transmit on MS CAN with rev 2.0 hardware
+
+
+
+v5.5.2 - 2020/06/03
+-------------------
+
+- BUG: Fixed inability to transmit after CAN ERROR
+
+
+
+v5.5.1 - 2020/06/02
+-------------------
+
+- BUG: Fixed possible FATAL ERROR when receiving multi-frame message
+
+
+
+v5.5.0 - 2020/05/28
+-------------------
+
+- CHG: CAN driver improvements
+- CHG: Changed welcome string to print "ELM327 1.4b" instead of "ELM327 1.3a"
+- CHG: Increased response pending timeout to 6000 ms to account for tolerance
+- CHG: Disabled the option to turn on SW-CAN high speed load
+
+
+
+v5.4.0 - 2020/04/14
+-------------------
+
+- NEW: Added support for PP 2C bit 4 (8/7 CAN)
+
+- CHG: "STOPPED" is now printed exiting all monitoring modes
+
+- BUG: Reset message reception timeout on CAN first frame causing "NO DATA"
+- BUG: Fixed "BUFFER FULL" when CAN flow control arbitration fails due to a busy bus
+- BUG: SW CAN bus load now removed when protocol is not open
+
+
+
+v5.3.1 - 2019/12/26
+-------------------
+
+- NEW: Added support for Hyundai/Kia Enhanced Diagnostics
+
+
+
+v5.1.3 - 2019/10/28
+-------------------
+
+- NEW: Added support for Honda Enhanced Diagnostics
+
+- CHG: Changed default Bluetooth COD to 001F00
+
+- BUG: "SEARCHING..." was printed before "STOPPED" when automatic protocol detection was enabled and OBD message reception was interrupted
+
+
+
+v5.0.0 - 2019/07/25
+-------------------
+
+- NEW: Added periodic messaging
+- NEW: Added custom ISO 14230 fast init
+
+- BUG: Fixed ATCEA interaction with ATCAF0
+- BUG: Bluetooth fixes
+- BUG: Fixed DTC retrieval in GM Enhanced Diagnostics
+
+
+
+v4.5.27 - 2019/06/21
+--------------------
+
+- NEW: Added support for OBDLink MX+ revision 2.0
+- NEW: Added 1996-2007 vehicles to GM Enhanced Diagnostics
+
+- CHG: Improved Bluetooth driver
+- CHG: Changed J1939 ACK filter to accept either targeted or broadcast responses
+
+
+
+v4.5.15 - 2018/11/16
+--------------------
+
+- BUG: ATTA command would not work with the ATCEA command without closing and re-opening the protocol
+
+
+
+v4.5.14 - 2018/11/09
+--------------------
+
+- NEW: Added support for GM Enhanced Diagnostics
+
+- CHG: Improved auto-connect feature reliability
+
+
+
+v4.5.12 - 2018/10/25
+--------------------
+
+- Initial release
