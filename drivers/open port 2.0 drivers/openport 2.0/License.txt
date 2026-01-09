@@ -1,0 +1,14 @@
+Copyright © 2004-2016 Tactrix Inc.
+
+This hardware and driver are provided 'as-is', without any express or implied warranty. This device reads and modifies code and data for engine computers (ECUs). Improper use of this device or errors within the device itself can cause engine damage and/or render the vehicle's engine computer non-operational. Many ECUs can only be reflashed a limited number of times before the flash memory is no longer functional. Additionally, modification of your ECU's software will most likely void your drivetrain warranty from the manufacturer and violate emission control regulations in some regions. In no event will the device manufacturer be held liable for any damages arising from the use of this software.
+
+This device allows you read code/data from ECUs which can potentially be subject to various copyright and intellectual property laws where you live. It is your responsibility to use (or not use) this device in adherence with these laws.
+
+Permission is granted to anyone to use this device for any purpose, including commercial applications, subject to the following restrictions:
+
+1. The origin of this device must not be misrepresented; you must not claim that you built the device or software. If you use this device in a product, an acknowledgment in the product documentation would be appreciated.
+
+2. Altered versions must be plainly marked as such, and must not be misrepresented as being the original device.
+
+3. This notice may not be removed or altered from any distribution.
+

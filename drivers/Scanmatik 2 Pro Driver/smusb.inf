@@ -1,0 +1,111 @@
+; Installation inf file for the Scanmatik USB driver
+;
+; (c) Copyright 2011 Scanmatik
+;
+
+[Version]
+Signature="$CHICAGO$"
+Class=SCANMATIK
+ClassGuid={5A929F4C-6F07-426d-A970-903D25D445B3}
+Provider=%MFGNAME%
+DriverVer=07/23/2010,1.00.00.1
+; Windows 98/2K does not support our signature so add .NT suffix
+CatalogFile.NT=smusb.cat
+
+[SourceDisksNames]
+1=%INSTDISK%,,,
+
+[ControlFlags]
+ExcludeFromSelect=USB\VID_20A2&PID_0001
+
+[SourceDisksFiles]
+smusb32.sys = 1
+smusb64.sys = 1
+
+[Manufacturer]
+%MFGNAME%=DeviceList, NTx86, NTamd64
+
+[DeviceList]
+%DEVDESC%=DriverInstall, USB\VID_20A2&PID_0001
+
+[DeviceList.NTx86]
+%DEVDESC%=DriverInstall, USB\VID_20A2&PID_0001
+
+[DeviceList.NTamd64]
+%DEVDESC%=DriverInstall, USB\VID_20A2&PID_0001
+
+[DestinationDirs]
+DefaultDestDir = 10,System32\Drivers
+
+; Register a new class in Windows 98/Me
+[ClassInstall]
+AddReg=ClassAddRegistry
+
+; Register a new class in Windows 2000 and later
+[ClassInstall32]
+AddReg=ClassAddRegistry
+
+[ClassAddRegistry]
+HKR,,,,SCANMATIK
+HKR,,Icon,,-16
+
+;------------------------------------------------------------------------------
+;  Windows 2000 and later Sections (x86 and x64 platforms)
+;------------------------------------------------------------------------------
+
+[DriverInstall.NTx86]
+CopyFiles=DriverCopyFiles_x86
+
+[DriverInstall.NTx86.Services]
+Addservice = SmUsb, 2, DriverAddService_x86
+
+[DriverInstall.NTamd64]
+CopyFiles=DriverCopyFiles_x64
+
+[DriverInstall.NTamd64.Services]
+Addservice = SmUsb, 2, DriverAddService_x64
+
+[DriverCopyFiles_x86]
+smusb32.sys
+
+[DriverCopyFiles_x64]
+smusb64.sys
+
+[DriverAddService_x86]
+DisplayName    = %SVCNAME%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\smusb32.sys
+LoadOrderGroup = Base
+
+[DriverAddService_x64]
+DisplayName    = %SVCNAME%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\smusb64.sys
+LoadOrderGroup = Base
+
+;------------------------------------------------------------------------------
+;  Windows 98 Sections
+;------------------------------------------------------------------------------
+
+[DriverInstall]
+CopyFiles=DriverCopyFiles_9x
+AddReg=DriverAddReg_9x
+
+[DriverCopyFiles_9x]
+smusb32.sys
+
+[DriverAddReg_9x]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,smusb32.sys
+
+; -----------------------------------------------------------------------------
+
+[Strings]
+MFGNAME="Scanmatik"
+INSTDISK="Scanmatik Installation Disc"
+DEVDESC="Scanmatik SM-2"
+SVCNAME="Scanmatik SM-2 USB Driver"
