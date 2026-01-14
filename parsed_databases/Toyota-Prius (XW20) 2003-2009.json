@@ -1,9 +1,0 @@
-{
-  "manufacturer": "Toyota",
-  "model": "Prius",
-  "year_range": "2003-2009",
-  "serial_number": "00000000",
-  "messages": {},
-  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Toyota-Prius (XW20) 2003-2009.REF",
-  "parse_date": "2025-12-16T06:34:43.350143"
-}

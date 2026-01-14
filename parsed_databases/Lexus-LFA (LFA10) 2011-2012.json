@@ -1,9 +1,0 @@
-{
-  "manufacturer": "Lexus",
-  "model": "LFA",
-  "year_range": "2011-2012",
-  "serial_number": "00000000",
-  "messages": {},
-  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Lexus-LFA (LFA10) 2011-2012.REF",
-  "parse_date": "2025-12-16T06:34:43.283427"
-}

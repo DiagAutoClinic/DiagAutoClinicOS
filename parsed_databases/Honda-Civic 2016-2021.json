@@ -1,9 +1,0 @@
-{
-  "manufacturer": "Honda",
-  "model": "Civic",
-  "year_range": "2016-2021",
-  "serial_number": "00000000",
-  "messages": {},
-  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Honda-Civic 2016-2021.REF",
-  "parse_date": "2025-12-16T06:34:43.259145"
-}

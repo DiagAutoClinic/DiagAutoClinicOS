@@ -1,9 +1,0 @@
-{
-  "manufacturer": "BMW",
-  "model": "4 Series",
-  "year_range": "2013-2020",
-  "serial_number": "00000000",
-  "messages": {},
-  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\BMW-4 Series (F32) 2013-2020.REF",
-  "parse_date": "2025-12-16T06:34:43.178877"
-}
