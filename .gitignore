@@ -75,6 +75,7 @@ scripts/training_generator.py
 ai_agent/
 tests/ai/
 docs/AI_IMPLEMENTATION_PLAN.md
+.trae/
 
 # Tests
 tests/
