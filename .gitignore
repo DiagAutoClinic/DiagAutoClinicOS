@@ -82,6 +82,7 @@ tests/
 Windows Test/
 test_*.py
 performance_test*.py
+verify_*test*.py
 trash/
 live_tests/
 parsed_databases/
@@ -103,6 +104,24 @@ can_bus_data_backup/
 
 # Documentation & Unnecessary Files
 *.pdf
+
+# Internal security verification (keep off GitHub)
+verify_*.py
+*verifier*.py
+*validation_harness*.py
+results of verifier*.txt
+DACOS Alpha Security Hardening Plan v2.md
+Security Hardening & Release Verification Plan.md
+docs/ALPHA_*REPORT.md
+docs/SECURITY_AUDIT.md
+docs/TELEMETRY_POLICY.md
+_TRASH_TO_REVIEW/
+AutoDiag/core/security.py
+shared/build_verifier.py
+shared/capability_gate.py
+shared/kill_switch.py
+shared/restricted_mode.py
+shared/telemetry_guard.py
 
 # Website (deployed separately)
 dacos.co.za/
