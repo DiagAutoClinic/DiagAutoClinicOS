@@ -109,6 +109,11 @@ dacos.co.za/
 
 # Proprietary / OEM Data
 IMMO/
+can_bus_data/
+
+# Local runtime artifacts
+logs/
+restricted*.lock
 
 # Auto-approve configuration (should never be committed)
 # Large binaries and installers
