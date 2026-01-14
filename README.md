@@ -31,6 +31,17 @@ This focus ensures stability, reliability, and real-world usability under worksh
 
 ---
 
+## Sponsor Transparency (Always in the Light)
+
+DiagAutoClinicOS is built with sponsor support. Sponsor relationships will be kept transparent and auditable:
+
+- Sponsor support must never override safety boundaries, Restricted Mode policy, or verification gates.
+- Sponsor influence over security controls is not permitted (security is fail-closed).
+- Any sponsor-provided code, artifacts, or requirements must be reviewable and testable.
+- Sponsor acknowledgements and funding references must remain visible in this repository (see [.github/FUNDING.yml](.github/FUNDING.yml)).
+
+---
+
 ## ✨ Key Features
 - ✅ **25+ brand diagnostic coverage** with **enhanced Ford and GM support**
 - 🧠 Dynamic glassmorphic UI built with **PyQt6**
@@ -94,6 +105,7 @@ DiagAuto Suite is hardware-agnostic and operates through known, stable interface
 * **OS:** Windows 10 / 11 (64-bit)
 * **Python:** 3.10 or higher
 * **Permissions:** Administrator privileges required for hardware access
+* **Shell:** PowerShell (via integrated Terminal)
 
 ### Running from Source
 1. **Clone the repository:**
