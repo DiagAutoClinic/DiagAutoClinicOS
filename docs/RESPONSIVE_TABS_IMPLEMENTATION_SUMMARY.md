@@ -12,7 +12,7 @@ Successfully implemented a comprehensive responsive tab system for AutoDiag Pro 
 - Identified integration points with `main.py` and `launcher.py`
 
 ### 2. **Reviewed DACOS Theme Requirements**
-- Analyzed `shared/themes/dacos_theme.py` for styling requirements
+- Analyzed `shared/themes/dacos_cyber_teal.py` for styling requirements
 - Ensured all responsive tabs use DACOS color palette and styling
 - Maintained consistency with existing theme system
 

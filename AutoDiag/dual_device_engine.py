@@ -63,7 +63,7 @@ class DualDeviceSession:
 class DualDeviceEngine:
     """Engine for coordinating OBDLink MX+ operations"""
     
-    def __init__(self, mock_mode: bool = True):
+    def __init__(self, mock_mode: bool = False):
         self.mock_mode = mock_mode
         self.session: Optional[DualDeviceSession] = None
         self.is_monitoring = False
@@ -521,44 +521,47 @@ class DualDeviceEngine:
             }
     
     def _send_uds_request(self, request_data: bytes):
-        """Send UDS request via primary device (OBDLink MX+)"""
-        try:
-            # This would connect to the UDS channel and send the request
-            # For now, return a mock response
-            if self.mock_mode:
-                from shared.j2534_passthru import J2534Message
-                if request_data[0] == 0x22:  # VIN request
-                    mock_response = J2534Message(J2534Protocol.ISO14229_UDS, 
-                                               data=b'\x62\xF1\x90WVWZZZ3CZ7E123456')
-                elif request_data[0] == 0x19:  # DTC scan
-                    mock_response = J2534Message(J2534Protocol.ISO14229_UDS,
-                                               data=b'\x59\x01\x03\x00\x00\x08\x03\x01\x00\x08')
-                elif request_data[0] == 0x14:  # DTC clear
-                    response = None  # Hardware required for responses
-                else:
-                    response = None  # Hardware required for responses
-                
-                return mock_response
+        """
+        Send UDS request via primary device (OBDLink MX+).
+        
+        Args:
+            request_data: Raw UDS request bytes (e.g., b'\x22\xF1\x90')
             
+        Returns:
+            J2534Message: Response object containing raw data
+            
+        Raises:
+            NotImplementedError: If VCI layer is not connected/implemented
+            ConnectionError: If physical connection fails
+        """
+        try:
             # Real implementation would send via OBDLink MX+
-            return None
+            # Critical: No mock data allowed.
+            raise NotImplementedError("Hardware integration pending - VCI Layer not connected")
             
         except Exception as e:
             logger.error(f"Failed to send UDS request: {e}")
-            return None
+            raise e
     
     def _parse_dtc_response(self, response_data: bytes) -> List[Tuple[str, str, str]]:
-        """Parse DTC response from UDS"""
+        """
+        Parse DTC response from UDS service 0x19.
+        
+        Args:
+            response_data: Raw response bytes from ECU (including SID + subfunction)
+            
+        Returns:
+            List of tuples: [(code, severity, description), ...]
+            Example: [('P0300', 'Medium', 'Random Misfire')]
+        """
         if len(response_data) < 4:
             return []
         
-        # Simple mock parsing - real implementation would be more complex
-        dtcs = [
-            ('P0300', 'Medium', 'Random/Multiple Cylinder Misfire'),
-            ('P0420', 'Medium', 'Catalyst System Efficiency Below Threshold')
-        ]
+        # Real parsing logic required (ISO14229)
+        # No hardcoded mocks allowed.
+        # TODO: Implement byte-level DTC parsing
         
-        return dtcs
+        return []
     
     def get_can_statistics(self) -> Dict:
         """Get CAN bus statistics"""
@@ -645,7 +648,7 @@ class DualDeviceEngine:
                 logger.error(f"Error during disconnection: {e}")
 
 
-def create_dual_device_engine(mock_mode: bool = True) -> DualDeviceEngine:
+def create_dual_device_engine(mock_mode: bool = False) -> DualDeviceEngine:
     """Factory function to create dual-device engine"""
     return DualDeviceEngine(mock_mode=mock_mode)
 

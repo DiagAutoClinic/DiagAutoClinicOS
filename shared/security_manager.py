@@ -512,9 +512,9 @@ class EnhancedSecurityManager:
 
         # Update password
         salt = self._generate_salt()
-        user_data['password_hash'] = self._hash_password(new_password, salt, "v2")
+        user_data['password_hash'] = self._hash_password(new_password, salt, "v3")
         user_data['salt'] = salt
-        user_data['hash_version'] = "v2"
+        user_data['hash_version'] = "v3"
         user_data['failed_attempts'] = 0  # Reset failed attempts
         user_data['force_password_change'] = False  # Reset force change flag
         
@@ -560,6 +560,104 @@ class EnhancedSecurityManager:
 
         self._log_audit_event('lockout_reset', self.current_user, {'target_user': username})
         return True, f"Lockout reset for user {username}"
+
+    def get_all_users(self) -> List[Dict[str, Any]]:
+        """Get all users for management display"""
+        users_list = []
+        for username, data in self.user_database.items():
+            users_list.append({
+                'username': username,
+                'full_name': data.get('full_name', ''),
+                'tier': data.get('security_level', SecurityLevel.BASIC).name if isinstance(data.get('security_level'), SecurityLevel) else data.get('security_level', 'BASIC'),
+                'status': 'LOCKED' if data.get('locked_until') and time.time() < data.get('locked_until') else 'ACTIVE',
+                'created_at': datetime.fromtimestamp(data.get('created_at', 0)).strftime('%Y-%m-%d %H:%M:%S'),
+                'last_login': datetime.fromtimestamp(data.get('last_login')).strftime('%Y-%m-%d %H:%M:%S') if data.get('last_login') else "Never",
+                'email': data.get('email', '')
+            })
+        return users_list
+
+    def delete_user(self, username: str, requestor: str) -> bool:
+        """Delete a user (requires FACTORY level)"""
+        if not self.check_security_clearance(SecurityLevel.FACTORY):
+            return False
+
+        if username not in self.user_database:
+            return False
+            
+        if username == requestor:
+            return False # Cannot delete yourself
+
+        del self.user_database[username]
+        self._save_users_to_file()
+        self._log_audit_event('user_deleted', requestor, {'deleted_user': username})
+        return True
+
+    def update_user_details(self, username: str, full_name: str, email: str, tier_name: str, status: str, requestor: str) -> bool:
+        """Update user details (requires FACTORY/ADMIN)"""
+        if not self.check_security_clearance(SecurityLevel.FACTORY):
+            return False
+
+        if username not in self.user_database:
+            return False
+
+        user_data = self.user_database[username]
+        user_data['full_name'] = full_name
+        user_data['email'] = email
+        
+        # Update tier/security level
+        if tier_name:
+            try:
+                # Map Tier names to SecurityLevel/Role
+                # This is a simplification; ideally Tier and Role are separate or mapped explicitly
+                if tier_name == "PROFESSIONAL":
+                    user_data['security_level'] = SecurityLevel.DEALER
+                    user_data['role'] = UserRole.DEALER
+                elif tier_name == "ADVANCED":
+                    user_data['security_level'] = SecurityLevel.ADVANCED
+                    user_data['role'] = UserRole.SUPERVISOR
+                elif tier_name == "STANDARD":
+                    user_data['security_level'] = SecurityLevel.STANDARD
+                    user_data['role'] = UserRole.TECHNICIAN
+                elif tier_name == "BASIC":
+                    user_data['security_level'] = SecurityLevel.BASIC
+                    user_data['role'] = UserRole.VIEWER
+            except:
+                pass
+
+        # Update status (Lock/Unlock)
+        if status == "LOCKED":
+             user_data['locked_until'] = time.time() + 31536000 # Lock for a year
+        elif status == "ACTIVE":
+             user_data['locked_until'] = None
+             user_data['failed_attempts'] = 0
+
+        self._save_users_to_file()
+        self._log_audit_event('user_updated', requestor, {'updated_user': username})
+        return True
+
+    def force_password_reset(self, username: str, requestor: str) -> bool:
+        """Force a user to reset their password on next login"""
+        if not self.check_security_clearance(SecurityLevel.FACTORY):
+            return False
+
+        if username not in self.user_database:
+            return False
+            
+        self.user_database[username]['force_password_change'] = True
+        self._save_users_to_file()
+        self._log_audit_event('password_reset_forced', requestor, {'target_user': username})
+        return True
+
+    def has_permission(self, username: str, permission: str) -> bool:
+        """Check if user has specific permission"""
+        user_info = self.get_user_info() # Gets info for current_user
+        if user_info.get('username') != username:
+             # If asking for another user, we'd need to load them temporarily or check static roles
+             # For now, assume we are checking current user's permission
+             return False
+        
+        return permission in user_info.get('permissions', [])
+
 
 
 # Backward compatibility - keep old SecurityManager as alias

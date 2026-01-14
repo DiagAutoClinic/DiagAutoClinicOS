@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 Account Management Dialog for DiagAutoClinicOS
@@ -13,6 +14,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QPixmap, QIcon
 
+# Use the JSON-based Security Manager instead of SQLite
+from shared.security_manager import security_manager, SecurityLevel, UserRole
+
 logger = logging.getLogger(__name__)
 
 class AccountManagementDialog(QDialog):
@@ -25,16 +29,23 @@ class AccountManagementDialog(QDialog):
         self.setModal(True)
         self.setMinimumSize(900, 700)
         self.resize(1000, 800)
+        
+        # Apply DACOS Theme
+        try:
+            from shared.theme_manager import get_stylesheet, get_theme_dict
+            self.setStyleSheet(get_stylesheet())
+            self.theme = get_theme_dict()
+        except:
+            pass
 
         # Check if user has permission
-        from shared.user_database_sqlite import user_database
-        if not user_database.has_permission(current_user, "user_management"):
+        if not security_manager.has_permission(current_user, "user_management"):
             QMessageBox.critical(self, "Access Denied",
                                "You do not have permission to access account management.")
             self.reject()
             return
 
-        self.user_db = user_database
+        self.user_db = security_manager
         self.init_ui()
         self.load_users()
 
@@ -50,10 +61,12 @@ class AccountManagementDialog(QDialog):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_font = QFont("Segoe UI", 18, QFont.Weight.Bold)
         title.setFont(title_font)
+        title.setProperty("class", "hero-title")
         layout.addWidget(title)
 
         # Tab widget for different management sections
         tab_widget = QTabWidget()
+        tab_widget.setProperty("class", "tab-widget")
 
         # User accounts tab
         accounts_tab = self.create_accounts_tab()
@@ -69,6 +82,7 @@ class AccountManagementDialog(QDialog):
         close_btn = QPushButton("❌ Close")
         close_btn.clicked.connect(self.accept)
         close_btn.setMaximumWidth(150)
+        close_btn.setProperty("class", "danger")
         layout.addWidget(close_btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
     def create_accounts_tab(self) -> QWidget:
@@ -216,12 +230,13 @@ class AccountManagementDialog(QDialog):
         reset_btn.clicked.connect(lambda: self.reset_password(username))
         layout.addWidget(reset_btn)
 
-        # Delete button (disabled for superuser)
-        if username != "superuser":
+        # Delete button (disabled for self)
+        if username != self.current_user:
             delete_btn = QPushButton("🗑️")
             delete_btn.setToolTip("Delete User")
             delete_btn.setMaximumWidth(30)
             delete_btn.clicked.connect(lambda: self.delete_user(username))
+            delete_btn.setProperty("class", "danger")
             layout.addWidget(delete_btn)
 
         layout.addStretch()
@@ -230,28 +245,31 @@ class AccountManagementDialog(QDialog):
     def load_audit_logs(self):
         """Load audit logs into the table"""
         try:
-            logs = self.user_db.get_audit_logs(200)  # Last 200 entries
+            logs = self.user_db.get_audit_log(200)  # Singular 'get_audit_log' in security_manager
 
             self.audit_table.setRowCount(len(logs))
 
-            for row, log in enumerate(logs):
+            # Reverse logs to show newest first
+            for row, log in enumerate(reversed(logs)):
                 # Timestamp
-                timestamp_item = QTableWidgetItem(log['timestamp'][:19])
+                import datetime
+                timestamp = datetime.datetime.fromtimestamp(log['timestamp']).strftime('%Y-%m-%d %H:%M:%S')
+                timestamp_item = QTableWidgetItem(timestamp)
                 timestamp_item.setFlags(timestamp_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.audit_table.setItem(row, 0, timestamp_item)
 
                 # User
-                user_item = QTableWidgetItem(log['username'])
+                user_item = QTableWidgetItem(str(log.get('username', 'System')))
                 user_item.setFlags(user_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.audit_table.setItem(row, 1, user_item)
 
                 # Action
-                action_item = QTableWidgetItem(log['action'].replace('_', ' ').title())
+                action_item = QTableWidgetItem(log['event_type'].replace('_', ' ').title())
                 action_item.setFlags(action_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.audit_table.setItem(row, 2, action_item)
 
                 # Details
-                details_item = QTableWidgetItem(log['details'])
+                details_item = QTableWidgetItem(str(log.get('details', '')))
                 details_item.setFlags(details_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.audit_table.setItem(row, 3, details_item)
 
@@ -283,21 +301,14 @@ class AccountManagementDialog(QDialog):
 
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                # Set force password change flag using SQLite
-                import sqlite3
-                with sqlite3.connect(self.user_db.db_path) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        UPDATE users SET force_password_change = 1, status = 'active'
-                        WHERE username = ?
-                    ''', (username,))
-                    conn.commit()
-
-                self.user_db._audit_log(self.current_user, "password_reset",
-                                      f"Password reset for user {username}")
-                QMessageBox.information(self, "Success",
-                                      f"Password reset for {username}. They will be required to change it on next login.")
-                self.load_users()
+                success = self.user_db.force_password_reset(username, self.current_user)
+                
+                if success:
+                    QMessageBox.information(self, "Success",
+                                          f"Password reset for {username}. They will be required to change it on next login.")
+                    self.load_users()
+                else:
+                    QMessageBox.critical(self, "Error", "Failed to reset password.")
 
             except Exception as e:
                 logger.error(f"Failed to reset password for {username}: {e}")
@@ -334,10 +345,14 @@ class CreateUserDialog(QDialog):
         self.setModal(True)
         self.setMinimumSize(400, 500)
         self.resize(450, 550)
+        
+        try:
+            from shared.themes.dacos_cyber_teal import DACOS_STYLESHEET
+            self.setStyleSheet(DACOS_STYLESHEET)
+        except:
+            pass
 
-        from shared.user_database_sqlite import user_database
-        self.user_db = user_database
-
+        self.user_db = security_manager
         self.init_ui()
 
     def init_ui(self):
@@ -412,22 +427,36 @@ class CreateUserDialog(QDialog):
             QMessageBox.warning(self, "Validation Error", "Please fill in all required fields.")
             return
 
-        if len(password) < 12:
-            QMessageBox.warning(self, "Validation Error", "Password must be at least 12 characters long.")
+        if len(password) < 8:
+            QMessageBox.warning(self, "Validation Error", "Password must be at least 8 characters long.")
             return
 
-        # Convert tier name to enum
-        from shared.user_database_sqlite import UserTier
-        tier = UserTier[tier_name]
+        # Map Tier to Role/Security Level
+        security_level = SecurityLevel.BASIC
+        role = UserRole.VIEWER
+        
+        if tier_name == "PROFESSIONAL":
+            security_level = SecurityLevel.DEALER
+            role = UserRole.DEALER
+        elif tier_name == "ADVANCED":
+            security_level = SecurityLevel.ADVANCED
+            role = UserRole.SUPERVISOR
+        elif tier_name == "STANDARD":
+            security_level = SecurityLevel.STANDARD
+            role = UserRole.TECHNICIAN
 
         # Create user
-        success = self.user_db.create_user(username, password, full_name, tier, email, self.created_by)
+        success, message = self.user_db.add_user(username, password, role, security_level, full_name)
 
         if success:
+            # Update email if provided (since add_user doesn't take email)
+            if email:
+                self.user_db.update_user_details(username, full_name, email, tier_name, "ACTIVE", self.created_by)
+                
             QMessageBox.information(self, "Success", f"User {username} created successfully!")
             self.accept()
         else:
-            QMessageBox.critical(self, "Error", f"Failed to create user {username}. User may already exist.")
+            QMessageBox.critical(self, "Error", f"Failed to create user: {message}")
 
 
 class EditUserDialog(QDialog):
@@ -441,12 +470,19 @@ class EditUserDialog(QDialog):
         self.setModal(True)
         self.setMinimumSize(400, 400)
         self.resize(450, 450)
+        
+        try:
+            from shared.themes.dacos_cyber_teal import DACOS_STYLESHEET
+            self.setStyleSheet(DACOS_STYLESHEET)
+        except:
+            pass
 
-        from shared.user_database_sqlite import user_database
-        self.user_db = user_database
+        self.user_db = security_manager
+        
+        # Get current user info from DB
+        users = self.user_db.get_all_users() # Not efficient but works
+        self.user_info = next((u for u in users if u['username'] == username), None)
 
-        # Get current user info
-        self.user_info = self.user_db.get_user_info(username)
         if not self.user_info:
             QMessageBox.critical(self, "Error", f"Could not load information for user {username}")
             self.reject()
@@ -479,22 +515,35 @@ class EditUserDialog(QDialog):
         self.email_input = QLineEdit(self.user_info.get('email', ''))
         form_layout.addRow("Email:", self.email_input)
 
-        # Tier (only if not superuser)
-        if self.username != "superuser":
+        # Tier (only if not superuser/self)
+        if self.username != self.edited_by:
             self.tier_combo = QComboBox()
             self.tier_combo.addItems(["BASIC", "STANDARD", "ADVANCED", "PROFESSIONAL"])
+            # Try to match current tier
             current_tier = self.user_info['tier']
-            self.tier_combo.setCurrentText(current_tier)
+            # Map back from SecurityLevel name if needed, but get_all_users returns name string
+            # Just do best effort match
+            index = self.tier_combo.findText(current_tier)
+            if index >= 0:
+                self.tier_combo.setCurrentIndex(index)
+            elif current_tier == "DEALER":
+                self.tier_combo.setCurrentText("PROFESSIONAL")
+            elif current_tier == "FACTORY":
+                self.tier_combo.addItem("FACTORY")
+                self.tier_combo.setCurrentText("FACTORY")
+                self.tier_combo.setEnabled(False) # Don't edit factory tiers easily
+                
             form_layout.addRow("Access Tier:", self.tier_combo)
         else:
-            tier_label = QLabel("SUPER_USER (cannot be changed)")
-            tier_label.setStyleSheet("font-weight: bold; color: #21F5C1;")
+            tier_label = QLabel(f"{self.user_info['tier']} (Cannot change own tier)")
+            accent = getattr(self, 'theme', {}).get('accent', '#21F5C1')
+            tier_label.setStyleSheet(f"font-weight: bold; color: {accent};")
             form_layout.addRow("Access Tier:", tier_label)
 
         # Status
         self.status_combo = QComboBox()
-        self.status_combo.addItems(["ACTIVE", "INACTIVE", "LOCKED"])
-        current_status = self.user_info['status'].upper()
+        self.status_combo.addItems(["ACTIVE", "LOCKED"])
+        current_status = self.user_info['status']
         self.status_combo.setCurrentText(current_status)
         form_layout.addRow("Status:", self.status_combo)
 
@@ -518,6 +567,8 @@ class EditUserDialog(QDialog):
         """Save the user changes"""
         full_name = self.full_name_input.text().strip()
         email = self.email_input.text().strip()
+        tier_name = self.tier_combo.currentText() if hasattr(self, 'tier_combo') else None
+        status = self.status_combo.currentText()
 
         # Validation
         if not full_name:
@@ -525,38 +576,15 @@ class EditUserDialog(QDialog):
             return
 
         try:
-            # Update user info in database using SQLite
-            import sqlite3
-            with sqlite3.connect(self.user_db.db_path) as conn:
-                cursor = conn.cursor()
+            success = self.user_db.update_user_details(
+                self.username, full_name, email, tier_name, status, self.edited_by
+            )
 
-                # Update basic info
-                cursor.execute('''
-                    UPDATE users SET full_name = ?, email = ?
-                    WHERE username = ?
-                ''', (full_name, email, self.username))
-
-                # Update tier if not superuser
-                if self.username != "superuser" and hasattr(self, 'tier_combo'):
-                    from shared.user_database_sqlite import UserTier
-                    tier_name = self.tier_combo.currentText()
-                    tier = UserTier[tier_name]
-                    cursor.execute('UPDATE users SET tier = ? WHERE username = ?',
-                                 (tier.value, self.username))
-
-                # Update status
-                status_name = self.status_combo.currentText()
-                from shared.user_database_sqlite import UserStatus
-                status = UserStatus[status_name]
-                cursor.execute('UPDATE users SET status = ? WHERE username = ?',
-                             (status.value, self.username))
-
-                conn.commit()
-
-            self.user_db._audit_log(self.edited_by, "user_updated",
-                                  f"Updated user {self.username}")
-            QMessageBox.information(self, "Success", f"User {self.username} updated successfully!")
-            self.accept()
+            if success:
+                QMessageBox.information(self, "Success", f"User {self.username} updated successfully!")
+                self.accept()
+            else:
+                QMessageBox.critical(self, "Error", "Failed to update user.")
 
         except Exception as e:
             logger.error(f"Failed to update user {self.username}: {e}")

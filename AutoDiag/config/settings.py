@@ -103,7 +103,7 @@ class ConfigurationManager:
         
         self.register_config(
             key="ui.theme",
-            default_value="dacos_unified",
+            default_value="dacos_cyber_teal",
             description="UI theme",
             category="ui"
         )

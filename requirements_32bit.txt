@@ -6,8 +6,8 @@
 # CORE GUI FRAMEWORK
 # ============================================================================
 
-PyQt5==5.15.11
-PyQt5-sip==12.13.0
+PyQt5==5.15.10
+# PyQt5-sip==12.13.0  # Let PyQt5 manage its own sip version
 
 # ============================================================================
 # HARDWARE COMMUNICATION
@@ -48,7 +48,7 @@ rsa>=4.9
 
 numpy==1.23.5          # Last with good 32-bit support; has cp310-win32 wheel
 pandas==1.5.3          # Last series with win32 wheels (cp310-win32 available)
-scipy==1.10.1          # Last with win32 wheel for cp310
+# scipy==1.10.1          # Skipped to avoid compilation errors on 32-bit without MSVC
 matplotlib==3.7.5      # Has cp310-win32 wheel
 pyqtgraph>=0.13.3
 seaborn>=0.13.0        # Works with downgraded pandas/numpy

@@ -22,7 +22,7 @@ Successfully minimized the AutoDiag Pro GUI by creating a streamlined version th
 - **Reduction**: 77% fewer lines of code
 
 ### 4. **Theme Compliance**
-- ✅ **AI_RULES.md Compliant**: Uses centralized theme from `shared/themes/dacos_theme.py`
+- ✅ **AI_RULES.md Compliant**: Uses centralized theme from `shared/themes/dacos_cyber_teal.py`
 - ✅ **DACOS Theme**: Proper import and application of theme constants
 - ✅ **Consistent Styling**: Maintains futuristic teal design aesthetic
 
@@ -70,7 +70,7 @@ Successfully minimized the AutoDiag Pro GUI by creating a streamlined version th
 ## Compliance Verification
 
 ### ✅ DACOS Theme Rules
-- Theme definitions only in `shared/themes/dacos_theme.py`
+- Theme definitions only in `shared/themes/dacos_cyber_teal.py`
 - Proper import structure
 - No theme duplication
 

@@ -38,12 +38,16 @@ logger = logging.getLogger(__name__)
 
 # FIXED: Import DACOS theme ONLY from shared module as per AI_RULES.md
 try:
-    from shared.themes.dacos_theme import DACOS_THEME, DACOS_STYLESHEET, apply_dacos_theme, get_dacos_color
-    logger.info("✅ Successfully imported DACOS theme from shared modules")
+    from shared.theme_manager import apply_theme, get_theme_dict, AVAILABLE_THEMES, save_config as save_theme_config, get_current_theme_name
+    DACOS_THEME = get_theme_dict()
+    logger.info("✅ Successfully imported DACOS theme manager")
 except ImportError as e:
     logger.error(f"❌ Failed to import DACOS theme: {e}")
-    logger.error("This is a critical failure - DACOS theme is required")
-    sys.exit(1)
+    logger.error("Using fallback theme")
+    from shared.themes.dacos_cyber_teal import DACOS_THEME, apply_theme
+    AVAILABLE_THEMES = {"DACOS Cyber-Teal": "shared.themes.dacos_cyber_teal"}
+    def save_theme_config(name): pass
+    def get_current_theme_name(): return "DACOS Cyber-Teal"
 
 # FIXED: Import other shared modules with fallbacks
 try:
@@ -160,6 +164,7 @@ class AutoKeyApp(QMainWindow):
 
         # Create central widget and main layout
         central_widget = QWidget()
+        central_widget.setObjectName("NeonBackground")
         self.setCentralWidget(central_widget)
         
         self.main_layout = QVBoxLayout(central_widget)
@@ -295,11 +300,19 @@ class AutoKeyApp(QMainWindow):
         theme_label.setProperty("class", "section-label")
         
         self.theme_combo = QComboBox()
-        self.theme_combo.addItem("DACOS Unified", "dacos_unified")
-        self.theme_combo.setCurrentIndex(0)
-        self.theme_combo.setEnabled(False)
-        self.theme_combo.setMinimumWidth(120)
-        self.theme_combo.setMaximumWidth(150)
+        self.theme_combo.addItems(list(AVAILABLE_THEMES.keys()))
+        
+        try:
+            current = get_current_theme_name()
+            index = self.theme_combo.findText(current)
+            if index >= 0:
+                self.theme_combo.setCurrentIndex(index)
+        except: pass
+            
+        self.theme_combo.setEnabled(True)
+        self.theme_combo.setMinimumWidth(150)
+        self.theme_combo.setMaximumWidth(200)
+        self.theme_combo.currentTextChanged.connect(self.change_theme)
         
         theme_layout.addWidget(theme_label)
         theme_layout.addWidget(self.theme_combo)
@@ -866,6 +879,30 @@ class AutoKeyApp(QMainWindow):
         self.live_timer = QTimer()
         self.live_timer.timeout.connect(self.update_live_data)
         self.live_timer.start(2000)
+
+    def change_theme(self, theme_name):
+        """Handle theme change"""
+        if theme_name == get_current_theme_name():
+            return
+            
+        from PyQt6.QtWidgets import QMessageBox
+        reply = QMessageBox.question(self, "Change Theme", 
+                                   f"Apply '{theme_name}'?\nApplication restart required.",
+                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            if save_theme_config(theme_name):
+                QMessageBox.information(self, "Restart Required", 
+                                      "Theme preference saved.\n\nPlease restart the application to apply changes.")
+            else:
+                QMessageBox.warning(self, "Error", "Failed to save theme configuration.")
+        else:
+             # Revert combo box
+            index = self.theme_combo.findText(get_current_theme_name())
+            if index >= 0:
+                self.theme_combo.blockSignals(True)
+                self.theme_combo.setCurrentIndex(index)
+                self.theme_combo.blockSignals(False)
         
     def update_live_data(self):
         """Update live data for dashboard"""
@@ -1068,7 +1105,7 @@ def main():
 
     try:
         # FIXED: Apply DACOS theme properly as per AI_RULES.md
-        apply_dacos_theme(app)
+        apply_theme(app)
 
         window = AutoKeyApp()
         window.show()

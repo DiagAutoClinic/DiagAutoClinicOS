@@ -11,7 +11,7 @@ from PyQt6.QtGui import QFont
 
 # Import color function
 try:
-    from shared.themes.dacos_theme import get_dacos_color
+    from shared.themes.dacos_cyber_teal import get_dacos_color
 except ImportError:
     # Fallback color function
     def get_dacos_color(color_name):

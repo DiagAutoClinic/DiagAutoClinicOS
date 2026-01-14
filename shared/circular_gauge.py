@@ -9,9 +9,13 @@ from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QFrame, QSizePolicy
 from PyQt6.QtCore import Qt, QRectF, QPropertyAnimation, QEasingCurve, pyqtProperty
 from PyQt6.QtGui import QPainter, QPen, QColor, QFont, QBrush, QLinearGradient
 
-# Import DACOS theme colors as per AI_RULES.md
+# Import DACOS theme dynamically from manager
 try:
-    from shared.themes.dacos_theme import get_dacos_color, DACOS_THEME
+    from shared.theme_manager import get_theme_dict
+    DACOS_THEME = get_theme_dict()
+    
+    def get_dacos_color(name):
+        return DACOS_THEME.get(name, "#21F5C1")
 except ImportError:
     # Fallback if import fails
     DACOS_THEME = {
@@ -21,18 +25,7 @@ except ImportError:
         "text_muted": "#9ED9CF"
     }
     def get_dacos_color(name):
-        colors = {
-            "accent": "#21F5C1",
-            "glow": "#2AF5D1",
-            "bg_main": "#0A1A1A",
-            "bg_card": "#134F4A",
-            "text_main": "#E8F4F2",
-            "text_muted": "#9ED9CF",
-            "error": "#FF4D4D",
-            "success": "#10B981",
-            "warning": "#F59E0B"
-        }
-        return colors.get(name, "#21F5C1")
+        return DACOS_THEME.get(name, "#21F5C1")
 
 class CircularGauge(QWidget):
     """Futuristic circular gauge with glow effects"""
@@ -189,20 +182,19 @@ class StatCard(QFrame):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         
         # Apply styling using DACOS theme
+        from shared.theme_manager import get_theme_dict
+        current_theme = get_theme_dict()
+        
         self.setStyleSheet(f"""
             QFrame[class="stat-card"] {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                             stop:0 rgba(19, 79, 74, 0.9),
-                                             stop:1 rgba(11, 46, 43, 0.9));
-                border: 2px solid {DACOS_THEME['glow']}80;
+                background: {current_theme.get('bg_card', '#134F4A')};
+                border: 2px solid {current_theme.get('glow', '#2AF5D1')}80;
                 border-radius: 15px;
                 padding: 15px;
             }}
             QFrame[class="stat-card"]:hover {{
-                border: 2px solid {DACOS_THEME['accent']};
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                                             stop:0 rgba(19, 79, 74, 1),
-                                             stop:1 rgba(11, 46, 43, 1));
+                border: 2px solid {current_theme.get('accent', '#21F5C1')};
+                background: {current_theme.get('bg_panel', '#0A1A1A')};
             }}
         """)
         
@@ -216,7 +208,7 @@ class StatCard(QFrame):
         self.title_label.setWordWrap(True)
         self.title_label.setStyleSheet(f"""
             QLabel {{
-                color: {DACOS_THEME['text_muted']};
+                color: {current_theme.get('text_muted', '#9ED9CF')};
                 font-size: 9pt;
                 font-weight: bold;
                 background: transparent;
@@ -236,7 +228,7 @@ class StatCard(QFrame):
             QLabel {{
                 font-size: 14pt;
                 font-weight: bold;
-                color: {DACOS_THEME['accent']};
+                color: {current_theme.get('accent', '#21F5C1')};
                 background: transparent;
             }}
         """)

@@ -23,6 +23,7 @@ wheels/
 # Virtual environments
 venv/
 .venv/
+.venv32/
 env/
 ENV/
 env.bak/
@@ -65,6 +66,16 @@ vin_truth_storage/
 *.pkl
 *.weights.h5
 
+# Charlemaine Strict Exclusion
+*charlemaine*
+*Charlemaine*
+scripts/charlemaine.py
+scripts/train_charlemaine_final.py
+scripts/training_generator.py
+ai_agent/
+tests/ai/
+docs/AI_IMPLEMENTATION_PLAN.md
+
 # Tests
 tests/
 Windows Test/
@@ -94,6 +105,9 @@ can_bus_data_backup/
 
 # Website (deployed separately)
 dacos.co.za/
+
+# Proprietary / OEM Data
+IMMO/
 
 # Auto-approve configuration (should never be committed)
 # Large binaries and installers

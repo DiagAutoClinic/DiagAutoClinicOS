@@ -42,7 +42,7 @@ class VCIConnectionTab:
         layout.setContentsMargins(15, 12, 15, 12)
 
         # HEADER
-        header = QLabel("VCI Device Connection")
+        header = QLabel("VCI Connection Manager")
         header.setProperty("class", "tab-title")
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.setFixedHeight(50)
@@ -60,8 +60,10 @@ class VCIConnectionTab:
         status_title.setProperty("class", "section-title")
         status_layout.addWidget(status_title)
 
-        self.status_label = QLabel("VCI Status: Not Connected")
+        self.status_label = QLabel("Not Connected")
         self.status_label.setProperty("class", "section-label")
+        # Default to error color for not connected
+        self.status_label.setStyleSheet("color: #FF4D4D; font-weight: bold; font-size: 11pt;")
         status_layout.addWidget(self.status_label)
 
         layout.addWidget(status_frame)
@@ -153,10 +155,21 @@ class VCIConnectionTab:
 
         return tab, "🔗 VCI Connection"
 
-    def update_status(self, status_text):
-        """Update status label"""
+    def update_status(self, status_text, status_type="info"):
+        """Update status label with color coding"""
         if self.status_label:
             self.status_label.setText(status_text)
+            
+            # Update style based on status type
+            if status_type == "success" or "Connected" in status_text and "Not" not in status_text:
+                self.status_label.setStyleSheet("color: #10B981; font-weight: bold; font-size: 11pt;") # Success Green
+            elif status_type == "error" or "Failed" in status_text or "Not Connected" in status_text:
+                self.status_label.setStyleSheet("color: #FF4D4D; font-weight: bold; font-size: 11pt;") # Error Red
+            elif status_type == "warning" or "Scanning" in status_text or "Connecting" in status_text:
+                self.status_label.setStyleSheet("color: #F59E0B; font-weight: bold; font-size: 11pt;") # Warning Orange
+            else:
+                self.status_label.setStyleSheet("color: #9ED9CF; font-weight: bold; font-size: 11pt;") # Default Muted
+
             logger.info(f"VCI Status: {status_text}")
 
     def _connect_vci_signals(self):
@@ -391,7 +404,7 @@ class VCIConnectionTab:
                     "Note: Other tabs may show limited functionality\n"
                     "until a device is connected again."
                 )
-                self.update_status("🔌 VCI disconnected")
+                self.update_status("Not Connected", "error")
                 self.connect_btn.setEnabled(True)
                 self.disconnect_btn.setEnabled(False)
                 self.progress_bar.setVisible(False)
@@ -401,11 +414,13 @@ class VCIConnectionTab:
                     f"===================\n\n"
                     f"Error: {result.get('message', 'Unknown error')}"
                 )
+                self.update_status("Disconnect Failed", "error")
                 self.progress_bar.setVisible(False)
 
         except Exception as e:
             logger.error(f"VCI disconnect error: {e}")
             self.results_text.setPlainText(f"❌ Disconnect Error\n\n{str(e)}")
+            self.update_status("Disconnect Error", "error")
             self.progress_bar.setVisible(False)
 
     def update_vci_status_display(self, status_info):
@@ -419,11 +434,11 @@ class VCIConnectionTab:
                 self.connect_btn.setEnabled(False)
                 self.disconnect_btn.setEnabled(True)
             elif status == "disconnected":
-                self.update_status("🔌 VCI Status: Not Connected")
+                self.update_status("Not Connected", "error")
                 self.connect_btn.setEnabled(True)
                 self.disconnect_btn.setEnabled(False)
             else:
-                self.update_status(f"VCI Status: {status}")
+                self.update_status(f"{status}", "info")
 
         except Exception as e:
             logger.error(f"Error updating VCI status display: {e}")

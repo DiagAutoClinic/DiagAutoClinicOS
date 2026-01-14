@@ -161,19 +161,31 @@ class PasswordChangeDialog(QDialog):
         new_pass = self.new_password_input.text()
         confirm_pass = self.confirm_password_input.text()
 
+        # Get theme colors again for validation updates
+        try:
+            from shared.theme_manager import get_theme_dict
+            theme = get_theme_dict()
+            c_error = theme.get('error', '#FF4D4D')
+            c_warning = theme.get('warning', '#F59E0B')
+            c_success = theme.get('success', '#21F5C1')
+        except:
+            c_error = '#FF4D4D'
+            c_warning = '#F59E0B'
+            c_success = '#21F5C1'
+
         # Check password strength
         strength_score = self._check_password_strength(new_pass)
 
         # Update strength indicator
         if strength_score < 2:
             self.strength_label.setText("Password Strength: Weak")
-            self.strength_label.setStyleSheet("color: #FF4D4D; font-weight: bold;")
+            self.strength_label.setStyleSheet(f"color: {c_error}; font-weight: bold;")
         elif strength_score < 4:
             self.strength_label.setText("Password Strength: Medium")
-            self.strength_label.setStyleSheet("color: #F59E0B; font-weight: bold;")
+            self.strength_label.setStyleSheet(f"color: {c_warning}; font-weight: bold;")
         else:
             self.strength_label.setText("Password Strength: Strong")
-            self.strength_label.setStyleSheet("color: #21F5C1; font-weight: bold;")
+            self.strength_label.setStyleSheet(f"color: {c_success}; font-weight: bold;")
 
         # Check if passwords match and meet requirements
         passwords_match = new_pass == confirm_pass and new_pass != ""
@@ -185,7 +197,7 @@ class PasswordChangeDialog(QDialog):
         # Show validation messages
         if new_pass and confirm_pass and new_pass != confirm_pass:
             self.strength_label.setText("Passwords do not match")
-            self.strength_label.setStyleSheet("color: #FF4D4D; font-weight: bold;")
+            self.strength_label.setStyleSheet(f"color: {c_error}; font-weight: bold;")
 
     def _check_password_strength(self, password: str) -> int:
         """Check password strength and return score"""

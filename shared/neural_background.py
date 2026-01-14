@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import QWidget
 import os
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, project_root)
-from shared.theme_constants import THEME
+from shared import theme_manager
 
 class NeuralBackground(QWidget):
     def __init__(self, parent=None):
@@ -21,10 +21,11 @@ class NeuralBackground(QWidget):
         # Match your window size exactly
         self.resize(1400, 900)
 
-        # Colors from theme_constants.py - AGENTS ARE WATCHING
-        self.bg_color = QtGui.QColor(THEME["bg_main"])        # #0B2E2B
-        self.accent = QtGui.QColor(THEME["accent"])           # #21F5C1
-        self.glow = QtGui.QColor(THEME["glow"])              # #2AF5D1
+        # Colors from theme_manager
+        theme = theme_manager.get_theme_dict()
+        self.bg_color = QtGui.QColor(theme.get("bg_main", "#0B2E2B"))
+        self.accent = QtGui.QColor(theme.get("accent", "#21F5C1"))
+        self.glow = QtGui.QColor(theme.get("glow", "#2AF5D1"))
 
         # Nodes
         self.nodes = []

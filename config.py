@@ -43,9 +43,9 @@ LOG_ROTATION = "1 day"
 LOG_RETENTION = "30 days"
 
 # === UI SETTINGS ===
-DEFAULT_THEME = "dacos_unified"
+DEFAULT_THEME = "dacos_cyber_teal"
 AVAILABLE_THEMES = [
-    "dacos_unified"
+    "dacos_cyber_teal"
 ]
 
 # === PERFORMANCE ===

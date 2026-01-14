@@ -62,24 +62,33 @@ class DashboardTab:
         actions_layout = QGridLayout(actions_frame)
         actions_layout.setSpacing(15)
 
+        # Import Theme for dynamic coloring
+        from shared.theme_manager import get_theme_dict
+        theme = get_theme_dict()
+        
+        accent = theme.get('accent', '#21F5C1')
+        bg_panel = theme.get('bg_panel', '#0A1A1A')
+        text_main = theme.get('text_main', '#E8FFFB')
+        glow = theme.get('glow', '#2AF5D1')
+
         # DACOS-styled buttons
-        btn_style = """
-            QPushButton {
+        btn_style = f"""
+            QPushButton {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #1F5E5A, stop:1 #134F4A);
-                color: #E8FFFB;
-                border: 2px solid #21F5C1;
+                    stop:0 {bg_panel}, stop:1 {theme.get('bg_card', '#134F4A')});
+                color: {text_main};
+                border: 2px solid {accent};
                 border-radius: 16px;
                 padding: 20px;
                 font-size: 14pt;
                 font-weight: bold;
-            }
-            QPushButton:hover {
+            }}
+            QPushButton:hover {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #2AF5D1, stop:1 #21F5C1);
-                border: 2px solid #2AF5D1;
-                color: #0B2E2B;
-            }
+                    stop:0 {glow}, stop:1 {accent});
+                border: 2px solid {glow};
+                color: {theme.get('bg_main', '#000000')};
+            }}
         """
 
         btn1 = QPushButton("🚀 Quick Scan")
@@ -105,13 +114,41 @@ class DashboardTab:
         actions_layout.addWidget(btn3, 0, 2)
         actions_layout.addWidget(btn4, 0, 3)
 
+        # === AI ANALYSIS SECTION ===
+        ai_title = QLabel("🤖 AI Analysis Center")
+        ai_title.setStyleSheet(f"font-size: 18pt; color: {accent}; font-weight: bold; padding: 10px;")
+        ai_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        ai_layout = QHBoxLayout()
+        ai_layout.setSpacing(15)
+
+        # Instantiate AI Widgets
+        self.ai_health_monitor = AIHealthMonitor()
+        self.ai_prediction_widget = AIPredictionWidget()
+        self.ai_maintenance_widget = AIMaintenanceWidget()
+        self.ai_activity_indicator = AIActivityIndicator()
+
+        # Add to layout
+        ai_layout.addWidget(self.ai_health_monitor)
+        ai_layout.addWidget(self.ai_prediction_widget)
+        
+        # Right column for maintenance and activity
+        ai_right_col = QVBoxLayout()
+        ai_right_col.setSpacing(10)
+        ai_right_col.addWidget(self.ai_maintenance_widget)
+        ai_right_col.addWidget(self.ai_activity_indicator)
+        
+        ai_layout.addLayout(ai_right_col)
+
         # DACOS title
         actions_title = QLabel("⚡ Quick Actions")
-        actions_title.setStyleSheet("font-size: 18pt; color: #21F5C1; font-weight: bold; padding: 10px;")
+        actions_title.setStyleSheet(f"font-size: 18pt; color: {accent}; font-weight: bold; padding: 10px;")
         actions_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         # === ASSEMBLE EVERYTHING ===
         layout.addLayout(top_grid)
+        layout.addWidget(ai_title)
+        layout.addLayout(ai_layout)
         layout.addWidget(actions_title)
         layout.addWidget(actions_frame)
         layout.addStretch()

@@ -284,7 +284,8 @@ _performance_monitor = PerformanceMonitor()
 # ===== DACOS THEME IMPORTS - OPTIMIZED =====
 DACOS_AVAILABLE = False
 try:
-    from shared.themes.dacos_theme import DACOS_THEME, apply_dacos_theme
+    from shared.theme_manager import apply_theme, get_theme_dict, AVAILABLE_THEMES, save_config as save_theme_config
+    DACOS_THEME = get_theme_dict()
     from shared.circular_gauge import CircularGauge, StatCard
     from shared.style_manager import style_manager
     DACOS_AVAILABLE = True
@@ -301,6 +302,8 @@ except ImportError as e:
         "text_muted": "#9ED9CF", "error": "#FF4D4D", "success": "#10B981",
         "warning": "#F59E0B", "info": "#3B82F6"
     }
+    AVAILABLE_THEMES = {"DACOS Cyber-Teal": "shared.themes.dacos_cyber_teal"}
+    def save_theme_config(name): pass
 
 # ---------------------------------------------------------------------- 
 # Qt imports - Fixed to resolve Pylance issues
@@ -314,7 +317,7 @@ try:
         QMessageBox, QLineEdit, QSizePolicy
     )
     from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
-    from PyQt6.QtGui import QFont, QPalette, QColor, QLinearGradient, QPainter, QPen
+    from PyQt6.QtGui import QFont, QPalette, QColor, QLinearGradient, QPainter, QPen, QIcon, QPixmap
     PYQT6_AVAILABLE = True
     print("PyQt6 imported successfully")
 except ImportError as e:
@@ -364,12 +367,42 @@ if PYQT6_AVAILABLE:
             # User info section
             self.user_section = self.create_user_section()
             
-            # Title
+            # Title Area with Logo
+            self.title_widget = QWidget()
+            title_layout = QHBoxLayout(self.title_widget)
+            title_layout.setContentsMargins(0, 0, 0, 0)
+            title_layout.setSpacing(15)
+
+            # Logo
+            self.logo_label = QLabel()
+            # Try loading logo from multiple locations
+            # Path resolution: AutoDiag/main.py -> AutoDiag -> DiagAutoClinicOS -> assets
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            logo_paths = [
+                os.path.join(project_root, 'assets', 'grok_dacos_logo_new2.jpg'),
+                os.path.join(project_root, 'assets', 'logo_v2.png'),
+                os.path.join(project_root, 'assets', 'dacos_logo.png')
+            ]
+            
+            for path in logo_paths:
+                if os.path.exists(path):
+                    pixmap = QPixmap(path)
+                    if not pixmap.isNull():
+                        # Scale to appropriate size
+                        scaled = pixmap.scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                        self.logo_label.setPixmap(scaled)
+                        title_layout.addWidget(self.logo_label)
+                        break
+
+            # Title Text
             self.title_label = QLabel("AutoDiag Pro")
             self.title_label.setProperty("class", "hero-title")
             title_font = QFont("Segoe UI", 18, QFont.Weight.Bold)
             self.title_label.setFont(title_font)
-            self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            
+            title_layout.addWidget(self.title_label)
+            title_layout.addStretch()
             
             # Brand selector
             self.brand_layout = self.create_brand_selector()
@@ -439,10 +472,20 @@ if PYQT6_AVAILABLE:
             theme_label.setProperty("class", "section-label")
             
             self.theme_combo = QComboBox()
-            self.theme_combo.addItems(["DACOS Unified"])
-            self.theme_combo.setMinimumWidth(100)
-            self.theme_combo.setMaximumWidth(130)
-            self.theme_combo.setEnabled(False)  # DACOS only
+            self.theme_combo.addItems(list(AVAILABLE_THEMES.keys()))
+            
+            try:
+                from shared.theme_manager import get_current_theme_name
+                current = get_current_theme_name()
+                index = self.theme_combo.findText(current)
+                if index >= 0:
+                    self.theme_combo.setCurrentIndex(index)
+            except ImportError:
+                pass
+                
+            self.theme_combo.setMinimumWidth(150)
+            self.theme_combo.setMaximumWidth(200)
+            self.theme_combo.setEnabled(True)  # Enabled for visibility
             
             theme_layout.addWidget(theme_label)
             theme_layout.addWidget(self.theme_combo)
@@ -505,17 +548,17 @@ if PYQT6_AVAILABLE:
 
             if width < 700:
                 # Ultra-compact layout
-                self.main_layout.addWidget(self.title_label, 1)
+                self.main_layout.addWidget(self.title_widget, 1)
                 self.main_layout.addWidget(self.logout_btn, 0)
             elif width < 900:
                 # Compact layout
                 self.main_layout.addWidget(self.user_section, 0)
-                self.main_layout.addWidget(self.title_label, 1)
+                self.main_layout.addWidget(self.title_widget, 1)
                 self.main_layout.addWidget(self.logout_btn, 0)
             else:
                 # Full layout
                 self.main_layout.addWidget(self.user_section, 0)
-                self.main_layout.addWidget(self.title_label, 1)
+                self.main_layout.addWidget(self.title_widget, 1)
                 self.main_layout.addLayout(self.brand_layout, 0)
                 self.main_layout.addLayout(self.theme_layout, 0)
                 # Add account management button if user has permission
@@ -548,7 +591,7 @@ if PYQT6_AVAILABLE:
 
             try:
                 # Apply DACOS theme first - OPTIMIZED
-                self.apply_dacos_theme()
+                self.apply_theme()
                 logger.info("DACOS theme applied")
             except Exception as e:
                 logger.error(f"Failed to apply DACOS theme: {e}")
@@ -624,9 +667,18 @@ if PYQT6_AVAILABLE:
             """
             try:
                 from AutoDiag.core.vci_manager import HangWatchdog
-                self.app_watchdog = HangWatchdog()
-                # Start with conservative interval - can be adjusted based on testing
-                self.app_watchdog.start(2000)  # Pulse every 2 seconds
+                
+                # FIX: Initialize with interval in constructor
+                self.app_watchdog = HangWatchdog(check_interval=2.0, timeout=10.0)
+                
+                # FIX: Use correct method name start_monitoring()
+                self.app_watchdog.start_monitoring()
+                
+                # FIX: Setup Heartbeat Timer to keep watchdog happy
+                self.heartbeat_timer = QTimer(self)
+                self.heartbeat_timer.timeout.connect(self.app_watchdog.heartbeat)
+                self.heartbeat_timer.start(1000) 
+                
                 logger.info("✅ Application-wide hang protection initialized")
                 logger.info("🛡️  Windows Application Hang termination (0xCFFFFFFF) prevented")
                 
@@ -638,12 +690,12 @@ if PYQT6_AVAILABLE:
                 logger.error(f"Failed to initialize hang protection: {e}")
                 self.app_watchdog = None
 
-        def apply_dacos_theme(self):
-            """Apply DACOS unified theme using your existing theme file - OPTIMIZED"""
+        def apply_theme(self):
+            """Apply DACOS cyber-teal theme using your existing theme file - OPTIMIZED"""
             try:
                 if DACOS_AVAILABLE:
-                    # Use your existing apply_dacos_theme function
-                    success = apply_dacos_theme(QApplication.instance())
+                    # Use your existing apply_theme function
+                    success = apply_theme(QApplication.instance())
                     if success:
                         logger.info("✅ DACOS theme applied successfully")
                         return
@@ -658,15 +710,17 @@ if PYQT6_AVAILABLE:
         def apply_fallback_theme(self):
             """Enhanced fallback theme using DACOS colors - OPTIMIZED"""
             t = DACOS_THEME  # Use DACOS_THEME, not THEME
+            # Determine text color based on background (simple heuristic)
+            btn_text_color = "#FFFFFF" if "Light" not in getattr(self, 'current_theme_name', '') else t['text_main']
+            
             fallback_stylesheet = f"""
                 QMainWindow {{
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                        stop:0 {t['bg_main']}, stop:0.5 {t['bg_panel']}, stop:1 {t['bg_main']});
+                    background: {t['bg_main']};
                     color: {t['text_main']};
                     font-family: "Segoe UI";
                 }}
                 QTabWidget::pane {{
-                    border: 2px solid rgba(33, 245, 193, 0.3);
+                    border: 2px solid {t['accent']};
                     background: {t['bg_panel']};
                     border-radius: 12px;
                 }}
@@ -680,22 +734,20 @@ if PYQT6_AVAILABLE:
                 }}
                 QTabBar::tab:selected {{
                     background: {t['accent']};
-                    color: #0A1A1A;
+                    color: #FFFFFF;
                 }}
                 QFrame[class="glass-card"] {{
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                        stop:0 rgba(19, 79, 74, 0.9), stop:1 rgba(13, 35, 35, 0.9));
-                    border: 2px solid rgba(33, 245, 193, 0.4);
+                    background: {t['bg_card']};
+                    border: 2px solid {t['accent']};
                     border-radius: 12px;
                     padding: 15px;
                 }}
                 QPushButton {{
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 {t['accent']}, stop:1 {t['glow']});
+                    background: {t['accent']};
                     border: none;
                     border-radius: 8px;
                     padding: 10px 20px;
-                    color: #0A1A1A;
+                    color: #FFFFFF;
                     font-weight: bold;
                     min-height: 35px;
                 }}
@@ -703,23 +755,19 @@ if PYQT6_AVAILABLE:
                     background: {t['glow']};
                 }}
                 QPushButton[class="primary"] {{
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 {t['accent']}, stop:1 {t['glow']});
-                    color: #0A1A1A;
+                    background: {t['accent']};
+                    color: #FFFFFF;
                 }}
                 QPushButton[class="success"] {{
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 {t['success']}, stop:1 #059669);
+                    background: {t['success']};
                     color: white;
                 }}
                 QPushButton[class="warning"] {{
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 {t['warning']}, stop:1 #D97706);
+                    background: {t['warning']};
                     color: white;
                 }}
                 QPushButton[class="danger"] {{
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 {t['error']}, stop:1 #DC2626);
+                    background: {t['error']};
                     color: white;
                 }}
                 QLabel[class="hero-title"] {{
@@ -756,6 +804,7 @@ if PYQT6_AVAILABLE:
 
             # Central widget
             central_widget = QWidget()
+            central_widget.setObjectName("NeonBackground")
             self.setCentralWidget(central_widget)
 
             # Main vertical layout
@@ -965,8 +1014,32 @@ if PYQT6_AVAILABLE:
             self.statusBar().addPermanentWidget(self.voltage_label)
 
         def change_theme(self, theme_name):
-            """Theme change handler - DACOS only"""
-            self.status_label.setText("✨ DACOS Unified Theme Active")
+            """Theme change handler"""
+            try:
+                from shared.theme_manager import get_current_theme_name
+                if theme_name == get_current_theme_name():
+                    return
+
+                reply = QMessageBox.question(self, "Change Theme", 
+                                           f"Apply '{theme_name}'?\nApplication restart required.",
+                                           QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                
+                if reply == QMessageBox.StandardButton.Yes:
+                    if save_theme_config(theme_name):
+                        self.status_label.setText(f"✨ Theme changed to {theme_name} - Restart required")
+                        QMessageBox.information(self, "Restart Required", 
+                                              "Theme preference saved.\n\nPlease restart the application to apply changes.")
+                    else:
+                        QMessageBox.warning(self, "Error", "Failed to save theme configuration.")
+                else:
+                    # Revert combo box
+                    index = self.header.theme_combo.findText(get_current_theme_name())
+                    if index >= 0:
+                        self.header.theme_combo.blockSignals(True)
+                        self.header.theme_combo.setCurrentIndex(index)
+                        self.header.theme_combo.blockSignals(False)
+            except Exception as e:
+                logger.error(f"Error changing theme: {e}")
 
         def on_brand_changed(self, brand):
             """Handle brand change"""
@@ -1219,6 +1292,15 @@ if PYQT6_AVAILABLE:
                                         QMessageBox.StandardButton.Yes |
                                         QMessageBox.StandardButton.No)
             if reply == QMessageBox.StandardButton.Yes:
+                # Clear session file if it exists
+                try:
+                    session_file = os.path.join(os.path.expanduser("~"), ".dacos", "session.json")
+                    if os.path.exists(session_file):
+                        os.remove(session_file)
+                        logger.info("Session file cleared on logout")
+                except Exception as e:
+                    logger.error(f"Failed to clear session file: {e}")
+                
                 self.close()
 
         def closeEvent(self, event):
@@ -1593,6 +1675,12 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("AutoDiag Pro")
     app.setApplicationVersion("3.1.2")
+
+    # Set application icon
+    icon_path = os.path.join(project_root, 'assets', 'app_icon.ico')
+    if os.path.exists(icon_path):
+        app.setWindowIcon(QIcon(icon_path))
+
 
     # Setup logging after app creation
     logging.basicConfig(

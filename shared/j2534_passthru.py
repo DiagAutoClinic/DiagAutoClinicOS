@@ -44,6 +44,11 @@ class J2534Status(Enum):
     INVALID_MESSAGE = 0x0C
     UNKNOWN_ERROR = 0xFF
 
+class J2534FilterType(Enum):
+    PASS_FILTER = 0x00000001
+    BLOCK_FILTER = 0x00000002
+    FLOW_CONTROL_FILTER = 0x00000003
+
 class PASSTHRU_MSG(ctypes.Structure):
     """J2534 Message Structure for ctypes"""
     _fields_ = [
@@ -94,6 +99,7 @@ class J2534PassThru(ABC):
         self.dll_handle = None
         self.device_id = c_ulong(0)
         self.dll_path = dll_path
+        self.init_error = None
         if self.dll_path:
             self._load_driver(self.dll_path)
 
@@ -105,9 +111,27 @@ class J2534PassThru(ABC):
                 self._define_api_prototypes()
                 logger.info(f"Loaded J2534 driver from {dll_path}")
             else:
-                logger.error(f"J2534 driver not found at {dll_path}")
+                msg = f"J2534 driver not found at {dll_path}"
+                logger.error(msg)
+                self.init_error = msg
+        except OSError as e:
+            if hasattr(e, 'winerror') and e.winerror == 193:
+                import platform
+                arch = platform.architecture()[0]
+                msg = f"Architecture Mismatch: Driver is 32-bit but Python is {arch}. Please use 32-bit Python."
+                logger.critical(f"ARCHITECTURE MISMATCH: Failed to load driver {dll_path}.")
+                logger.critical(f"Current Python is {arch}, but the driver appears to be incompatible (likely 32-bit).")
+                logger.critical("SOLUTION: Please run this application using a 32-bit Python interpreter.")
+                self.init_error = msg
+            else:
+                msg = f"Failed to load J2534 driver: {e}"
+                logger.error(f"{msg} from {dll_path}")
+                self.init_error = msg
+            self.dll_handle = None
         except Exception as e:
-            logger.error(f"Failed to load J2534 driver from {dll_path}: {e}")
+            msg = f"Failed to load J2534 driver: {e}"
+            logger.error(f"{msg} from {dll_path}")
+            self.init_error = msg
             self.dll_handle = None
 
     @staticmethod
@@ -126,8 +150,8 @@ class J2534PassThru(ABC):
         common_paths = [
             r"C:\Program Files (x86)\Scanmatik\sm2j2534.dll",
             r"C:\Program Files\Scanmatik\sm2j2534.dll",
-            r"C:\Program Files (x86)\OpenECU\OpenPort 2.0\drivers\openport 2.0\op20pt32.dll",
-            r"C:\Program Files (x86)\Tactrix\OpenPort 2.0\op20pt32.dll"
+            r"C:\Program Files (x86)\Godiag\J2534\Godiag_J2534.dll",
+            r"C:\Program Files\Godiag\J2534\Godiag_J2534.dll"
         ]
         
         for path in common_paths:
@@ -151,6 +175,10 @@ class J2534PassThru(ABC):
         self.dll_handle.PassThruWriteMsgs.restype = c_ulong
         self.dll_handle.PassThruReadMsgs.argtypes = [c_ulong, POINTER(PASSTHRU_MSG), POINTER(c_ulong), c_ulong]
         self.dll_handle.PassThruReadMsgs.restype = c_ulong
+        self.dll_handle.PassThruStartMsgFilter.argtypes = [c_ulong, c_ulong, POINTER(PASSTHRU_MSG), POINTER(PASSTHRU_MSG), POINTER(PASSTHRU_MSG), POINTER(c_ulong)]
+        self.dll_handle.PassThruStartMsgFilter.restype = c_ulong
+        self.dll_handle.PassThruStopMsgFilter.argtypes = [c_ulong, c_ulong]
+        self.dll_handle.PassThruStopMsgFilter.restype = c_ulong
         self.dll_handle.PassThruGetLastError.argtypes = [POINTER(ctypes.c_char * 80)]
         self.dll_handle.PassThruGetLastError.restype = c_ulong
 
@@ -265,6 +293,52 @@ class J2534PassThru(ABC):
             logger.error(f"Failed to disconnect ChannelID {channel_id}. Status: {status}. Error: {self.get_last_error()}")
             return False
 
+    def start_msg_filter(self, channel_id: int, filter_type: J2534FilterType, mask: Optional[J2534Message], pattern: Optional[J2534Message], flow_control: Optional[J2534Message] = None) -> int:
+        if channel_id not in self.channels:
+            logger.error(f"Cannot start filter: Invalid channel {channel_id}")
+            return -1
+
+        # Helper to convert J2534Message to PASSTHRU_MSG
+        def to_struct(msg: Optional[J2534Message]) -> POINTER(PASSTHRU_MSG):
+            if not msg:
+                return None
+            data_buffer = create_string_buffer(msg.data)
+            struct = PASSTHRU_MSG(
+                ProtocolID=msg.protocol.value,
+                TxFlags=msg.tx_flags,
+                DataSize=len(msg.data),
+                pData=ctypes.cast(data_buffer, POINTER(ctypes.c_ubyte))
+            )
+            return byref(struct)
+
+        p_mask = to_struct(mask)
+        p_pattern = to_struct(pattern)
+        p_flow = to_struct(flow_control)
+        
+        filter_id = c_ulong(0)
+        
+        status = self.dll_handle.PassThruStartMsgFilter(channel_id, filter_type.value, p_mask, p_pattern, p_flow, byref(filter_id))
+        
+        if status == J2534Status.NOERROR.value:
+            logger.info(f"Started Filter ID: {filter_id.value} on Channel {channel_id}")
+            return filter_id.value
+        else:
+            logger.error(f"Failed to start filter. Status: {status}. Error: {self.get_last_error()}")
+            return -1
+
+    def stop_msg_filter(self, channel_id: int, filter_id: int) -> bool:
+        if channel_id not in self.channels:
+            return False
+            
+        status = self.dll_handle.PassThruStopMsgFilter(channel_id, filter_id)
+        if status == J2534Status.NOERROR.value:
+            logger.info(f"Stopped Filter ID: {filter_id}")
+            return True
+        else:
+            logger.error(f"Failed to stop filter. Status: {status}. Error: {self.get_last_error()}")
+            return False
+
+
     def send_message(self, channel_id: int, message: J2534Message, timeout_ms: int = 1000) -> bool:
         if channel_id not in self.channels:
             logger.error(f"Cannot send message: Invalid channel {channel_id}")
@@ -368,14 +442,21 @@ class MockJ2534PassThru(J2534PassThru):
 
 # --- Factory Function ---
 
-def get_passthru_device(mock_mode: bool = False, **kwargs) -> J2534PassThru:
+def get_passthru_device(dll_path: Optional[str] = None, mock_mode: bool = False, **kwargs) -> J2534PassThru:
     """Factory function to get J2534 PassThru device"""
+    # If a specific DLL path is provided, we use the real implementation (checking for existence first)
+    if dll_path and os.path.exists(dll_path):
+        logger.info(f"Using real J2534 PassThru device via DLL: {dll_path}")
+        return J2534PassThru(dll_path=dll_path, **kwargs)
+        
     if mock_mode:
         logger.info("Using Mock J2534 PassThru device.")
         return MockJ2534PassThru(**kwargs)
-    else:
-        logger.info("Using real J2534 PassThru device via DLL.")
-        return J2534PassThru(**kwargs)
+    
+    # If no path and mock_mode is False, we typically can't do much unless we default to something.
+    # But for backward compatibility with existing calls:
+    logger.info("No DLL path provided. Defaulting to J2534PassThru (empty init).")
+    return J2534PassThru(dll_path=None, **kwargs)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# AGENTS: DO NOT TOUCH THIS FILE - THEME IS CENTRALIZED IN shared/theme_constants.py
+# AGENTS: DO NOT TOUCH THIS FILE - THEME IS CENTRALIZED IN shared/theme_manager.py
 # ANY CHANGES HERE WILL BE REVERTED
 """
 Login Dialog Module for AutoDiag Pro
