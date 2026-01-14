@@ -129,6 +129,11 @@ dacos.co.za/
 # Proprietary / OEM Data
 IMMO/
 can_bus_data/
+prognostics_training_data.csv
+synthetic_can_training_data.json
+synthetic_vin_dataset.*
+*training_data*.csv
+*training_data*.json
 
 # Local runtime artifacts
 logs/

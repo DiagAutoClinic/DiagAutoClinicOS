@@ -42,6 +42,18 @@ DiagAutoClinicOS is built with sponsor support. Sponsor relationships will be ke
 
 ---
 
+## Local-Only Artifacts (Not on GitHub)
+
+To protect the DACOS brand and reduce avoidable exposure, certain artifacts are intentionally kept local and are not published to GitHub:
+
+- OEM/proprietary datasets (immobilizer/ODM databases, vendor bundles)
+- CAN bus captures and raw workshop data
+- AI training datasets, offline training outputs, and model artifacts
+- Internal security verification harnesses and hardening reports
+- Runtime logs and Restricted Mode lock artifacts
+
+---
+
 ## ✨ Key Features
 - ✅ **25+ brand diagnostic coverage** with **enhanced Ford and GM support**
 - 🧠 Dynamic glassmorphic UI built with **PyQt6**
