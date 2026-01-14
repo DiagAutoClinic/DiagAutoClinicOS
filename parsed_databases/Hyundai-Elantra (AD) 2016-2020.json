@@ -1,9 +1,0 @@
-{
-  "manufacturer": "Hyundai",
-  "model": "Elantra",
-  "year_range": "2016-2020",
-  "serial_number": "00000000",
-  "messages": {},
-  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Hyundai-Elantra (AD) 2016-2020.REF",
-  "parse_date": "2025-12-16T06:34:43.262137"
-}

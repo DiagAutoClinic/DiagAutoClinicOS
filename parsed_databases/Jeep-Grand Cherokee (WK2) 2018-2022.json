@@ -1,9 +1,0 @@
-{
-  "manufacturer": "Jeep",
-  "model": "Grand Cherokee",
-  "year_range": "2018-2022",
-  "serial_number": "00000000",
-  "messages": {},
-  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Jeep-Grand Cherokee (WK2) 2018-2022.REF",
-  "parse_date": "2025-12-16T06:34:43.274236"
-}

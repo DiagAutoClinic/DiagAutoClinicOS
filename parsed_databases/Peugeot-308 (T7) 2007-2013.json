@@ -1,9 +1,0 @@
-{
-  "manufacturer": "Peugeot",
-  "model": "308",
-  "year_range": "2007-2013",
-  "serial_number": "00000000",
-  "messages": {},
-  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Peugeot-308 (T7) 2007-2013.REF",
-  "parse_date": "2025-12-16T06:34:43.313408"
-}

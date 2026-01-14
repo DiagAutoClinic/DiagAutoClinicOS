@@ -1,9 +1,0 @@
-{
-  "manufacturer": "Dodge",
-  "model": "Ram",
-  "year_range": "2009-2018",
-  "serial_number": "00000000",
-  "messages": {},
-  "file_path": "can_bus_data\\Vehicle_CAN_Files_REF\\Dodge-Ram (DS DJ D2) 2009-2018.REF",
-  "parse_date": "2025-12-16T06:34:43.210948"
-}
