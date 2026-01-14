@@ -3,13 +3,12 @@
 ## 1. Hardware
 
 - **Godiag GT100 breakout box** — Excellent for making clean bench harnesses, switching ignition/power lines and wiring multiple modules. Use as physical interface between ECU and your emulator.
-- **Godiag GD101 J2534** — Pass-thru for reflashing when needed; good for reprogramming via OEM tools.
+- **Godiag GD101 J2534** — Pass-thru for reflashing; spoofed ELM327 chip behavior. **Note:** Requires J2534 driver initialization BEFORE opening any serial connection (Windows needs to see VCI first). Firmware v1.15 tested ok.
 - **Launch X431 Pro 5 / X-Prog** — Diagnostics, coding and MCU programmers (useful if you need to change configuration or read certain memories; X-Prog for EEPROM/MCU programming).
 - **ELM327 v1.5 / v2.1** — Cheap CAN/OBD sniffing where low timing accuracy is OK (useful for quick checks, NOT ideal for tight timings).
 - **OBDLink MX+** — Very reliable USB/Bluetooth CAN logger; good for consistent logging and used with PC tools.
-- **PCMmaster** — Used for flash/ECU dumps.
+- **PCMmaster (Scanmatik Pro2)** — The only other J2534 VCI left. Used for flash/ECU dumps.
 - **Scanmatik Pro2 + Tricore cable** — Critical for Tricore ECUs, reading/writing memory, JTAG access, for deep bench work.
-- **Openport 2.0** — Good for ECU flashing and logging on many platforms.
 - **VX SCAN OP-COM v1.99** — Opel-specific diagnostics, useful to reproduce exact state/gateway messages.
 - **STM32F103C8T6 (“Blue Pill”)**
 - **ST-Link V2 (Original)** → Flash/debug

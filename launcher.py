@@ -9,9 +9,11 @@ FIXES:
 
 import sys
 import os
+import json
+import importlib
 from pathlib import Path
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 import subprocess
 import logging
 import math
@@ -44,29 +46,58 @@ logger = logging.getLogger("DiagLauncher")
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Theme Configuration
 try:
-    from shared.themes.dacos_theme import DACOS_THEME as THEME
-    logger.info("Successfully loaded DACOS theme")
-except ImportError:
-    logger.warning("Could not import DACOS theme, using fallback")
+    from shared.theme_manager import get_theme_dict, AVAILABLE_THEMES, save_config as save_theme_config, get_current_theme_name
+    THEME = get_theme_dict()
+    current_theme_name = get_current_theme_name()
+    logger.info(f"Loaded theme: {current_theme_name}")
+except ImportError as e:
+    logger.error(f"Failed to import theme manager: {e}")
+    # Fallback theme
     THEME = {
-        "bg_main": "#0A1A1A", "bg_panel": "#0D2323", "bg_card": "#134F4A",
-        "accent": "#21F5C1", "glow": "#2AF5D1", "text_main": "#E8F4F2",
-        "text_muted": "#9ED9CF", "error": "#FF4D4D", "success": "#10B981",
-        "warning": "#F59E0B"
+        "bg_main": "#000000",
+        "bg_panel": "#1a1a1a",
+        "bg_card": "#333333",
+        "accent": "#00ff00",
+        "glow": "#00ff00",
+        "text_main": "#ffffff",
+        "text_muted": "#aaaaaa",
+        "error": "#ff0000",
+        "warning": "#ffff00",
+        "success": "#00ff00"
     }
+    AVAILABLE_THEMES = {"Default": "default"}
+    def save_theme_config(name): return False
+    current_theme_name = "Default"
 
-BG_MAIN = THEME["bg_main"]
-BG_PANEL = THEME["bg_panel"]
-BG_CARD = THEME["bg_card"]
-ACCENT = THEME["accent"]
-GLOW = THEME["glow"]
-TEXT_MAIN = THEME["text_main"]
-TEXT_MUTED = THEME["text_muted"]
-ERROR = THEME["error"]
-WARNING = THEME["warning"]
-SUCCESS = THEME["success"]
+def to_hex(color):
+    """Convert rgba/hex colors to simple hex for Tkinter"""
+    if not color: return "#000000"
+    if color.startswith("rgba"):
+        # Parse rgba(r, g, b, a)
+        try:
+            parts = color.strip("rgba()").split(",")
+            r = int(parts[0].strip())
+            g = int(parts[1].strip())
+            b = int(parts[2].strip())
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except:
+            return "#000000"
+    return color[:7]  # Handle #RRGGBBAA by truncating
+
+# Theme Configuration
+
+# Ensure all required keys exist (fallback to safe defaults)
+BG_MAIN = to_hex(THEME.get("bg_main", "#000000"))
+BG_PANEL = to_hex(THEME.get("bg_panel", "#1a1a1a"))
+BG_CARD = to_hex(THEME.get("bg_card", "#333333"))
+ACCENT = to_hex(THEME.get("accent", "#00ff00"))
+GLOW = to_hex(THEME.get("glow", "#00ff00"))
+TEXT_MAIN = to_hex(THEME.get("text_main", "#ffffff"))
+TEXT_MUTED = to_hex(THEME.get("text_muted", "#aaaaaa"))
+ERROR = to_hex(THEME.get("error", "#ff0000"))
+WARNING = to_hex(THEME.get("warning", "#ffff00"))
+SUCCESS = to_hex(THEME.get("success", "#00ff00"))
 
 class DiagLauncher(tk.Tk):
     def __init__(self):
@@ -198,13 +229,16 @@ class DiagLauncher(tk.Tk):
         self.health_card.pack(side="left", padx=15)
 
     def _make_clickable_card(self, parent, title_text, body_text, click_command, is_primary=False):
-        """Create a clickable card with event handling"""
+        """Create a clickable card with event handling and high contrast support"""
         if is_primary:
             card_bg, text_color, border_color = ACCENT, BG_MAIN, GLOW
+            # Ensure text is readable on accent background
+            if current_theme_name == "DACOS Light":
+                 text_color = "#FFFFFF" # Force white text on Dark Teal accent
         else:
             card_bg, text_color, border_color = BG_CARD, TEXT_MAIN, GLOW
 
-        shadow = tk.Frame(parent, bg="#0A2927", width=290, height=130)
+        shadow = tk.Frame(parent, bg="#0A2927" if current_theme_name != "DACOS Light" else "#004D40", width=290, height=130)
         shadow.pack_propagate(False)
         card = tk.Frame(shadow, bg=card_bg, width=280, height=120, relief="raised", bd=2)
         card.pack_propagate(False)
@@ -223,11 +257,22 @@ class DiagLauncher(tk.Tk):
         body.pack(anchor="w", padx=15)
 
         def on_enter(e):
-            card.config(bg=GLOW, cursor="hand2")
-            border.config(bg=ACCENT)
-            title.config(bg=GLOW, fg=BG_MAIN)
-            body.config(bg=GLOW, fg=BG_MAIN)
-            content.config(bg=GLOW)
+            # For Light theme, ensure high contrast on hover
+            if current_theme_name == "DACOS Light":
+                 # Use Accent as background, White as text for hover
+                 hover_bg = ACCENT
+                 hover_fg = "#FFFFFF"
+                 hover_border = GLOW
+            else:
+                 hover_bg = GLOW
+                 hover_fg = BG_MAIN
+                 hover_border = ACCENT
+
+            card.config(bg=hover_bg, cursor="hand2")
+            border.config(bg=hover_border)
+            title.config(bg=hover_bg, fg=hover_fg)
+            body.config(bg=hover_bg, fg=hover_fg)
+            content.config(bg=hover_bg)
 
         def on_leave(e):
             card.config(bg=card_bg, cursor="")
@@ -269,11 +314,99 @@ class DiagLauncher(tk.Tk):
                                bg=BG_PANEL, fg=TEXT_MAIN, font=("Segoe UI", 9),
                                relief="flat", padx=15, pady=5, cursor="hand2")
         refresh_btn.pack(side="left", padx=10)
+
+        theme_btn = tk.Button(btn_frame, text="Change Theme", command=self.select_theme_dialog,
+                             bg=BG_PANEL, fg=ACCENT, font=("Segoe UI", 9),
+                             relief="flat", padx=15, pady=5, cursor="hand2")
+        theme_btn.pack(side="left", padx=10)
         
         exit_btn = tk.Button(btn_frame, text="Safe Exit", command=self.safe_shutdown,
                             bg=BG_PANEL, fg=ERROR, font=("Segoe UI", 9),
                             relief="flat", padx=15, pady=5, cursor="hand2")
         exit_btn.pack(side="left", padx=10)
+
+    def select_theme_dialog(self):
+        """Open dialog to select theme"""
+        dialog = tk.Toplevel(self)
+        dialog.title("Select Theme")
+        dialog.geometry("400x400") # Increased height for more themes
+        dialog.configure(bg=BG_MAIN)
+        dialog.transient(self)
+        dialog.grab_set()
+        
+        # Center dialog
+        x = self.winfo_x() + (self.winfo_width() // 2) - 200
+        y = self.winfo_y() + (self.winfo_height() // 2) - 200
+        dialog.geometry(f"+{x}+{y}")
+
+        lbl = tk.Label(dialog, text="Select Interface Theme", fg=ACCENT, bg=BG_MAIN,
+                      font=("Segoe UI", 14, "bold"))
+        lbl.pack(pady=20)
+
+        # Scrollable frame for themes
+        container = tk.Frame(dialog, bg=BG_MAIN)
+        container.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        canvas = tk.Canvas(container, bg=BG_MAIN, highlightthickness=0)
+        scrollbar = tk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=BG_MAIN)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # --- Mousewheel Support ---
+        def on_mousewheel(event):
+            # Windows/MacOS: event.delta
+            if event.delta:
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            # Linux: event.num (4=up, 5=down) handled via separate binds if needed
+        
+        # Bind to canvas and parent dialog to ensure it catches the event
+        canvas.bind_all("<MouseWheel>", on_mousewheel)
+        
+        # Unbind when dialog closes to prevent errors in main window
+        def on_close():
+            canvas.unbind_all("<MouseWheel>")
+            dialog.destroy()
+            
+        dialog.protocol("WM_DELETE_WINDOW", on_close)
+
+        current = current_theme_name
+        
+        for theme_name in AVAILABLE_THEMES.keys():
+            is_current = (theme_name == current)
+            prefix = "✓ " if is_current else "   "
+            btn_text = f"{prefix}{theme_name}"
+            
+            btn = tk.Button(scrollable_frame, text=btn_text, 
+                           command=lambda t=theme_name: self.apply_theme_selection(t, dialog),
+                           bg=BG_PANEL if not is_current else BG_CARD,
+                           fg=TEXT_MAIN if not is_current else ACCENT,
+                           font=("Segoe UI", 10),
+                           relief="flat", width=35, pady=5, cursor="hand2")
+            btn.pack(pady=2)
+
+        note = tk.Label(dialog, text="* Restart required to apply changes", 
+                       fg=TEXT_MUTED, bg=BG_MAIN, font=("Segoe UI", 9, "italic"))
+        note.pack(side="bottom", pady=20)
+
+    def apply_theme_selection(self, theme_name, dialog):
+        """Save theme selection and prompt restart"""
+        if save_theme_config(theme_name):
+            dialog.destroy()
+            msg = f"Theme set to '{theme_name}'.\n\nPlease restart the launcher to apply changes."
+            messagebox.showinfo("Theme Changed", msg)
+            logger.info(f"Theme changed to {theme_name}, restart required")
+        else:
+            messagebox.showerror("Error", "Failed to save configuration")
 
     def _start_animations(self):
         """Start background animations"""

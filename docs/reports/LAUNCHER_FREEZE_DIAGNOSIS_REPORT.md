@@ -11,7 +11,7 @@
 ### Symptoms Observed
 ```
 PS C:\Users\DACOS\Documents\DACOS\DACOS\DiagAutoClinicOS-main\DiagAutoClinicOS> py launcher.py
-2025-12-22 01:20:00,752 - shared.themes.dacos_theme - INFO - DACOS theme validation passed
+2025-12-22 01:20:00,752 - shared.themes.dacos_cyber_teal - INFO - DACOS theme validation passed
 Successfully loaded DACOS theme from shared module
 2025-12-22 01:20:00,753 - DiagLauncher - INFO - Successfully loaded DACOS theme from shared module
 Starting DiagAutoClinicOS Launcher

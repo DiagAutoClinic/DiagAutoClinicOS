@@ -3,7 +3,7 @@
 ## 🎉 IMPLEMENTATION COMPLETE - Major Achievements
 
 ### Phase 1: Critical Fixes ✅ ALL COMPLETED
-- **Fixed theme loading function** - Corrected `apply_theme()` to `apply_dacos_theme()`
+- **Fixed theme loading function** - Standardized theme application logic
 - **Removed duplicate methods** - Eliminated redundant `secure_logout()` and `resizeEvent()` 
 - **Cleaned up imports** - Removed unused `QTimer`, `QPropertyAnimation`, etc.
 - **Streamlined theme handling** - Removed redundant fallback theme definitions
@@ -83,7 +83,7 @@ initialize_autodiag_services()
 **Key Features:**
 ```python
 # Configuration registration
-register_config("ui.theme", "dacos_unified", description="UI theme", category="ui")
+register_config("ui.theme", "dacos_cyber_teal", description="UI theme", category="ui")
 
 # Typed configuration access
 theme = get_typed("ui.window_width", int, 1366)

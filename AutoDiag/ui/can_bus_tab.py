@@ -31,7 +31,7 @@ except Exception:
 
 # Try DACOS THEME
 try:
-    import dacos_theme
+    from shared.themes import dacos_cyber_teal
     DACOS_AVAILABLE = True
 except Exception:
     DACOS_AVAILABLE = False
@@ -65,7 +65,7 @@ class CANBusDataTab:
     def create_tab(self, app=None):
         if app and DACOS_AVAILABLE:
             try:
-                dacos_theme.apply_dacos_theme(app)
+                apply_theme(app)
             except Exception as e:
                 logger.warning(f"DACOS theme apply failed: {e}")
 

@@ -55,8 +55,10 @@ class DiagnosticsTab:
         status_title.setProperty("class", "section-title")
         status_layout.addWidget(status_title)
 
-        self.vci_status_label = QLabel("VCI Status: Check VCI Connection tab first")
+        self.vci_status_label = QLabel("Check VCI Connection tab first")
         self.vci_status_label.setProperty("class", "section-label")
+        # Default styling
+        self.vci_status_label.setStyleSheet("color: #F59E0B; font-weight: bold;")
         status_layout.addWidget(self.vci_status_label)
 
         # Note about VCI connection
@@ -143,7 +145,28 @@ class DiagnosticsTab:
     def update_vci_status(self, status_text):
         """Update VCI status label"""
         if self.vci_status_label:
-            self.vci_status_label.setText(f"VCI Status: {status_text}")
+            self.vci_status_label.setText(status_text)
+            
+            # Import theme colors dynamically
+            try:
+                from shared.theme_manager import get_theme_dict
+                theme = get_theme_dict()
+                c_success = theme.get('success', '#10B981')
+                c_error = theme.get('error', '#FF4D4D')
+                c_warning = theme.get('warning', '#F59E0B')
+            except:
+                c_success = '#10B981'
+                c_error = '#FF4D4D'
+                c_warning = '#F59E0B'
+
+            # Add color coding
+            if "Connected" in status_text and "Not" not in status_text:
+                 self.vci_status_label.setStyleSheet(f"color: {c_success}; font-weight: bold;")
+            elif "Not Connected" in status_text:
+                 self.vci_status_label.setStyleSheet(f"color: {c_error}; font-weight: bold;")
+            else:
+                 self.vci_status_label.setStyleSheet(f"color: {c_warning}; font-weight: bold;")
+                 
             logger.info(f"VCI Status: {status_text}")
 
     def update_vci_status_display(self, status_info):
@@ -155,9 +178,9 @@ class DiagnosticsTab:
                 device = status_info.get("device", {})
                 self.update_vci_status(f"Connected: {device.get('name', 'VCI Device')}")
             elif status == "disconnected":
-                self.update_vci_status("VCI Status: Not Connected")
+                self.update_vci_status("Not Connected")
             else:
-                self.update_vci_status(f"VCI Status: {status}")
+                self.update_vci_status(f"{status}")
                 
         except Exception as e:
             logger.error(f"Error updating VCI status display: {e}")

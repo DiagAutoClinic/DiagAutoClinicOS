@@ -7,7 +7,7 @@
 import logging
 from PyQt6.QtWidgets import (
     QMainWindow, QTabWidget, QVBoxLayout, QWidget, QFrame,
-    QLabel, QComboBox, QHBoxLayout, QMessageBox
+    QLabel, QComboBox, QHBoxLayout, QMessageBox, QPushButton
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
@@ -70,7 +70,38 @@ class ResponsiveHeader(QFrame):
         self.brand_combo.currentTextChanged.connect(parent.update_brand if parent else lambda x: None)
         layout.addWidget(self.brand_combo)
 
+        # Legacy/About button
+        self.legacy_btn = self.create_legacy_button()
+        layout.addWidget(self.legacy_btn)
+
         layout.addStretch()
+
+    def create_legacy_button(self):
+        """Create legacy/about button"""
+        legacy_btn = QPushButton("📜 Legacy")
+        legacy_btn.setProperty("class", "info")
+        legacy_btn.setMinimumHeight(45)
+        legacy_btn.setMaximumWidth(120)
+        legacy_btn.setToolTip("About DACOS & Legacy")
+        legacy_btn.clicked.connect(self.show_legacy_dialog)
+        return legacy_btn
+
+    def show_legacy_dialog(self):
+        """Show the Legacy/About dialog with the core philosophy"""
+        title = "The Road, the Stage, and the Canvas"
+        text = (
+            "DACOS - Diagnostic Auto Clinic OS\n"
+            "Version: 3.1.2 (Professional Teal)\n\n"
+            "\"The road stretches endlessly, a symbol of life's journey... "
+            "But beneath this restless movement lies a fundamental question... "
+            "What remains when movement stops?\"\n\n"
+            "Dedicated to the silence beneath all things.\n"
+            "Author: Shaun Smit\n\n"
+            "\"We can share it and stare it in the face.\"\n"
+            "Making our noise last longer."
+        )
+        QMessageBox.information(self, title, text)
+
 
 class AutoDiagPro(QMainWindow):
     """Main application window"""

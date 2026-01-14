@@ -115,6 +115,15 @@ class DiagnosticsController(QObject):
         else:
             logger.info("Charlemaine AI Agent injected")
 
+        # Initialize AI Engine (Fault Prediction)
+        try:
+            from ai.ai_engine import ai_engine
+            self.ai_engine = ai_engine
+            logger.info("AI Engine linked to DiagnosticsController")
+        except ImportError:
+            logger.warning("Failed to link AI Engine")
+            self.ai_engine = None
+
         # CAN database
         self.current_vehicle_db: Optional[VehicleCANDatabase] = None
         self.available_vehicles = []
@@ -148,7 +157,7 @@ class DiagnosticsController(QObject):
         self._load_available_vehicles_later()
 
         # Current voltage reading
-        self.current_voltage = 12.6  # Default voltage
+        self.current_voltage = 0.0  # Default voltage (0.0V indicates no connection)
 
         # Load user tier from configuration
         try:
@@ -323,8 +332,8 @@ class DiagnosticsController(QObject):
 
             self._update_status("📋 Reading DTCs...")
 
-            # Simulate diagnostic operation
-            QTimer.singleShot(1500, self._complete_dtc_read)
+            # No Mock: Execute directly
+            self._complete_dtc_read()
 
             return {"status": "started", "operation": "read_dtcs", "brand": self.current_brand}
 
@@ -345,20 +354,14 @@ class DiagnosticsController(QObject):
 
             # Try to read real DTCs from VCI device
             if self.vci_manager and self.vci_manager.is_connected():
-                try:
-                    # Send UDS/KWP commands to read DTCs
-                    real_dtcs = self._read_real_dtcs()
-                    dtc_data["dtcs"] = real_dtcs
-                    dtc_data["total_count"] = len(real_dtcs)
-                    logger.info(f"Read {len(real_dtcs)} DTCs from VCI device")
-                except Exception as e:
-                    logger.error(f"Failed to read real DTCs: {e}")
-                    dtc_data["dtcs"] = []
-                    dtc_data["total_count"] = 0
+                # Send UDS/KWP commands to read DTCs
+                real_dtcs = self._read_real_dtcs()
+                dtc_data["dtcs"] = real_dtcs
+                dtc_data["total_count"] = len(real_dtcs)
+                logger.info(f"Read {len(real_dtcs)} DTCs from VCI device")
             else:
                 logger.warning("No VCI device connected - cannot read DTCs")
-                dtc_data["dtcs"] = []
-                dtc_data["total_count"] = 0
+                raise ConnectionError("No VCI device connected")
 
             # Update UI
             if 'dtc_btn' in self.ui_callbacks:
@@ -441,8 +444,8 @@ class DiagnosticsController(QObject):
             
             self._update_status("🧹 Clearing DTCs...")
             
-            # Simulate clearing operation
-            QTimer.singleShot(2000, self._complete_dtc_clear)
+            # No Mock: Execute directly
+            self._complete_dtc_clear()
             
         except Exception as e:
             logger.error(f"Error in DTC clear confirmation: {e}")
@@ -642,8 +645,8 @@ class DiagnosticsController(QObject):
             if 'switch_to_tab' in self.ui_callbacks:
                 self.ui_callbacks['switch_to_tab'](1)
 
-            # Simulate scan
-            QTimer.singleShot(800, self._complete_quick_scan)
+            # No Mock: Execute directly
+            self._complete_quick_scan()
 
             return {"status": "started", "operation": "quick_scan", "brand": self.current_brand}
 
@@ -812,46 +815,26 @@ class DiagnosticsController(QObject):
             self._update_status(f"Scanning {module_name}...")
             QCoreApplication.processEvents() # Ensure UI updates
             
-            # Try to read DTCs from this module
-            dtcs = self._read_real_dtcs(tx_id=tx_id, rx_id=rx_id)
-            
-            # Even if no DTCs (empty list), if we got a response (not None? wait _read_real_dtcs returns list),
-            # we need to know if module responded.
-            # _read_real_dtcs returns [] on error or no DTCs.
-            # We can't distinguish "No DTCs" from "No Response" easily with current _read_real_dtcs return type.
-            # However, if it returns [], we assume module is there but healthy?
-            # Or maybe we should check if it responded at all.
-            # _read_real_dtcs logs "Read X DTCs" if response.
-            
-            # For now, let's assume if we get a result (even empty), the module is present?
-            # Actually _read_real_dtcs returns [] if send fails or no response (timeout).
-            # So we might report all modules as present with 0 DTCs if we are not careful.
-            
-            # Let's check connectivity first with a Tester Present or simple session control?
-            # Or just rely on _read_real_dtcs. 
-            # If _read_real_dtcs returns [], it might mean timeout.
-            # We should probably modify _read_real_dtcs to return Optional[List] to distinguish.
-            # But changing return type now might break other things.
-            
-            # Let's check if we can check "online" status.
-            # For this MVP, let's just add it if we found DTCs, OR if we want to be thorough,
-            # we try to ping it.
-            
-            # Let's just add it if dtcs is not empty.
-            if dtcs:
+            try:
+                # Try to read DTCs from this module
+                dtcs = self._read_real_dtcs(tx_id=tx_id, rx_id=rx_id)
+                
                 modules_found.append({
                     "id": hex(tx_id),
                     "name": module_name,
                     "dtcs": dtcs,
                     "status": "Fault" if dtcs else "OK"
                 })
-            else:
-                 # If no DTCs, we don't know if module is offline or just healthy.
-                 # Let's try a ping (Tester Present 3E 00) to confirm presence if we want to list healthy modules.
-                 # response = self._send_uds_request(0x3E, [0x00], tx_id, rx_id)
-                 # if response:
-                 #    modules_found.append({"id": hex(tx_id), "name": module_name, "dtcs": [], "status": "OK"})
-                 pass
+            except Exception as e:
+                # Log failure but continue scanning other modules
+                # Report the failure in the list (Fail-loud)
+                logger.warning(f"Failed to scan {module_name}: {e}")
+                modules_found.append({
+                    "id": hex(tx_id),
+                    "name": module_name,
+                    "dtcs": [],
+                    "status": f"Communication Error"
+                })
                  
         return modules_found
 
@@ -900,6 +883,31 @@ class DiagnosticsController(QObject):
             results["modules"] = modules_data
             results["dtcs"] = all_dtcs
             results["dtc_count"] = len(all_dtcs)
+
+            # 3. AI Fault Prediction (Neural Network)
+            if self.ai_engine:
+                self._update_status("🧠 Running AI Fault Prediction...")
+                try:
+                    # Construct session data for AI
+                    session_data = {
+                        'session_id': f"scan_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                        'dtc_codes': [d['code'] for d in all_dtcs],
+                        'live_parameters': {}, # We could capture a snapshot here if available
+                        'vehicle_context': {
+                            'year': 2020, # Default/Estimated if not read
+                            'make': self.current_brand
+                        },
+                        'session_duration': 0,
+                        'device_type': 'j2534'
+                    }
+                    
+                    # Run inference
+                    ai_analysis = self.ai_engine.analyze_diagnostic_session(session_data)
+                    results["ai_fault_prediction"] = ai_analysis
+                    logger.info("AI Fault Prediction completed")
+                except Exception as e:
+                    logger.error(f"AI Fault Prediction failed: {e}")
+                    results["ai_fault_prediction"] = {"error": str(e)}
             
             self._update_status("✅ Full scan completed")
             self.scan_completed.emit(results)
@@ -914,7 +922,7 @@ class DiagnosticsController(QObject):
                     
                 if results.get("vin_analysis") and "error" not in results["vin_analysis"]:
                     va = results["vin_analysis"]
-                    text += "\n--- Charlemaine AI Analysis ---\n"
+                    text += "\n--- Charlemaine AI Analysis (Identity) ---\n"
                     
                     if "manufacturer" in va and isinstance(va["manufacturer"], dict):
                         text += f"Manufacturer: {va['manufacturer'].get('name', 'Unknown')}\n"
@@ -925,7 +933,24 @@ class DiagnosticsController(QObject):
                     if "confidence_breakdown" in va:
                         text += f"Confidence: {va.get('confidence_score', 'N/A')}\n"
                     
-                    text += "------------------------------\n\n"
+                    text += "------------------------------\n"
+
+                # Add AI Fault Prediction Results
+                if results.get("ai_fault_prediction"):
+                    ai = results["ai_fault_prediction"]
+                    if "ai_analysis" in ai:
+                        text += "\n--- AI Fault Prediction (Prognostics) ---\n"
+                        preds = ai["ai_analysis"].get("fault_predictions", [])
+                        if preds:
+                            for p in preds:
+                                text += f"⚠️ {p['type'].upper()}: {p['description']} ({int(p['confidence']*100)}%)\n"
+                                text += f"   Action: {p['suggested_action']}\n"
+                        else:
+                            text += "✅ No specific faults predicted.\n"
+                        
+                        score = ai["ai_analysis"].get("health_score", 0.0)
+                        text += f"Health Score: {int(score*100)}/100\n"
+                        text += "------------------------------\n\n"
                 
                 # Add scan results
                 text += f"Modules Scanned: {len(modules_data)}\n"
@@ -1172,8 +1197,9 @@ class DiagnosticsController(QObject):
             return False
             
         if algorithm is None:
-            # Default mock algorithm: Key = Seed
-            algorithm = lambda seed: seed
+            # Security Hardening: Never allow default bypass
+            logger.error("Security access failed: No algorithm provided")
+            return False
             
         return self.vci_manager.security_access(level, algorithm)
 
@@ -1310,31 +1336,26 @@ class DiagnosticsController(QObject):
         """Read DTCs from real VCI device using UDS service 0x19"""
         dtcs = []
 
-        try:
-            # Send UDS service 0x19 (Read DTC Information)
-            # Sub-function 0x02: Report DTC by Status Mask
-            # Status mask 0xFF: All DTCs
+        # Send UDS service 0x19 (Read DTC Information)
+        # Sub-function 0x02: Report DTC by Status Mask
+        # Status mask 0xFF: All DTCs
 
-            if self.vci_manager and self.vci_manager.is_connected():
-                # raw_response = self._send_uds_request(0x19, [0x02, 0xFF])
-                raw_response = self._send_uds_request(0x19, [0x02, 0xFF], tx_id=tx_id, rx_id=rx_id)
+        if not self.vci_manager or not self.vci_manager.is_connected():
+             raise ConnectionError("No VCI device connected")
 
-                if raw_response:
-                    dtcs = self._parse_dtc_response(raw_response)
-                    logger.info(f"Read {len(dtcs)} DTCs from module {hex(tx_id)}")
-            else:
-                logger.warning("No VCI device connected - cannot read DTCs")
+        # This will now raise if it fails
+        raw_response = self._send_uds_request(0x19, [0x02, 0xFF], tx_id=tx_id, rx_id=rx_id)
 
-        except Exception as e:
-            logger.error(f"Error reading real DTCs from {hex(tx_id)}: {e}")
+        if raw_response:
+            dtcs = self._parse_dtc_response(raw_response)
+            logger.info(f"Read {len(dtcs)} DTCs from module {hex(tx_id)}")
 
         return dtcs
 
-    def _send_uds_request(self, service_id: int, data: List[int], tx_id: int = 0x7E0, rx_id: int = 0x7E8) -> Optional[bytes]:
+    def _send_uds_request(self, service_id: int, data: List[int], tx_id: int = 0x7E0, rx_id: int = 0x7E8) -> bytes:
         """Send a UDS request and return the response"""
         if not self.vci_manager or not self.vci_manager.is_connected():
-            logger.error("VCI not connected")
-            return None
+            raise ConnectionError("VCI not connected")
 
         try:
             # Construct payload: [Service ID] + [Data Bytes]
@@ -1343,14 +1364,15 @@ class DiagnosticsController(QObject):
             # Send via VCI Manager
             if hasattr(self.vci_manager, 'send_uds_request'):
                 response = self.vci_manager.send_uds_request(payload, tx_id, rx_id)
+                if response is None:
+                     raise IOError("No response from ECU")
                 return response
             else:
-                logger.error("VCI Manager does not support send_uds_request")
-                return None
+                raise NotImplementedError("VCI Manager does not support send_uds_request")
                 
         except Exception as e:
             logger.error(f"Failed to send UDS request: {e}")
-            return None
+            raise e
 
     def _parse_dtc_response(self, response: bytes) -> List[Dict[str, Any]]:
         """Parse DTC response from UDS service 0x19"""

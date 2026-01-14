@@ -1,6 +1,8 @@
 import logging
 import threading
 import time
+import os
+import sys
 from typing import List, Dict, Any, Optional, Callable
 from enum import Enum
 
@@ -8,6 +10,7 @@ from enum import Enum
 try:
     from shared.j2534_passthru import J2534PassThru, J2534Protocol, J2534Message, get_passthru_device
     from shared.isotp_handler import IsoTpHandler
+    from AutoDiag.core.j2534_bridge_client import J2534BridgeClient
 except ImportError:
     # Fallback/Mock for environment without shared modules (e.g. testing)
     pass
@@ -18,6 +21,19 @@ class VCITypes(Enum):
     J2534 = "J2534"
     ELM327 = "ELM327"
     SIMULATOR = "SIMULATOR"
+
+# --- HARDWARE REFERENCE: GODIAG GD101 ---
+# Driver: GODIAG_PT32.dll (32-bit ONLY) - Requires Python 32-bit environment.
+# Protocols: ISO15765 (CAN), ISO9141, ISO14230 (KWP), J1850 PWM/VPW.
+# ELM327 Mode: Version 1.5a Command Set.
+# Pinout:
+#   - CAN High/Low: Pins 6/14 (Up to 1000Kbps)
+#   - K-Line: Pins 7/15 (ISO9141/ISO14230)
+#   - J1850 PWM: Pins 2/10
+#   - J1850 VPW: Pin 2
+#   - Prog Voltage: Pins 12 or 13 (Up to 20V)
+#   - Short to GND: Pin 9 -> Pin 5
+
 
 class VCIStatus(Enum):
     DISCONNECTED = "disconnected"
@@ -86,6 +102,9 @@ class VCIManager:
         self.active_channel_id = None
         self.active_protocol_name = None
         
+        # Register cleanup on exit to prevent zombie VCI handles
+        atexit.register(self.disconnect)
+        
     def add_status_callback(self, callback: Callable):
         if callback not in self.status_callbacks:
             self.status_callbacks.append(callback)
@@ -95,17 +114,34 @@ class VCIManager:
             self.status_callbacks.remove(callback)
             
     def _notify_status(self, event: str, data: Any = None):
+        # 1. Notify callbacks
         for callback in self.status_callbacks:
             try:
                 callback(event, data)
             except Exception as e:
                 logger.error(f"Error in status callback: {e}")
 
+        # 2. Emit Signals (if Qt available)
+        if HAS_QT:
+            try:
+                self.status_changed.emit(event, data)
+                
+                # Special mapping for devices_found
+                if event == "scan_complete":
+                    # data is the list of found devices
+                    self.devices_found.emit(data)
+            except Exception as e:
+                logger.error(f"Signal emit error: {e}")
+
     def scan_for_devices(self, timeout: int = 15) -> bool:
         if self.is_scanning:
             return False
         
         self.is_scanning = True
+        
+        # NOTE: For Godiag GD101, we must prioritize J2534 scanning over Serial port scanning.
+        # Serial scanning locks the COM port, preventing the J2534 driver from accessing it.
+        # We start J2534 scan immediately.
         threading.Thread(target=self._scan_worker, args=(timeout,), daemon=True).start()
         return True
 
@@ -128,25 +164,43 @@ class VCIManager:
         try:
             found_devices = []
             
-            # Scan J2534 Drivers
+            # 1. PRIORITY SCAN: J2534 Drivers (Crucial for GD101)
+            # We must load J2534 drivers BEFORE any serial port operations occur.
             try:
-                drivers = J2534PassThru.scan_local_drivers(r"C:\Program Files (x86)")
+                # Scan project-local drivers folder
+                import os
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                drivers_dir = os.path.join(project_root, "drivers")
+                
+                drivers = J2534PassThru.scan_local_drivers(drivers_dir)
+                
                 # Add common paths
-                extra_paths = [r"C:\Program Files\Scanmatik\sm2j2534.dll"]
+                extra_paths = [
+                    r"C:\Program Files\Scanmatik\sm2j2534.dll",
+                    r"C:\Program Files (x86)\Scanmatik\smj2534.dll", # Scanmatik 2 Pro (x86)
+                    r"C:\Program Files (x86)\Scanmatik\sm2j2534.dll",
+                    r"C:\Program Files (x86)\Godiag\J2534\Godiag_J2534.dll", # Godiag GD101
+                    r"C:\Program Files\Godiag\J2534\Godiag_J2534.dll"
+                ]
                 for p in extra_paths:
                     if p not in drivers:
                         drivers.append(p)
                 
                 for dll in drivers:
-                    import os
                     if os.path.exists(dll):
                         name = os.path.basename(dll).replace(".dll", "")
                         vci = VCIDevice(f"J2534: {name}", VCITypes.J2534, path=dll)
                         vci.capabilities.append("j2534")
                         found_devices.append(vci)
+                        
             except Exception as e:
                 logger.error(f"Error scanning J2534 drivers: {e}")
-                
+
+            # 2. SECONDARY SCAN: Serial/ELM327 Devices
+            # Only perform this IF we haven't found a J2534 device, or explicitly requested.
+            # For now, we skip aggressive serial scanning to protect GD101 connectivity.
+            # Only passive detection (list_ports) should be used here if implemented.
+            
             self.available_devices = found_devices
             self._notify_status("scan_complete", found_devices)
             
@@ -159,6 +213,28 @@ class VCIManager:
     def is_connected(self) -> bool:
         return self.status == VCIStatus.CONNECTED and self.connected_vci is not None
 
+    def _get_python32_path(self) -> Optional[str]:
+        """
+        Locate a 32-bit Python interpreter for the J2534 Bridge.
+        """
+        # 1. Check local project venv (.venv32)
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        venv32_python = os.path.join(project_root, ".venv32", "Scripts", "python.exe")
+        if os.path.exists(venv32_python):
+            return venv32_python
+            
+        # 2. Check py launcher for 3.10-32
+        try:
+            import subprocess
+            result = subprocess.run(["py", "-3.10-32", "-c", "import sys; print(sys.executable)"], 
+                                 capture_output=True, text=True)
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except Exception:
+            pass
+            
+        return None
+
     def connect_to_device(self, device: VCIDevice) -> bool:
         if self.is_connected():
             self.disconnect()
@@ -169,6 +245,37 @@ class VCIManager:
         try:
             if device.device_type == VCITypes.J2534:
                 try:
+                    # Special Handling for GODIAG GD101 and Scanmatik on 64-bit Python
+                    # Both often use 32-bit DLLs that require bridging
+                    name_upper = device.name.upper()
+                    path_upper = device.path.upper()
+                    
+                    is_godiag = "GODIAG" in name_upper or "GODIAG" in path_upper
+                    is_scanmatik = "SCANMATIK" in name_upper or "SM2" in name_upper or "SM2" in path_upper or "SCANMATIK" in path_upper
+                    
+                    import platform
+                    is_64bit = platform.architecture()[0] == '64bit'
+                    
+                    if (is_godiag or is_scanmatik) and is_64bit:
+                        logger.info(f"Detected 32-bit VCI ({device.name}) on 64-bit system. Attempting to use J2534 Bridge...")
+                        python32 = self._get_python32_path()
+                        if python32:
+                            try:
+                                bridge = J2534BridgeClient(device.path, python32)
+                                if bridge.open():
+                                    device._j2534_device = bridge
+                                    self.connected_vci = device
+                                    self.status = VCIStatus.CONNECTED
+                                    self._notify_status("connected", device)
+                                    return True
+                                else:
+                                    logger.error(f"Bridge failed to open device: {bridge.get_last_error()}")
+                            except Exception as e:
+                                logger.error(f"Failed to start J2534 Bridge: {e}")
+                        else:
+                            logger.error("32-bit Python not found. Cannot use Godiag Bridge.")
+                    
+                    # Standard Connection (Direct Load)
                     passthru = get_passthru_device(device.path)
                     if passthru.open():
                          device._j2534_device = passthru
@@ -176,8 +283,17 @@ class VCIManager:
                          self.status = VCIStatus.CONNECTED
                          self._notify_status("connected", device)
                          return True
+                    else:
+                        error_msg = getattr(passthru, 'init_error', "Failed to open J2534 device (Driver load failed)")
+                        logger.error(f"Failed to connect J2534: {error_msg}")
+                        self.status = VCIStatus.ERROR
+                        self._notify_status("connect_error", error_msg)
+                        return False
                 except Exception as e:
                      logger.error(f"Failed to connect J2534: {e}")
+                     self.status = VCIStatus.ERROR
+                     self._notify_status("connect_error", f"Connection Exception: {e}")
+                     return False
                      
             self.status = VCIStatus.ERROR
             self._notify_status("connect_error", "Failed to connect")

@@ -31,7 +31,11 @@ sys.path.insert(0, os.path.join(project_root, 'shared'))  # Shared modules
 sys.path.insert(0, os.path.join(current_dir, 'ui'))  # AutoECU UI modules
 
 try:
-    from shared.themes.dacos_theme import DACOS_THEME, DACOS_STYLESHEET, apply_dacos_theme, get_dacos_color
+    from shared.theme_manager import apply_theme, get_theme_dict, AVAILABLE_THEMES, save_config as save_theme_config, get_current_theme_name
+    DACOS_THEME = get_theme_dict()
+    def get_dacos_color(color_name):
+        return DACOS_THEME.get(color_name, DACOS_THEME.get('accent', '#21F5C1'))
+    
     from shared.brand_database import get_brand_info, get_brand_list
     from shared.circular_gauge import CircularGauge, StatCard
     from shared.mock_ecu_engine import MockECUEngine
@@ -41,7 +45,7 @@ try:
     from ui.parameters_tab import ParametersTab
     from ui.diagnostics_tab import DiagnosticsTab
     from ui.coding_tab import CodingTab
-    print("Successfully imported DACOS theme and shared modules")
+    print("Successfully imported DACOS theme manager and shared modules")
 except ImportError as e:
     print(f"Warning: Failed to import modules: {e}")
     # Fallback classes
@@ -58,8 +62,11 @@ except ImportError as e:
         "warning": "#F59E0B"
     }
     DACOS_STYLESHEET = "/* Fallback DACOS stylesheet */"
+    AVAILABLE_THEMES = {"DACOS Cyber-Teal": "shared.themes.dacos_cyber_teal"}
+    def save_theme_config(name): pass
+    def get_current_theme_name(): return "DACOS Cyber-Teal"
 
-    def apply_dacos_theme(app):
+    def apply_theme(app):
         app.setStyleSheet(DACOS_STYLESHEET)
         return True
 
@@ -135,6 +142,7 @@ class AutoECUApp(QMainWindow):
 
         # Create central widget and main layout
         central_widget = QWidget()
+        central_widget.setObjectName("NeonBackground")
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         main_layout.setSpacing(15)
@@ -261,9 +269,29 @@ class AutoECUApp(QMainWindow):
         brand_layout.addWidget(brand_label)
         brand_layout.addWidget(self.brand_combo)
 
+        # Theme selector
+        theme_section = QWidget()
+        theme_layout = QVBoxLayout(theme_section)
+        theme_layout.setSpacing(5)
+        
+        theme_label = QLabel("Theme:")
+        theme_label.setProperty("class", "section-title")
+        
+        self.theme_combo = QComboBox()
+        self.theme_combo.addItems(list(AVAILABLE_THEMES.keys()))
+        try:
+            self.theme_combo.setCurrentText(get_current_theme_name())
+        except: pass
+        self.theme_combo.currentTextChanged.connect(self.change_theme)
+        self.theme_combo.setMinimumWidth(180)
+        
+        theme_layout.addWidget(theme_label)
+        theme_layout.addWidget(self.theme_combo)
+
         header_layout.addWidget(title_section)
         header_layout.addStretch()
         header_layout.addWidget(brand_section)
+        header_layout.addWidget(theme_section)
 
         layout.addWidget(header_frame)
         
@@ -311,6 +339,30 @@ class AutoECUApp(QMainWindow):
 
         # Update mock ECU engine with new brand
         self.mock_ecu = MockECUEngine(brand, "Generic")
+
+    def change_theme(self, theme_name):
+        """Handle theme change"""
+        if theme_name == get_current_theme_name():
+            return
+            
+        from PyQt6.QtWidgets import QMessageBox
+        reply = QMessageBox.question(self, "Change Theme", 
+                                   f"Apply '{theme_name}'?\nApplication restart required.",
+                                   QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            if save_theme_config(theme_name):
+                QMessageBox.information(self, "Restart Required", 
+                                      "Theme preference saved.\n\nPlease restart the application to apply changes.")
+            else:
+                QMessageBox.warning(self, "Error", "Failed to save theme configuration.")
+        else:
+             # Revert combo box
+            index = self.theme_combo.findText(get_current_theme_name())
+            if index >= 0:
+                self.theme_combo.blockSignals(True)
+                self.theme_combo.setCurrentIndex(index)
+                self.theme_combo.blockSignals(False)
         
     def identify_modules(self):
         """Identify ECU modules"""
@@ -691,7 +743,7 @@ def main():
 
     try:
         # Apply DACOS theme as per AI_RULES.md
-        apply_dacos_theme(app)
+        apply_theme(app)
 
         # Create and show main window
         window = AutoECUApp()

@@ -333,13 +333,17 @@ class CalibrationsTab:
             from shared.logger import get_logger
             logger = get_logger(__name__)
             
+            # Get current brand
+            brand = self.parent.header.brand_combo.currentText()
+
             self.execute_calibration_btn.setEnabled(False)
             self.parent.status_label.setText(f"⚙️ Executing {proc.name}...")
             
-            # Simulate execution (in real app, this would call the manager)
-            # For now, show mock results after delay
-            from PyQt6.QtCore import QTimer
-            QTimer.singleShot(3000, lambda: self.show_calibration_result(proc, params))
+            # No Mock: Execute directly via manager
+            # This will block the UI briefly, which is acceptable for synchronous operations
+            # or should be moved to a thread if long-running. For now, we remove the fake QTimer.
+            result = calibrations_resets_manager.execute_procedure(brand, proc.procedure_id, params)
+            self.show_calibration_result(proc, result, params)
                 
         except Exception as e:
             from shared.logger import get_logger
@@ -347,6 +351,7 @@ class CalibrationsTab:
             logger.error(f"Error executing procedure {proc.name}: {e}")
             
             self.parent.status_label.setText(f"❌ Error executing {proc.name}")
+            self.show_calibration_result(proc, {"success": False, "error": str(e), "message": "Execution Exception"}, params)
             self.calibrations_results_text.setPlainText(f"❌ Execution error:\n\n{str(e)}")
             self.execute_calibration_btn.setEnabled(True)
 
@@ -482,67 +487,45 @@ class CalibrationsTab:
             return getattr(dialog, '_params', {})
         return None
 
-    def show_calibration_result(self, proc, params) -> None:
-        """Show calibration execution result with enhanced details"""
+    def show_calibration_result(self, proc, result_dict, params=None) -> None:
+        """Show calibration execution result based on actual return data"""
         from datetime import datetime
-        
         brand = self.parent.header.brand_combo.currentText()
-
-        # Generate execution report
-        result_text = f"Calibration Procedure Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        result_text += "=" * 60 + "\n\n"
-
-        result_text += f"Brand: {brand}\n"
-        result_text += f"Procedure: {proc.name}\n"
-        result_text += f"Procedure ID: {proc.procedure_id}\n"
         
-        if hasattr(proc, 'reset_type') and hasattr(proc.reset_type, 'value'):
-            result_text += f"Type: {proc.reset_type.value.title()}\n"
-        result_text += f"Security Level: {proc.security_level}\n\n"
+        success = result_dict.get("success", False)
+        status_icon = "✅" if success else "❌"
+        
+        # Header
+        report = f"Calibration Procedure Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        report += "=" * 60 + "\n\n"
+        report += f"Brand: {brand}\n"
+        report += f"Procedure: {proc.name}\n"
+        report += f"Status: {status_icon} {'SUCCESS' if success else 'FAILED'}\n\n"
+        
+        # Message from Backend
+        report += "Execution Output:\n"
+        report += f"{result_dict.get('message', 'No message returned')}\n\n"
+        
+        if not success and 'error' in result_dict:
+             report += f"Error Details:\n{result_dict['error']}\n\n"
+
+        if 'verification' in result_dict:
+             report += f"Verification:\n{result_dict['verification']}\n\n"
 
         if params:
-            result_text += "Parameters Used:\n"
-            for key, value in params.items():
-                result_text += f"  {key.replace('_', ' ').title()}: {value}\n"
-            result_text += "\n"
+            report += "Parameters Used:\n"
+            for k, v in params.items():
+                report += f"  {k}: {v}\n"
 
-        # Add execution details based on procedure type
-        result_text += "Execution Results:\n"
+        report += "\n" + "=" * 60
+        report += f"\nTimestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         
-        if "steering" in proc.procedure_id.lower() or "steering" in proc.name.lower():
-            result_text += "✅ Steering Angle Sensor Calibration: SUCCESS\n"
-            result_text += "📐 Zero point successfully calibrated\n"
-            result_text += "🎯 Left stop: -540° | Center: 0° | Right stop: +540°\n"
-            result_text += "🔄 Adaptation values stored in EPS module\n"
-            result_text += "⚠️  Perform test drive to verify calibration\n"
-        elif "battery" in proc.procedure_id.lower() or "battery" in proc.name.lower():
-            result_text += "✅ Battery Registration: SUCCESS\n"
-            result_text += "🔋 Battery specifications registered in power management\n"
-            result_text += "⚡ Charging profile updated for optimal performance\n"
-            result_text += "🔄 Adaptation values cleared and reset\n"
-            result_text += "📊 Battery monitoring system activated\n"
-        elif "throttle" in proc.procedure_id.lower() or "throttle" in proc.name.lower():
-            result_text += "✅ Throttle Body Calibration: SUCCESS\n"
-            result_text += "🎛️ Throttle position sensor calibrated\n"
-            result_text += "⚖️ Idle adaptation completed (650-750 RPM)\n"
-            result_text += "🚀 Acceleration response optimized\n"
-            result_text += "🔄 Learning values stored in ECU\n"
-        elif "window" in proc.procedure_id.lower() or "window" in proc.name.lower():
-            result_text += "✅ Window Calibration: SUCCESS\n"
-            result_text += "🪟 Upper and lower limits learned\n"
-            result_text += "🔄 Anti-pinch function calibrated\n"
-            result_text += "✅ All windows calibrated successfully\n"
+        self.calibrations_results_text.setPlainText(report)
+        
+        # Update Status Bar
+        if success:
+             self.parent.status_label.setText(f"✅ {proc.name} completed")
         else:
-            result_text += "✅ Procedure executed successfully\n"
-            result_text += "📋 All calibration steps completed\n"
-            result_text += "🔍 System verification passed\n"
-            result_text += "✅ No errors detected\n"
-
-        result_text += "\n" + "=" * 60
-        result_text += "\n⚙️ Calibration completed successfully"
-        result_text += f"\nTimestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        result_text += f"\nDuration: {proc.duration if hasattr(proc, 'duration') else 'N/A'}"
-
-        self.calibrations_results_text.setPlainText(result_text)
-        self.parent.status_label.setText(f"✅ {proc.name} completed successfully")
+             self.parent.status_label.setText(f"❌ {proc.name} failed")
+             
         self.execute_calibration_btn.setEnabled(True)
