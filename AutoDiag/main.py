@@ -1,32 +1,22 @@
-# main.py - PERFORMANCE OPTIMIZED DIAGNOSTIC SUITE WITH DACOS THEME
-# COMPREHENSIVE PERFORMANCE OPTIMIZATIONS IMPLEMENTED
-
 #!/usr/bin/env python3
 """
-AutoDiag Pro - Professional 25-Brand Diagnostic Suite v3.1.2
+AutoDiag Pro - Professional 25-Brand Diagnostic Suite v0.0.2
 PERFORMANCE OPTIMIZED VERSION WITH LAZY INITIALIZATION AND ENHANCED THREAD MANAGEMENT
 RELEASE VERSION - NO MOCK DATA
 """
-
 import sys
-import traceback
-from pathlib import Path
 import os
 import logging
 import threading
 import time
 import weakref
-from typing import Dict, List, Optional, Callable, Any
-from datetime import datetime
+from typing import Callable
 import argparse
-from functools import lru_cache
 import gc
-
 # FIXED: Enhanced import path resolution for shared modules
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 project_root = parent_dir  # DiagAutoClinicOS root
-
 # Add all possible paths
 if project_root not in sys.path:
     sys.path.insert(0, project_root)  # DiagAutoClinicOS root
@@ -35,16 +25,18 @@ if current_dir not in sys.path:
 shared_dir = os.path.join(project_root, 'shared')
 if shared_dir not in sys.path:
     sys.path.insert(0, shared_dir)    # Shared modules
-
 # CRASH FIX: Install crash detection first
 try:
-    from autodiag_crash_debug import install_crash_detection
+    try:
+        from autodiag_crash_debug import install_crash_detection
+    except ImportError:
+        # Package-qualified fallback when launched from project root
+        from AutoDiag.autodiag_crash_debug import install_crash_detection
     install_crash_detection()
 except ImportError:
     print("Warning: Crash detection not available")
-
 # ELITE CRASH FIX: Global Exception Hook for Windows SEH Detection
-def global_except_hook(exctype, value, tb):
+def global_except_hook(exctype, value):
     """Global exception handler to capture unhandled exceptions before Qt6 native crashes"""
     try:
         print(f"FATAL UNHANDLED EXCEPTION: {exctype.__name__}: {value}")
@@ -56,29 +48,23 @@ def global_except_hook(exctype, value, tb):
                  f.write(f"\nCRASH: {exctype.__name__}: {value}\n")
         except:
             pass
-        
         sys.exit(1)
     except:
         sys.exit(1)
-
 # Install the global exception hook BEFORE any other imports
 sys.excepthook = global_except_hook
-
 # ===== PERFORMANCE OPTIMIZED THREAD MANAGEMENT =====
 class ThreadCleanupManager:
     """Enhanced thread cleanup manager with performance optimizations"""
-    
     def __init__(self):
         self.tracked_threads = weakref.WeakSet()  # Use WeakSet for automatic cleanup
         self.logger = logging.getLogger(__name__ + '.ThreadCleanup')
         self._cleanup_lock = threading.Lock()
         self._is_shutting_down = False
-        
     def register_thread(self, thread, name="Unknown"):
         """Register a thread for tracking and cleanup with performance optimizations"""
         if self._is_shutting_down:
             return
-            
         # Only register if thread is actually running
         if hasattr(thread, 'is_alive') and thread.is_alive():
             self.tracked_threads.add(thread)
@@ -86,47 +72,35 @@ class ThreadCleanupManager:
             thread._cleanup_name = name
             thread._cleanup_registered = time.time()
             self.logger.debug(f"📝 Registered thread for cleanup: {name}")
-        
     def cleanup_all_threads(self):
         """Enhanced cleanup with timeout and error handling"""
         if self._is_shutting_down:
             return 0
-            
         with self._cleanup_lock:
             self._is_shutting_down = True
-            
         self.logger.info("🧹 Starting comprehensive thread cleanup...")
-        
         cleaned_count = 0
         timeout_count = 0
-        
         # Create a snapshot to avoid iteration issues
         threads_to_cleanup = list(self.tracked_threads)
-        
         for thread in threads_to_cleanup:
             name = getattr(thread, '_cleanup_name', 'Unknown')
             registered_at = getattr(thread, '_cleanup_registered', 0)
-            
             try:
                 if hasattr(thread, 'is_alive') and thread.is_alive():
                     self.logger.info(f"🔄 Stopping thread: {name}")
-                    
                     # Thread-specific cleanup methods with timeout
                     cleanup_success = self._stop_thread_safely(thread, name)
-                    
                     if cleanup_success:
                         cleaned_count += 1
                         self.logger.info(f"✅ Successfully stopped thread: {name}")
                     else:
                         timeout_count += 1
                         self.logger.warning(f"⚠️  Thread timeout: {name}")
-                        
             except Exception as e:
                 self.logger.error(f"❌ Error stopping thread {name}: {e}")
-                
-        self.logger.info(f"🧹 Thread cleanup completed: {cleaned_count} stopped, {timeout_count} timed out")
+        self.logger.info(f" Thread cleanup completed: {cleaned_count} stopped, {timeout_count} timed out")
         return cleaned_count
-    
     def _stop_thread_safely(self, thread, name, timeout=2.0):
         """Safely stop a thread with timeout"""
         try:
@@ -139,7 +113,6 @@ class ThreadCleanupManager:
                 thread._stop_event.set()
             elif hasattr(thread, 'terminate'):
                 thread.terminate()
-                
             # Wait for graceful shutdown with timeout
             if hasattr(thread, 'wait'):
                 return thread.wait(timeout=timeout)
@@ -150,143 +123,113 @@ class ThreadCleanupManager:
                 # For unknown thread types, just wait a bit
                 time.sleep(0.1)
                 return True
-                
         except Exception as e:
             self.logger.error(f"Error during thread {name} cleanup: {e}")
             return False
-
 # Global thread cleanup manager with singleton pattern
 _thread_cleanup_manager = None
-
 def get_thread_cleanup_manager():
     """Get the global thread cleanup manager (singleton)"""
     global _thread_cleanup_manager
     if _thread_cleanup_manager is None:
         _thread_cleanup_manager = ThreadCleanupManager()
     return _thread_cleanup_manager
-
 def safe_shutdown():
     """Enhanced safe shutdown sequence with comprehensive cleanup"""
     try:
         # Use print first to avoid recursion if logger is broken
         print("🛑 Starting safe shutdown sequence...")
-        
         try:
             logger = logging.getLogger(__name__)
             logger.info("🛑 Starting safe shutdown sequence...")
         except:
             pass
-        
         # 1. Clean up all tracked threads
         cleanup_manager = get_thread_cleanup_manager()
         cleaned_count = cleanup_manager.cleanup_all_threads()
-        
         # 2. Force garbage collection to clean up circular references
         gc.collect()
-        
         # 3. Log shutdown completion
         print(f"✅ Safe shutdown sequence completed: {cleaned_count} threads cleaned")
         try:
             logger.info(f"✅ Safe shutdown sequence completed: {cleaned_count} threads cleaned")
         except:
-            pass
-        
+            pass        
     except Exception as e:
         print(f"❌ Error during safe shutdown: {e}")
-
 # Register safe shutdown with atexit
 try:
     import atexit
     atexit.register(safe_shutdown)
 except ImportError:
     pass  # atexit not available
-
 # ===== LAZY INITIALIZATION SYSTEM =====
 class LazyTabManager:
     """Manages lazy initialization of tab classes for performance optimization"""
-    
     def __init__(self):
         self._tab_factories = {}
         self._tab_instances = {}
         self._tab_locks = {}
-        self._logger = logging.getLogger(__name__ + '.LazyTabs')
-        
+        self._logger = logging.getLogger(__name__ + '.LazyTabs')        
     def register_tab(self, tab_name: str, factory_func: Callable):
         """Register a tab factory function for lazy initialization"""
         self._tab_factories[tab_name] = factory_func
         self._tab_locks[tab_name] = threading.Lock()
-        self._logger.debug(f"Registered lazy tab: {tab_name}")
-        
+        self._logger.debug(f"Registered lazy tab: {tab_name}")        
     def get_tab(self, tab_name: str, parent=None):
         """Get or create a tab instance on demand"""
         if tab_name not in self._tab_factories:
-            raise ValueError(f"Unknown tab: {tab_name}")
-            
+            raise ValueError(f"Unknown tab: {tab_name}")            
         # Check if already created
         if tab_name in self._tab_instances:
-            return self._tab_instances[tab_name]
-            
+            return self._tab_instances[tab_name]            
         # Thread-safe lazy initialization
         with self._tab_locks[tab_name]:
             # Double-check after acquiring lock
             if tab_name in self._tab_instances:
                 return self._tab_instances[tab_name]
-                
             self._logger.info(f"🏗️  Creating tab: {tab_name}")
             try:
                 # Create the tab instance
                 tab_instance = self._tab_factories[tab_name](parent)
-                self._tab_instances[tab_name] = tab_instance
-                
+                self._tab_instances[tab_name] = tab_instance                
                 # Force garbage collection after heavy tab creation
                 if tab_name in ['dashboard', 'live_data', 'can_bus']:
                     gc.collect()
-                    
                 self._logger.info(f"✅ Tab created successfully: {tab_name}")
                 return tab_instance
-                
             except Exception as e:
                 self._logger.error(f"❌ Failed to create tab {tab_name}: {e}")
                 raise
-
 # Global lazy tab manager
 _lazy_tab_manager = LazyTabManager()
-
 # ===== PERFORMANCE OPTIMIZED COMPONENTS =====
 class PerformanceMonitor:
-    """Monitors and optimizes application performance"""
-    
+    """Monitors and optimizes application performance"""    
     def __init__(self):
         self._start_times = {}
-        self._logger = logging.getLogger(__name__ + '.Performance')
-        
+        self._logger = logging.getLogger(__name__ + '.Performance')        
     def start_timer(self, operation_name: str):
         """Start timing an operation"""
-        self._start_times[operation_name] = time.time()
-        
+        self._start_times[operation_name] = time.time()        
     def end_timer(self, operation_name: str):
         """End timing and log performance"""
         if operation_name in self._start_times:
             duration = time.time() - self._start_times[operation_name]
-            del self._start_times[operation_name]
-            
+            del self._start_times[operation_name]            
             if duration > 1.0:  # Log slow operations
                 self._logger.warning(f"🐌 Slow operation: {operation_name} took {duration:.2f}s")
             else:
-                self._logger.debug(f"⚡ Fast operation: {operation_name} took {duration:.2f}s")
-                
+                self._logger.debug(f"⚡ Fast operation: {operation_name} took {duration:.2f}s")                
             return duration
         return 0.0
-
 # Global performance monitor
 _performance_monitor = PerformanceMonitor()
-
 # ===== DACOS THEME IMPORTS - OPTIMIZED =====
 DACOS_AVAILABLE = False
 try:
     from shared.theme_manager import apply_theme, get_theme_dict, AVAILABLE_THEMES, save_config as save_theme_config
     DACOS_THEME = get_theme_dict()
-    from shared.circular_gauge import CircularGauge, StatCard
     from shared.style_manager import style_manager
     DACOS_AVAILABLE = True
     logger = logging.getLogger(__name__)
@@ -304,7 +247,6 @@ except ImportError as e:
     }
     AVAILABLE_THEMES = {"DACOS Cyber-Teal": "shared.themes.dacos_cyber_teal"}
     def save_theme_config(name): pass
-
 # ---------------------------------------------------------------------- 
 # Qt imports - Fixed to resolve Pylance issues
 # ----------------------------------------------------------------------
@@ -312,32 +254,25 @@ PYQT6_AVAILABLE = False
 try:
     from PyQt6.QtWidgets import (
         QApplication, QMainWindow, QWidget, QFrame, QLabel, QPushButton, QComboBox,
-        QHBoxLayout, QVBoxLayout, QTabWidget, QGroupBox, QListWidget, QListWidgetItem,
-        QTextEdit, QTableWidget, QTableWidgetItem, QSpinBox, QScrollArea, QDialog,
-        QMessageBox, QLineEdit, QSizePolicy
+        QHBoxLayout, QVBoxLayout, QTabWidget, QMessageBox, QDialog
     )
-    from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
-    from PyQt6.QtGui import QFont, QPalette, QColor, QLinearGradient, QPainter, QPen, QIcon, QPixmap
+    from PyQt6.QtCore import Qt, QTimer
+    from PyQt6.QtGui import QFont, QIcon, QPixmap
     PYQT6_AVAILABLE = True
     print("PyQt6 imported successfully")
 except ImportError as e:
     print(f"PyQt6 import failed: {e}")
     PYQT6_AVAILABLE = False
-
 # Import other modules
 try:
     from AutoDiag.ui.login_dialog import LoginDialog
     from AutoDiag.ui.account_management_dialog import AccountManagementDialog
-    from AutoDiag.ui.password_change_dialog import PasswordChangeDialog
-    from shared.user_database_sqlite import user_database
-    
     # Import available tab classes - REMOVED FOR LAZY LOADING
     # Tabs are now imported inside their respective factory functions
     # from AutoDiag.ui.dashboard_tab import DashboardTab
     # ... etc
 except ImportError as e:
     logging.warning(f"Some modules not available: {e}")
-
 # Define GUI classes only if PyQt6 is available
 if PYQT6_AVAILABLE:
     class ResponsiveHeader(QFrame):
@@ -347,7 +282,6 @@ if PYQT6_AVAILABLE:
             self.setProperty("class", "glass-card")
             self.setMinimumHeight(130)
             self.setMaximumHeight(150)
-
             # Store current user information
             self.current_user_info = current_user_info or {
                 'username': 'guest',
@@ -355,24 +289,19 @@ if PYQT6_AVAILABLE:
                 'tier': 'BASIC',
                 'permissions': []
             }
-
             self.main_layout = QHBoxLayout(self)
             self.main_layout.setContentsMargins(20, 15, 20, 15)
             self.main_layout.setSpacing(15)
-
             self.setup_ui()
-            
         def setup_ui(self):
             """Setup header components with DACOS styling"""
             # User info section
-            self.user_section = self.create_user_section()
-            
+            self.user_section = self.create_user_section()            
             # Title Area with Logo
             self.title_widget = QWidget()
             title_layout = QHBoxLayout(self.title_widget)
             title_layout.setContentsMargins(0, 0, 0, 0)
             title_layout.setSpacing(15)
-
             # Logo
             self.logo_label = QLabel()
             # Try loading logo from multiple locations
@@ -383,7 +312,6 @@ if PYQT6_AVAILABLE:
                 os.path.join(project_root, 'assets', 'logo_v2.png'),
                 os.path.join(project_root, 'assets', 'dacos_logo.png')
             ]
-            
             for path in logo_paths:
                 if os.path.exists(path):
                     pixmap = QPixmap(path)
@@ -393,59 +321,44 @@ if PYQT6_AVAILABLE:
                         self.logo_label.setPixmap(scaled)
                         title_layout.addWidget(self.logo_label)
                         break
-
             # Title Text
             self.title_label = QLabel("AutoDiag Pro")
             self.title_label.setProperty("class", "hero-title")
             title_font = QFont("Segoe UI", 18, QFont.Weight.Bold)
             self.title_label.setFont(title_font)
-            self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-            
+            self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)            
             title_layout.addWidget(self.title_label)
-            title_layout.addStretch()
-            
+            title_layout.addStretch()            
             # Brand selector
-            self.brand_layout = self.create_brand_selector()
-            
+            self.brand_layout = self.create_brand_selector()            
             # Theme selector (simplified - DACOS only)
-            self.theme_layout = self.create_theme_selector()
-            
+            self.theme_layout = self.create_theme_selector()            
             # Account management button (for super user)
             self.account_btn = self.create_account_management_button()
-
             # Logout button
             self.logout_btn = self.create_logout_button()
-
             # Initial layout setup
-            self.update_layout()
-            
+            self.update_layout()            
         def create_user_section(self):
             """Create user information section with DACOS colors"""
             user_section = QFrame()
             user_layout = QVBoxLayout(user_section)
-            user_layout.setSpacing(2)
-            
+            user_layout.setSpacing(2)            
             self.user_name = QLabel("👤 Demo User")
-            self.user_name.setProperty("class", "section-title")
-            
+            self.user_name.setProperty("class", "section-title")            
             self.user_role = QLabel("🔐 BASIC • technician")
-            self.user_role.setProperty("class", "subtitle")
-            
+            self.user_role.setProperty("class", "subtitle")            
             user_layout.addWidget(self.user_name)
-            user_layout.addWidget(self.user_role)
-            
-            return user_section
-            
+            user_layout.addWidget(self.user_role)            
+            return user_section            
         def create_brand_selector(self):
             """Create brand selection combo with DACOS styling"""
             brand_layout = QVBoxLayout()
             brand_label = QLabel("Vehicle:")
-            brand_label.setProperty("class", "section-label")
-            
+            brand_label.setProperty("class", "section-label")            
             self.brand_combo = QComboBox()
             self.brand_combo.setMinimumWidth(120)
             self.brand_combo.setMaximumWidth(150)
-
             # Initialize with available manufacturers
             try:
                 # Optimized: Get manufacturers directly from parser without initializing full controller
@@ -458,22 +371,17 @@ if PYQT6_AVAILABLE:
                     self.brand_combo.addItem("-- Select Brand --")
             except Exception as e:
                 logger.warning(f"Failed to load manufacturers: {e}")
-                self.brand_combo.addItem("-- Select Brand --")
-            
+                self.brand_combo.addItem("-- Select Brand --")            
             brand_layout.addWidget(brand_label)
-            brand_layout.addWidget(self.brand_combo)
-            
-            return brand_layout
-            
+            brand_layout.addWidget(self.brand_combo)            
+            return brand_layout            
         def create_theme_selector(self):
             """Create theme selection combo - DACOS Unified only"""
             theme_layout = QVBoxLayout()
             theme_label = QLabel("Theme:")
             theme_label.setProperty("class", "section-label")
-            
             self.theme_combo = QComboBox()
-            self.theme_combo.addItems(list(AVAILABLE_THEMES.keys()))
-            
+            self.theme_combo.addItems(list(AVAILABLE_THEMES.keys()))            
             try:
                 from shared.theme_manager import get_current_theme_name
                 current = get_current_theme_name()
@@ -481,17 +389,13 @@ if PYQT6_AVAILABLE:
                 if index >= 0:
                     self.theme_combo.setCurrentIndex(index)
             except ImportError:
-                pass
-                
+                pass                
             self.theme_combo.setMinimumWidth(150)
             self.theme_combo.setMaximumWidth(200)
-            self.theme_combo.setEnabled(True)  # Enabled for visibility
-            
+            self.theme_combo.setEnabled(True)  # Enabled for visibility            
             theme_layout.addWidget(theme_label)
-            theme_layout.addWidget(self.theme_combo)
-            
-            return theme_layout
-            
+            theme_layout.addWidget(self.theme_combo)            
+            return theme_layout            
         def create_account_management_button(self):
             """Create account management button (super user only)"""
             account_btn = QPushButton("👥 Accounts")
@@ -502,7 +406,6 @@ if PYQT6_AVAILABLE:
             account_btn.clicked.connect(self.open_account_management)
             # Will be shown/hidden based on permissions
             return account_btn
-
         def create_logout_button(self):
             """Create logout button with DACOS danger styling"""
             logout_btn = QPushButton("🚪 Logout")
@@ -510,8 +413,7 @@ if PYQT6_AVAILABLE:
             logout_btn.setMinimumHeight(45)
             logout_btn.setMaximumWidth(120)
             logout_btn.setToolTip("Logout")
-            return logout_btn
-            
+            return logout_btn            
         def update_user_display(self):
             """Update the user information display"""
             if self.current_user_info:
@@ -525,17 +427,14 @@ if PYQT6_AVAILABLE:
             else:
                 self.user_name.setText("👤 Guest User")
                 self.user_role.setText("🔐 BASIC • guest")
-
         def open_account_management(self):
             """Open account management dialog (super user only)"""
             if not self.current_user_info or 'user_management' not in self.current_user_info.get('permissions', []):
                 QMessageBox.warning(self, "Access Denied",
                                   "You do not have permission to access account management.")
                 return
-
             dialog = AccountManagementDialog(self.current_user_info['username'], self)
             dialog.exec()
-
         def update_layout(self):
             """Update layout based on available width - OPTIMIZED VERSION"""
             # Clear existing layout efficiently
@@ -543,9 +442,7 @@ if PYQT6_AVAILABLE:
                 child = self.main_layout.takeAt(0)
                 if child.widget():
                     child.widget().setParent(None)
-
             width = self.parent().width() if self.parent() else 1000
-
             if width < 700:
                 # Ultra-compact layout
                 self.main_layout.addWidget(self.title_widget, 1)
@@ -565,924 +462,830 @@ if PYQT6_AVAILABLE:
                 if self.current_user_info and 'user_management' in self.current_user_info.get('permissions', []):
                     self.main_layout.addWidget(self.account_btn, 0)
                 self.main_layout.addWidget(self.logout_btn, 0)
-
-    class AutoDiagPro(QMainWindow):
-        def __init__(self, current_user_info=None):
-            super().__init__()
-
-            logger.info("Initializing AutoDiagPro...")
-
-            # Store current user information
-            self.current_user_info = current_user_info or {
-                'username': 'guest',
-                'full_name': 'Guest User',
-                'tier': 'BASIC',
-                'permissions': []
-            }
-
-            # Track loaded tabs to prevent recursion
-            self._loaded_tabs = set()
-
-            logger.info(f"User info: {self.current_user_info}")
-
-            # Initialize performance monitoring
-            self._performance_monitor = _performance_monitor
-            self._performance_monitor.start_timer("app_initialization")
-
-            try:
-                # Apply DACOS theme first - OPTIMIZED
-                self.apply_theme()
-                logger.info("DACOS theme applied")
-            except Exception as e:
-                logger.error(f"Failed to apply DACOS theme: {e}")
-                raise
-
-            try:
-                # Initialize diagnostics controller - LAZY INITIALIZATION
-                self.diagnostics_controller = None
-                self._init_diagnostics_controller()
-                logger.info("Diagnostics controller initialized")
-            except Exception as e:
-                logger.error(f"Failed to initialize diagnostics controller: {e}")
-                self.diagnostics_controller = None
-            
-            # ELITE CRASH FIX: Initialize application-wide hang protection
-            self._init_hang_protection()
-
-            try:
-                # Initialize UI - OPTIMIZED
-                self.init_ui()
-                logger.info("UI initialized")
-            except Exception as e:
-                logger.error(f"Failed to initialize UI: {e}")
-                raise
-
-            try:
-                # Update UI with user information
-                self.header.update_user_display()
-                self.status_label.setText("✨ System Ready - Connect VCI Device")
-                logger.info("UI updated with user information")
-            except Exception as e:
-                logger.error(f"Failed to update UI: {e}")
-                raise
-                
-            # Complete performance monitoring
-            self._performance_monitor.end_timer("app_initialization")
-
-        def _init_diagnostics_controller(self):
-            """Initialize the diagnostics controller with UI callbacks - LAZY INITIALIZATION"""
-            try:
-                logger.info("Starting diagnostics controller initialization")
-                from AutoDiag.core.diagnostics import DiagnosticsController
-                logger.debug("DiagnosticsController import successful")
-
-                ui_callbacks = {
-                    'set_button_enabled': self._set_button_enabled,
-                    'set_status': self._set_status_text,
-                    'set_results_text': self._set_results_text,
-                    'update_card_value': self._update_card_value,
-                    'switch_to_tab': self._switch_to_tab,
-                    'show_message': self._show_message_dialog,
-                    'update_live_data_table': self._update_live_data_table,
-                    'populate_live_data_table': self._populate_live_data_table,
-                    'vci_status_changed': self._on_vci_status_changed,
-                    'update_vci_status_display': self._update_vci_status_display,
-                    'update_can_bus_data': self._update_can_bus_data
-                }
-                logger.debug("UI callbacks defined")
-
-                self.diagnostics_controller = DiagnosticsController(ui_callbacks)
-                logger.info("Diagnostics controller initialized successfully")
-
-            except Exception as e:
-                logger.error(f"Failed to initialize diagnostics controller: {e}")
-                import traceback
-                logger.error(f"Diagnostics controller init traceback: {traceback.format_exc()}")
-                self.diagnostics_controller = None
+class AutoDiagPro(QMainWindow):
+    def __init__(self, current_user_info=None):
+        super().__init__()
+        logger.info("Initializing AutoDiagPro...")
+        # Store current user information
+        self.current_user_info = current_user_info or {
+            'username': 'guest',
+            'full_name': 'Guest User',
+            'tier': 'BASIC',
+            'permissions': []
+        }
+        # Track loaded tabs to prevent recursion
+        self._loaded_tabs = set()
+        logger.info(f"User info: {self.current_user_info}")
+        # Initialize performance monitoring
+        self._performance_monitor = _performance_monitor
+        self._performance_monitor.start_timer("app_initialization")
+        try:
+            # Apply DACOS theme first - OPTIMIZED
+            self.apply_theme()
+            logger.info("DACOS theme applied")
+        except Exception as e:
+            logger.error(f"Failed to apply DACOS theme: {e}")
+            raise
+        try:
+            # Initialize diagnostics controller - LAZY INITIALIZATION
+            self.diagnostics_controller = None
+            self._init_diagnostics_controller()
+            logger.info("Diagnostics controller initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize diagnostics controller: {e}")
+            self.diagnostics_controller = None
+        try:
+            # Initialize security capabilities based on user role
+            self._init_user_capabilities()
+            logger.info("User capabilities initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize user capabilities: {e}")
         
-        def _init_hang_protection(self):
-            """
-            ELITE CRASH FIX: Initialize application-wide hang protection
-            Prevents Windows Application Hang Termination (0xCFFFFFFF)
-            """
-            try:
-                from AutoDiag.core.vci_manager import HangWatchdog
-                
-                # FIX: Initialize with interval in constructor
-                self.app_watchdog = HangWatchdog(check_interval=2.0, timeout=10.0)
-                
-                # FIX: Use correct method name start_monitoring()
-                self.app_watchdog.start_monitoring()
-                
-                # FIX: Setup Heartbeat Timer to keep watchdog happy
-                self.heartbeat_timer = QTimer(self)
-                self.heartbeat_timer.timeout.connect(self.app_watchdog.heartbeat)
-                self.heartbeat_timer.start(1000) 
-                
-                logger.info("✅ Application-wide hang protection initialized")
-                logger.info("🛡️  Windows Application Hang termination (0xCFFFFFFF) prevented")
-                
-                # Register with cleanup manager
-                cleanup_manager = get_thread_cleanup_manager()
-                cleanup_manager.register_thread(self.app_watchdog, "HangProtectionWatchdog")
-                
-            except Exception as e:
-                logger.error(f"Failed to initialize hang protection: {e}")
-                self.app_watchdog = None
-
-        def apply_theme(self):
-            """Apply DACOS cyber-teal theme using your existing theme file - OPTIMIZED"""
-            try:
-                if DACOS_AVAILABLE:
-                    # Use your existing apply_theme function
-                    success = apply_theme(QApplication.instance())
-                    if success:
-                        logger.info("✅ DACOS theme applied successfully")
-                        return
-                        
-                # Fallback if theme application fails
-                self.apply_fallback_theme()
-                
-            except Exception as e:
-                logger.error(f"❌ Theme application failed: {e}")
-                self.apply_fallback_theme()
-
-        def apply_fallback_theme(self):
-            """Enhanced fallback theme using DACOS colors - OPTIMIZED"""
-            t = DACOS_THEME  # Use DACOS_THEME, not THEME
-            # Determine text color based on background (simple heuristic)
-            btn_text_color = "#FFFFFF" if "Light" not in getattr(self, 'current_theme_name', '') else t['text_main']
-            
-            fallback_stylesheet = f"""
-                QMainWindow {{
-                    background: {t['bg_main']};
-                    color: {t['text_main']};
-                    font-family: "Segoe UI";
-                }}
-                QTabWidget::pane {{
-                    border: 2px solid {t['accent']};
-                    background: {t['bg_panel']};
-                    border-radius: 12px;
-                }}
-                QTabBar::tab {{
-                    background: {t['bg_card']};
-                    color: {t['text_muted']};
-                    padding: 12px 24px;
-                    border-radius: 8px;
-                    margin: 2px;
-                    font-weight: bold;
-                }}
-                QTabBar::tab:selected {{
-                    background: {t['accent']};
-                    color: #FFFFFF;
-                }}
-                QFrame[class="glass-card"] {{
-                    background: {t['bg_card']};
-                    border: 2px solid {t['accent']};
-                    border-radius: 12px;
-                    padding: 15px;
-                }}
-                QPushButton {{
-                    background: {t['accent']};
-                    border: none;
-                    border-radius: 8px;
-                    padding: 10px 20px;
-                    color: #FFFFFF;
-                    font-weight: bold;
-                    min-height: 35px;
-                }}
-                QPushButton:hover {{
-                    background: {t['glow']};
-                }}
-                QPushButton[class="primary"] {{
-                    background: {t['accent']};
-                    color: #FFFFFF;
-                }}
-                QPushButton[class="success"] {{
-                    background: {t['success']};
-                    color: white;
-                }}
-                QPushButton[class="warning"] {{
-                    background: {t['warning']};
-                    color: white;
-                }}
-                QPushButton[class="danger"] {{
-                    background: {t['error']};
-                    color: white;
-                }}
-                QLabel[class="hero-title"] {{
-                    color: {t['accent']};
-                    font-size: 18pt;
-                    font-weight: bold;
-                }}
-                QLabel[class="tab-title"] {{
-                    color: {t['accent']};
-                    font-size: 16pt;
-                    font-weight: bold;
-                }}
-                QLabel[class="section-title"] {{
-                    color: {t['text_main']};
-                    font-size: 12pt;
-                    font-weight: bold;
-                }}
-                QLabel[class="section-label"] {{
-                    color: {t['text_muted']};
-                    font-size: 10pt;
-                }}
-                QLabel[class="subtitle"] {{
-                    color: {t['text_muted']};
-                    font-size: 9pt;
-                }}
-            """
-            self.setStyleSheet(fallback_stylesheet)
-
-        def init_ui(self):
-            """Initialize optimized futuristic UI with DACOS theme - LAZY INITIALIZATION"""
-            self.setWindowTitle("AutoDiag Pro - Professional Diagnostic Suite")
-            self.setMinimumSize(1024, 600)
-            self.resize(1366, 768)
-
-            # Central widget
-            central_widget = QWidget()
-            central_widget.setObjectName("NeonBackground")
-            self.setCentralWidget(central_widget)
-
-            # Main vertical layout
-            main_layout = QVBoxLayout(central_widget)
-            main_layout.setContentsMargins(15, 15, 15, 15)
-            main_layout.setSpacing(15)
-
-            # Responsive header
-            self.header = ResponsiveHeader(current_user_info=self.current_user_info)
-            main_layout.addWidget(self.header)
-
-            # Tab Widget - OPTIMIZED
-            self.tab_widget = QTabWidget()
-            self.tab_widget.setDocumentMode(True)
-            self.tab_widget.currentChanged.connect(self._on_tab_changed)  # Lazy loading
-            main_layout.addWidget(self.tab_widget, 1)
-
-            # Create tabs using lazy initialization
-            self._setup_lazy_tabs()
-
-            # Status bar
-            self.create_status_bar()
-            
-            # Connect signals
-            self.header.theme_combo.currentTextChanged.connect(self.change_theme)
-            self.header.brand_combo.currentTextChanged.connect(self.on_brand_changed)
-            self.header.logout_btn.clicked.connect(self.secure_logout)
-
-        def _setup_lazy_tabs(self):
-            """Setup lazy tab initialization - PERFORMANCE OPTIMIZED"""
-            
-            # Define factories with local imports for TRUE lazy loading
-            def create_vci_tab(parent):
-                from AutoDiag.ui.vci_connection_tab import VCIConnectionTab
-                return VCIConnectionTab(parent)
-
-            def create_dashboard_tab(parent):
-                from AutoDiag.ui.dashboard_tab import DashboardTab
-                return DashboardTab(parent)
-
-            def create_diagnostics_tab(parent):
-                from AutoDiag.ui.diagnostics_tab import DiagnosticsTab
-                return DiagnosticsTab(parent)
-
-            def create_live_data_tab(parent):
-                from AutoDiag.ui.live_data_tab import LiveDataTab
-                return LiveDataTab(parent)
-
-            def create_can_bus_tab(parent):
-                from AutoDiag.ui.can_bus_tab import CANBusDataTab
-                return CANBusDataTab(parent)
-
-            def create_special_functions_tab(parent):
-                from AutoDiag.ui.special_functions_tab import SpecialFunctionsTab
-                return SpecialFunctionsTab(parent)
-
-            def create_calibrations_tab(parent):
-                from AutoDiag.ui.calibrations_tab import CalibrationsTab
-                return CalibrationsTab(parent)
-
-            def create_advanced_tab(parent):
-                from AutoDiag.ui.advanced_tab import AdvancedTab
-                return AdvancedTab(parent)
-
-            def create_security_tab(parent):
-                from AutoDiag.ui.security_tab import SecurityTab
-                return SecurityTab(parent)
-
-            # Register tab factories for lazy initialization
-            lazy_tabs = {
-                'vci_connection': create_vci_tab,
-                'dashboard': create_dashboard_tab,
-                'diagnostics': create_diagnostics_tab,
-                'live_data': create_live_data_tab,
-                'can_bus': create_can_bus_tab,
-                'special_functions': create_special_functions_tab,
-                'calibrations': create_calibrations_tab,
-                'advanced': create_advanced_tab,
-                'security': create_security_tab
+        # ELITE CRASH FIX: Initialize application-wide hang protection
+        self._init_hang_protection()
+        try:
+            # Initialize UI - OPTIMIZED
+            self.init_ui()
+            logger.info("UI initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize UI: {e}")
+            raise
+        try:
+            # Update UI with user information
+            self.header.update_user_display()
+            self.status_label.setText("✨ System Ready - Connect VCI Device")
+            logger.info("UI updated with user information")
+        except Exception as e:
+            logger.error(f"Failed to update UI: {e}")
+            raise            
+        # Complete performance monitoring
+        self._performance_monitor.end_timer("app_initialization")
+    def _init_diagnostics_controller(self):
+        """Initialize the diagnostics controller with UI callbacks - LAZY INITIALIZATION"""
+        try:
+            logger.info("Starting diagnostics controller initialization")
+            from AutoDiag.core.diagnostics import DiagnosticsController
+            logger.debug("DiagnosticsController import successful")
+            ui_callbacks = {
+                'set_button_enabled': self._set_button_enabled,
+                'set_status': self._set_status_text,
+                'set_results_text': self._set_results_text,
+                'update_card_value': self._update_card_value,
+                'switch_to_tab': self._switch_to_tab,
+                'show_message': self._show_message_dialog,
+                'update_live_data_table': self._update_live_data_table,
+                'populate_live_data_table': self._populate_live_data_table,
+                'vci_status_changed': self._on_vci_status_changed,
+                'update_vci_status_display': self._update_vci_status_display,
+                'update_can_bus_data': self._update_can_bus_data
             }
-            
-            # Register all tabs with lazy manager
-            for tab_name, factory in lazy_tabs.items():
-                _lazy_tab_manager.register_tab(tab_name, factory)
-            
-            # Create placeholder tabs for UI structure
-            self._create_placeholder_tabs()
-
-        def _create_placeholder_tabs(self):
-            """Create placeholder tabs to maintain UI structure"""
-            
-            # Add all tabs as placeholders initially
-            tab_order = [
-                ('vci_connection', '🔌 VCI Connection'),
-                ('dashboard', '📊 Dashboard'),
-                ('diagnostics', '🔍 Diagnostics'),
-                ('live_data', '📈 Live Data'),
-                ('can_bus', '🚌 CAN Bus'),
-                ('special_functions', '⚙️ Special Functions'),
-                ('calibrations', '🔧 Calibrations'),
-                ('advanced', '🚀 Advanced'),
-                ('security', '🔒 Security')
-            ]
-            
-            for tab_name, tab_title in tab_order:
-                # Create NEW lightweight placeholder widget for EACH tab
-                placeholder_widget = QWidget()
-                placeholder_layout = QVBoxLayout(placeholder_widget)
-                placeholder_label = QLabel("Tab loading...")
-                placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                placeholder_layout.addWidget(placeholder_label)
-                
-                self.tab_widget.addTab(placeholder_widget, tab_title)
-
-        def _on_tab_changed(self, index):
-            """Handle tab change and lazy load content"""
-            if index < 0:
-                return
-
-            tab_titles = [
-                '🔌 VCI Connection', '📊 Dashboard', '🔍 Diagnostics',
-                '📈 Live Data', '🚌 CAN Bus', '⚙️ Special Functions',
-                '🔧 Calibrations', '🚀 Advanced', '🔒 Security'
-            ]
-            
-            if index < len(tab_titles):
-                tab_title = tab_titles[index]
-                self._performance_monitor.start_timer(f"tab_load_{index}")
-                
-                # Map tab titles to tab names
-                tab_mapping = {
-                    '🔌 VCI Connection': 'vci_connection',
-                    '📊 Dashboard': 'dashboard',
-                    '🔍 Diagnostics': 'diagnostics',
-                    '📈 Live Data': 'live_data',
-                    '🚌 CAN Bus': 'can_bus',
-                    '⚙️ Special Functions': 'special_functions',
-                    '🔧 Calibrations': 'calibrations',
-                    '🚀 Advanced': 'advanced',
-                    '🔒 Security': 'security'
-                }
-                
-                if tab_title in tab_mapping:
-                    self._load_tab_content(tab_mapping[tab_title], index)
-                    
-                self._performance_monitor.end_timer(f"tab_load_{index}")
-
-        def _load_tab_content(self, tab_name, tab_index):
-            """Load tab content on demand - LAZY INITIALIZATION"""
-            # Check if tab is already loaded
-            if tab_name in self._loaded_tabs:
-                return
-
+            logger.debug("UI callbacks defined")
+            self.diagnostics_controller = DiagnosticsController(ui_callbacks)
+            logger.info("Diagnostics controller initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize diagnostics controller: {e}")
+            import traceback
+            logger.error(f"Diagnostics controller init traceback: {traceback.format_exc()}")
+            self.diagnostics_controller = None    
+    def _init_hang_protection(self):
+        """
+        ELITE CRASH FIX: Initialize application-wide hang protection
+        Prevents Windows Application Hang Termination (0xCFFFFFFF)
+        """
+        try:
+            from AutoDiag.core.vci_manager import HangWatchdog
+            # FIX: Initialize with interval in constructor
+            self.app_watchdog = HangWatchdog(check_interval=2.0, timeout=10.0)
+            # FIX: Use correct method name start_monitoring()
+            self.app_watchdog.start_monitoring()
+            # FIX: Setup Heartbeat Timer to keep watchdog happy
+            self.heartbeat_timer = QTimer(self)
+            self.heartbeat_timer.timeout.connect(self.app_watchdog.heartbeat)
+            self.heartbeat_timer.start(1000)
+            logger.info("✅ Application-wide hang protection initialized")
+            logger.info("🛡️  Windows Application Hang termination (0xCFFFFFFF) prevented")
+            # Register with cleanup manager
+            cleanup_manager = get_thread_cleanup_manager()
+            cleanup_manager.register_thread(self.app_watchdog, "HangProtectionWatchdog")
+        except Exception as e:
+            logger.error(f"Failed to initialize hang protection: {e}")
+            self.app_watchdog = None
+    def _init_user_capabilities(self):
+        """Initialize user capabilities based on role and security level"""
+        try:
+            from AutoDiag.core.security import get_capabilities_for_user, initialize_security
+            # Get capabilities for the current user
+            user_capabilities = get_capabilities_for_user(self.current_user_info)
+            # Initialize security system with user capabilities
+            initialize_security(user_capabilities)
+            logger.info(f"User capabilities initialized: {list(user_capabilities)}")
+        except Exception as e:
+            logger.error(f"Failed to initialize user capabilities: {e}")
+            # Fallback: initialize with basic capabilities
             try:
-                logger.info(f"Loading tab content for {tab_name} at index {tab_index}")
-                # Get or create the tab instance
-                tab_instance = _lazy_tab_manager.get_tab(tab_name, self)
-                logger.info(f"Got tab instance for {tab_name}")
-                
-                # Create the actual tab widget
-                tab_widget, tab_title = tab_instance.create_tab()
-                logger.info(f"Created tab widget for {tab_name}")
-                
-                # Replace placeholder with real content
-                # Block signals to prevent recursion during tab swap
-                self.tab_widget.blockSignals(True)
-                try:
-                    self.tab_widget.removeTab(tab_index)
-                    logger.info(f"Removed placeholder for {tab_name}")
-                    self.tab_widget.insertTab(tab_index, tab_widget, tab_title)
-                    logger.info(f"Inserted real tab for {tab_name}")
-                    self.tab_widget.setCurrentIndex(tab_index)
-                    
-                    # Mark as loaded
-                    self._loaded_tabs.add(tab_name)
-                finally:
-                    self.tab_widget.blockSignals(False)
-                
-                # Store reference for later access
-                setattr(self, f"{tab_name}_tab", tab_instance)
-                
-                # Connect brand change signals for relevant tabs
-                if tab_name in ['special_functions', 'calibrations']:
-                    self.header.brand_combo.currentTextChanged.connect(
-                        getattr(tab_instance, 'refresh_functions_list', lambda: None)
-                    )
-                
-                logger.info(f"✅ Tab loaded successfully: {tab_name}")
-                
-            except Exception as e:
-                logger.error(f"❌ Failed to load tab {tab_name}: {e}")
-                import traceback
-                logger.error(f"Tab loading traceback: {traceback.format_exc()}")
-
-        def create_status_bar(self):
-            """Create status bar with DACOS styling"""
-            self.statusBar().showMessage("Ready")
-            self.status_label = QLabel("✨ Connect VCI Device to Begin")
-            self.status_label.setProperty("class", "status-label")
-            self.statusBar().addPermanentWidget(self.status_label)
-
-            # Voltage indicator (will show hardware required)
-            self.voltage_label = QLabel("🔋 Hardware Required")
-            self.voltage_label.setProperty("class", "status-label")
-            self.voltage_label.setStyleSheet("color: #21F5C1; font-weight: bold;")
-            self.voltage_label.setToolTip("Connect VCI device for voltage reading")
-            self.statusBar().addPermanentWidget(self.voltage_label)
-
-        def change_theme(self, theme_name):
-            """Theme change handler"""
-            try:
-                from shared.theme_manager import get_current_theme_name
-                if theme_name == get_current_theme_name():
+                from AutoDiag.core.security import Capability, initialize_security
+                basic_capabilities = {Capability.VIN_DECODE, Capability.DTC_READ}
+                initialize_security(basic_capabilities)
+                logger.warning("Initialized with basic capabilities as fallback")
+            except Exception as fallback_e:
+                logger.error(f"Fallback capability initialization also failed: {fallback_e}")
+    def apply_theme(self):
+        """Apply DACOS cyber-teal theme using your existing theme file - OPTIMIZED"""
+        try:
+            if DACOS_AVAILABLE:
+                # Use your existing apply_theme function
+                success = apply_theme(QApplication.instance())
+                if success:
+                    logger.info("✅ DACOS theme applied successfully")
                     return
-
-                reply = QMessageBox.question(self, "Change Theme", 
-                                           f"Apply '{theme_name}'?\nApplication restart required.",
-                                           QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            # Fallback if theme application fails
+            self.apply_fallback_theme()
+        except Exception as e:
+            logger.error(f"❌ Theme application failed: {e}")
+            self.apply_fallback_theme()
+    def apply_fallback_theme(self):
+        """Enhanced fallback theme using DACOS colors - OPTIMIZED"""
+        t = DACOS_THEME  # Use DACOS_THEME, not THEME
+        # Determine text color based on background (simple heuristic)
+        btn_text_color = "#FFFFFF" if "Light" not in getattr(self, 'current_theme_name', '') else t['text_main']
+        fallback_stylesheet = f"""
+            QMainWindow {{
+                background: {t['bg_main']};
+                color: {t['text_main']};
+                font-family: "Segoe UI";
+            }}
+            QTabWidget::pane {{
+                border: 2px solid {t['accent']};
+                background: {t['bg_panel']};
+                border-radius: 12px;
+            }}
+            QTabBar::tab {{
+                background: {t['bg_card']};
+                color: {t['text_muted']};
+                padding: 12px 24px;
+                border-radius: 8px;
+                margin: 2px;
+                font-weight: bold;
+            }}
+            QTabBar::tab:selected {{
+                background: {t['accent']};
+                color: #FFFFFF;
+            }}
+            QFrame[class="glass-card"] {{
+                background: {t['bg_card']};
+                border: 2px solid {t['accent']};
+                border-radius: 12px;
+                padding: 15px;
+            }}
+            QPushButton {{
+                background: {t['accent']};
+                border: none;
+                border-radius: 8px;
+                padding: 10px 20px;
+                color: #FFFFFF;
+                font-weight: bold;
+                min-height: 35px;
+            }}
+            QPushButton:hover {{
+                background: {t['glow']};
+            }}
+            QPushButton[class="primary"] {{
+                background: {t['accent']};
+                color: #FFFFFF;
+            }}
+            QPushButton[class="success"] {{
+                background: {t['success']};
+                color: white;
+            }}
+            QPushButton[class="warning"] {{
+                background: {t['warning']};
+                color: white;
+            }}
+            QPushButton[class="danger"] {{
+                background: {t['error']};
+                color: white;
+            }}
+            QLabel[class="hero-title"] {{
+                color: {t['accent']};
+                font-size: 18pt;
+                font-weight: bold;
+            }}
+            QLabel[class="tab-title"] {{
+                color: {t['accent']};
+                font-size: 16pt;
+                font-weight: bold;
+            }}
+            QLabel[class="section-title"] {{
+                color: {t['text_main']};
+                font-size: 12pt;
+                font-weight: bold;
+            }}
+            QLabel[class="section-label"] {{
+                color: {t['text_muted']};
+                font-size: 10pt;
+            }}
+            QLabel[class="subtitle"] {{
+                color: {t['text_muted']};
+                font-size: 9pt;
+            }}
+        """
+        self.setStyleSheet(fallback_stylesheet)
+    def init_ui(self):
+        """Initialize optimized futuristic UI with DACOS theme - LAZY INITIALIZATION"""
+        self.setWindowTitle("AutoDiag Pro - Professional Diagnostic Suite")
+        self.setMinimumSize(1024, 600)
+        self.resize(1366, 768)
+        # Central widget
+        central_widget = QWidget()
+        central_widget.setObjectName("NeonBackground")
+        self.setCentralWidget(central_widget)
+        # Main vertical layout
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(15)
+        # Responsive header
+        self.header = ResponsiveHeader(current_user_info=self.current_user_info)
+        main_layout.addWidget(self.header)
+        # Tab Widget - OPTIMIZED
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setDocumentMode(True)
+        self.tab_widget.currentChanged.connect(self._on_tab_changed)  # Lazy loading
+        main_layout.addWidget(self.tab_widget, 1)
+        # Create tabs using lazy initialization
+        self._setup_lazy_tabs()
+        # Status bar
+        self.create_status_bar()
+        
+        # Connect signals
+        self.header.theme_combo.currentTextChanged.connect(self.change_theme)
+        self.header.brand_combo.currentTextChanged.connect(self.on_brand_changed)
+        self.header.logout_btn.clicked.connect(self.secure_logout)
+    def _setup_lazy_tabs(self):
+        """Setup lazy tab initialization - PERFORMANCE OPTIMIZED"""        
+        # Define factories with local imports for TRUE lazy loading
+        def create_vci_tab(parent):
+            from AutoDiag.ui.vci_connection_tab import VCIConnectionTab
+            return VCIConnectionTab(parent)
+        def create_dashboard_tab(parent):
+            from AutoDiag.ui.dashboard_tab import DashboardTab
+            return DashboardTab(parent)
+        def create_diagnostics_tab(parent):
+            from AutoDiag.ui.diagnostics_tab import DiagnosticsTab
+            return DiagnosticsTab(parent)
+        def create_live_data_tab(parent):
+            from AutoDiag.ui.live_data_tab import LiveDataTab
+            return LiveDataTab(parent)
+        def create_can_bus_tab(parent):
+            from AutoDiag.ui.can_bus_tab import CANBusDataTab
+            return CANBusDataTab(parent)
+        def create_special_functions_tab(parent):
+            from AutoDiag.ui.special_functions_tab import SpecialFunctionsTab
+            return SpecialFunctionsTab(parent)
+        def create_calibrations_tab(parent):
+            from AutoDiag.ui.calibrations_tab import CalibrationsTab
+            return CalibrationsTab(parent)
+        def create_advanced_tab(parent):
+            from AutoDiag.ui.advanced_tab import AdvancedTab
+            return AdvancedTab(parent)
+        def create_security_tab(parent):
+            from AutoDiag.ui.security_tab import SecurityTab
+            return SecurityTab(parent)
+        # Register tab factories for lazy initialization
+        lazy_tabs = {
+            'vci_connection': create_vci_tab,
+            'dashboard': create_dashboard_tab,
+            'diagnostics': create_diagnostics_tab,
+            'live_data': create_live_data_tab,
+            'can_bus': create_can_bus_tab,
+            'special_functions': create_special_functions_tab,
+            'calibrations': create_calibrations_tab,
+            'advanced': create_advanced_tab,
+            'security': create_security_tab
+        }
+        # Register all tabs with lazy manager
+        for tab_name, factory in lazy_tabs.items():
+            _lazy_tab_manager.register_tab(tab_name, factory)        
+        # Create placeholder tabs for UI structure
+        self._create_placeholder_tabs()
+    def _create_placeholder_tabs(self):
+        """Create placeholder tabs to maintain UI structure"""        
+        # Add all tabs as placeholders initially
+        tab_order = [
+            ('vci_connection', '🔌 VCI Connection'),
+            ('dashboard', '📊 Dashboard'),
+            ('diagnostics', '🔍 Diagnostics'),
+            ('live_data', '📈 Live Data'),
+            ('can_bus', '🚌 CAN Bus'),
+            ('special_functions', '⚙️ Special Functions'),
+            ('calibrations', '🔧 Calibrations'),
+            ('advanced', '🚀 Advanced'),
+            ('security', '🔒 Security')
+        ]        
+        for tab_name, tab_title in tab_order:
+            # Create NEW lightweight placeholder widget for EACH tab
+            placeholder_widget = QWidget()
+            placeholder_layout = QVBoxLayout(placeholder_widget)
+            placeholder_label = QLabel("Tab loading...")
+            placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            placeholder_layout.addWidget(placeholder_label)
+            
+            self.tab_widget.addTab(placeholder_widget, tab_title)
+    def _on_tab_changed(self, index):
+        """Handle tab change and lazy load content"""
+        if index < 0:
+            return
+        tab_titles = [
+            '🔌 VCI Connection', '📊 Dashboard', '🔍 Diagnostics',
+            '📈 Live Data', '🚌 CAN Bus', '⚙️ Special Functions',
+            '🔧 Calibrations', '🚀 Advanced', '🔒 Security'
+        ]        
+        if index < len(tab_titles):
+            tab_title = tab_titles[index]
+            self._performance_monitor.start_timer(f"tab_load_{index}")
+            
+            # Map tab titles to tab names
+            tab_mapping = {
+                '🔌 VCI Connection': 'vci_connection',
+                '📊 Dashboard': 'dashboard',
+                '🔍 Diagnostics': 'diagnostics',
+                '📈 Live Data': 'live_data',
+                '🚌 CAN Bus': 'can_bus',
+                '⚙️ Special Functions': 'special_functions',
+                '🔧 Calibrations': 'calibrations',
+                '🚀 Advanced': 'advanced',
+                '🔒 Security': 'security'
+            }            
+            if tab_title in tab_mapping:
+                self._load_tab_content(tab_mapping[tab_title], index)
                 
-                if reply == QMessageBox.StandardButton.Yes:
-                    if save_theme_config(theme_name):
-                        self.status_label.setText(f"✨ Theme changed to {theme_name} - Restart required")
-                        QMessageBox.information(self, "Restart Required", 
-                                              "Theme preference saved.\n\nPlease restart the application to apply changes.")
-                    else:
-                        QMessageBox.warning(self, "Error", "Failed to save theme configuration.")
-                else:
-                    # Revert combo box
-                    index = self.header.theme_combo.findText(get_current_theme_name())
-                    if index >= 0:
-                        self.header.theme_combo.blockSignals(True)
-                        self.header.theme_combo.setCurrentIndex(index)
-                        self.header.theme_combo.blockSignals(False)
-            except Exception as e:
-                logger.error(f"Error changing theme: {e}")
-
-        def on_brand_changed(self, brand):
-            """Handle brand change"""
-            if brand == "-- Select Brand --":
-                self.status_label.setText("✨ Select a vehicle brand to begin")
-            else:
-                self.status_label.setText(f"🚗 Vehicle brand: {brand} - Connect VCI Device")
-
-            # Update diagnostics controller with new brand
-            if self.diagnostics_controller:
-                self.diagnostics_controller.set_brand(brand)
-
-        # UI Callback methods for diagnostics controller
-        def _set_button_enabled(self, button_name, enabled):
-            """Enable/disable buttons"""
-            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
-                if button_name == 'dtc_btn' and hasattr(self.diagnostics_tab, 'dtc_btn'):
-                    self.diagnostics_tab.dtc_btn.setEnabled(enabled)
-                elif button_name == 'clear_btn' and hasattr(self.diagnostics_tab, 'clear_btn'):
-                    self.diagnostics_tab.clear_btn.setEnabled(enabled)
-
-        def _set_status_text(self, text):
-            """Set status text"""
-            if hasattr(self, 'status_label'):
-                self.status_label.setText(text)
-
-        def _set_results_text(self, text):
-            """Set results text in diagnostics tab"""
-            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'results_text'):
-                self.diagnostics_tab.results_text.setPlainText(text)
-
-        def _update_card_value(self, card_name, value):
-            """Update card values (placeholder)"""
-            pass
-
-        def _switch_to_tab(self, index):
-            """Switch to specific tab"""
-            if hasattr(self, 'tab_widget'):
-                self.tab_widget.setCurrentIndex(index)
-
-        def _show_message_dialog(self, title, text, msg_type="info"):
-            """Show message dialog"""
-            if msg_type == "error":
-                QMessageBox.critical(self, title, text)
-            elif msg_type == "warning":
-                QMessageBox.warning(self, title, text)
-            else:
-                QMessageBox.information(self, title, text)
-
-        def _update_live_data_table(self, data):
-            """Update live data table"""
-            if hasattr(self, 'live_data_tab') and self.live_data_tab:
-                self.live_data_tab.update_live_data_table(data)
-
-        def _populate_live_data_table(self, data):
-            """Populate live data table"""
-            if hasattr(self, 'live_data_tab') and self.live_data_tab:
-                self.live_data_tab.populate_live_data_table(data)
-
-        def _on_vci_status_changed(self, event, data):
-            """Handle VCI status change events"""
+            self._performance_monitor.end_timer(f"tab_load_{index}")
+    def _load_tab_content(self, tab_name, tab_index):
+        """Load tab content on demand - LAZY INITIALIZATION"""
+        # Check if tab is already loaded
+        if tab_name in self._loaded_tabs:
+            return
+        try:
+            logger.info(f"Loading tab content for {tab_name} at index {tab_index}")
+            # Get or create the tab instance
+            tab_instance = _lazy_tab_manager.get_tab(tab_name, self)
+            logger.info(f"Got tab instance for {tab_name}")            
+            # Create the actual tab widget
+            tab_widget, tab_title = tab_instance.create_tab()
+            logger.info(f"Created tab widget for {tab_name}")            
+            # Replace placeholder with real content
+            # Block signals to prevent recursion during tab swap
+            self.tab_widget.blockSignals(True)
             try:
-                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
-                    self.diagnostics_tab.update_vci_status_display({"status": "connected" if event == "connected" else "disconnected"})
-            except Exception as e:
-                logger.error(f"Error handling VCI status change: {e}")
-
-        def _update_vci_status_display(self, status_info):
-            """Update VCI status display"""
-            try:
-                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
-                    self.diagnostics_tab.update_vci_status_display(status_info)
-            except Exception as e:
-                logger.error(f"Error updating VCI status display: {e}")
-
-        def _update_can_bus_data(self, can_data):
-            """Update CAN bus data in CAN bus tab"""
-            try:
-                if hasattr(self, 'can_bus_tab') and self.can_bus_tab:
-                    self.can_bus_tab.update_realtime_data(can_data)
-            except Exception as e:
-                logger.error(f"Error updating CAN bus data: {e}")
-
-        def run_full_scan(self):
-            """Execute full system scan using diagnostics controller"""
-            if not self.diagnostics_controller:
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "Diagnostics controller not initialized. Please restart the application.")
+                self.tab_widget.removeTab(tab_index)
+                logger.info(f"Removed placeholder for {tab_name}")
+                self.tab_widget.insertTab(tab_index, tab_widget, tab_title)
+                logger.info(f"Inserted real tab for {tab_name}")
+                self.tab_widget.setCurrentIndex(tab_index)                
+                # Mark as loaded
+                self._loaded_tabs.add(tab_name)
+            finally:
+                self.tab_widget.blockSignals(False)            
+            # Store reference for later access
+            setattr(self, f"{tab_name}_tab", tab_instance)            
+            # Connect brand change signals for relevant tabs
+            if tab_name in ['special_functions', 'calibrations']:
+                self.header.brand_combo.currentTextChanged.connect(
+                    getattr(tab_instance, 'refresh_functions_list', lambda: None)
+                )            
+            logger.info(f"✅ Tab loaded successfully: {tab_name}")
+        except Exception as e:
+            logger.error(f"❌ Failed to load tab {tab_name}: {e}")
+            import traceback
+            logger.error(f"Tab loading traceback: {traceback.format_exc()}")
+    def create_status_bar(self):
+        """Create status bar with DACOS styling"""
+        self.statusBar().showMessage("Ready")
+        self.status_label = QLabel("✨ Connect VCI Device to Begin")
+        self.status_label.setProperty("class", "status-label")
+        self.statusBar().addPermanentWidget(self.status_label)
+        # Voltage indicator (will show hardware required)
+        self.voltage_label = QLabel("🔋 Hardware Required")
+        self.voltage_label.setProperty("class", "status-label")
+        self.voltage_label.setStyleSheet("color: #21F5C1; font-weight: bold;")
+        self.voltage_label.setToolTip("Connect VCI device for voltage reading")
+        self.statusBar().addPermanentWidget(self.voltage_label)
+    def change_theme(self, theme_name):
+        """Theme change handler"""
+        try:
+            from shared.theme_manager import get_current_theme_name
+            if theme_name == get_current_theme_name():
                 return
-            
-            # Check if VCI is connected
-            vci_status = self.diagnostics_controller.get_vci_status()
-            if vci_status.get('status') != 'connected':
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "VCI device not connected. Please connect a VCI device first.")
-                return
-            
-            # Execute real scan
-            result = self.diagnostics_controller.run_full_scan()
-            if not result.get("success"):
-                QMessageBox.critical(self, "Scan Failed", 
-                                   f"Full system scan failed: {result.get('error', 'Unknown error')}")
-
-        def read_dtcs(self):
-            """Read diagnostic trouble codes using diagnostics controller"""
-            if not self.diagnostics_controller:
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "Diagnostics controller not initialized. Please restart the application.")
-                return
-            
-            # Check if VCI is connected
-            vci_status = self.diagnostics_controller.get_vci_status()
-            if vci_status.get('status') != 'connected':
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "VCI device not connected. Please connect a VCI device first.")
-                return
-            
-            # Execute real DTC read
-            result = self.diagnostics_controller.read_dtcs()
-            if not result.get("success"):
-                QMessageBox.critical(self, "DTC Read Failed", 
-                                   f"Failed to read DTCs: {result.get('error', 'Unknown error')}")
-
-        def clear_dtcs(self):
-            """Clear diagnostic trouble codes using diagnostics controller"""
-            if not self.diagnostics_controller:
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "Diagnostics controller not initialized. Please restart the application.")
-                return
-            
-            # Check if VCI is connected
-            vci_status = self.diagnostics_controller.get_vci_status()
-            if vci_status.get('status') != 'connected':
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "VCI device not connected. Please connect a VCI device first.")
-                return
-            
-            # Execute real DTC clear
-            result = self.diagnostics_controller.clear_dtcs()
-            if not result.get("success"):
-                QMessageBox.critical(self, "DTC Clear Failed", 
-                                   f"Failed to clear DTCs: {result.get('error', 'Unknown error')}")
-
-        def start_live_stream(self):
-            """Start live data streaming using diagnostics controller"""
-            if not self.diagnostics_controller:
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "Diagnostics controller not initialized. Please restart the application.")
-                return
-            
-            # Check if VCI is connected
-            vci_status = self.diagnostics_controller.get_vci_status()
-            if vci_status.get('status') != 'connected':
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "VCI device not connected. Please connect a VCI device first.")
-                return
-            
-            # Execute real live stream start
-            result = self.diagnostics_controller.start_live_stream()
-            if not result.get("success"):
-                QMessageBox.critical(self, "Live Stream Failed", 
-                                   f"Failed to start live data stream: {result.get('error', 'Unknown error')}")
-            else:
-                # Start realtime CAN bus monitoring
-                if hasattr(self, 'can_bus_tab') and self.can_bus_tab:
-                    self.can_bus_tab.start_realtime_monitoring()
-
-        def stop_live_stream(self):
-            """Stop live data streaming using diagnostics controller"""
-            if not self.diagnostics_controller:
-                return
-            
-            # Execute real live stream stop
-            result = self.diagnostics_controller.stop_live_stream()
-            if not result.get("success"):
-                QMessageBox.critical(self, "Stop Stream Failed", 
-                                   f"Failed to stop live data stream: {result.get('error', 'Unknown error')}")
-            else:
-                # Stop realtime CAN bus monitoring
-                if hasattr(self, 'can_bus_tab') and self.can_bus_tab:
-                    self.can_bus_tab.stop_realtime_monitoring()
-
-        def run_quick_scan(self):
-            """Quick scan using diagnostics controller"""
-            if not self.diagnostics_controller:
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "Diagnostics controller not initialized. Please restart the application.")
-                return
-            
-            # Check if VCI is connected
-            vci_status = self.diagnostics_controller.get_vci_status()
-            if vci_status.get('status') != 'connected':
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "VCI device not connected. Please connect a VCI device first.")
-                return
-            
-            # Execute real quick scan
-            result = self.diagnostics_controller.run_quick_scan()
-            if not result.get("success"):
-                QMessageBox.critical(self, "Quick Scan Failed", 
-                                   f"Quick scan failed: {result.get('error', 'Unknown error')}")
-
-        def show_live_data(self):
-            """Switch to live data tab"""
-            if not self.diagnostics_controller:
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "Diagnostics controller not initialized. Please restart the application.")
-                return
-            
-            # Check if VCI is connected
-            vci_status = self.diagnostics_controller.get_vci_status()
-            if vci_status.get('status') != 'connected':
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "VCI device not connected. Please connect a VCI device first.")
-                return
-            
-            self.tab_widget.setCurrentIndex(2)  # Switch to live data tab
-            self.status_label.setText("📊 Live Data tab selected")
-
-        def show_ecu_info(self):
-            """Show ECU information"""
-            if not self.diagnostics_controller:
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "Diagnostics controller not initialized. Please restart the application.")
-                return
-            
-            # Check if VCI is connected
-            vci_status = self.diagnostics_controller.get_vci_status()
-            if vci_status.get('status') != 'connected':
-                QMessageBox.warning(self, "Hardware Required", 
-                                  "VCI device not connected. Please connect a VCI device first.")
-                return
-            
-            brand = self.header.brand_combo.currentText()
-            result = self.diagnostics_controller.get_ecu_info(brand)
-            
-            if result.get("success"):
-                self.tab_widget.setCurrentIndex(1)  # Switch to diagnostics
-                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'results_text'):
-                    self.diagnostics_tab.results_text.setPlainText(result.get("data", "No ECU information available"))
-                self.status_label.setText(f"💾 ECU info for {brand}")
-            else:
-                QMessageBox.critical(self, "ECU Info Failed", 
-                                   f"Failed to get ECU information: {result.get('error', 'Unknown error')}")
-
-        def secure_logout(self):
-            """Enhanced logout dialog with DACOS styling"""
-            reply = QMessageBox.question(self, "Logout",
-                                        "Are you sure you want to logout?",
-                                        QMessageBox.StandardButton.Yes |
-                                        QMessageBox.StandardButton.No)
+            reply = QMessageBox.question(self, "Change Theme", 
+                                       f"Apply '{theme_name}'?\nApplication restart required.",
+                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)            
             if reply == QMessageBox.StandardButton.Yes:
-                # Clear session file if it exists
-                try:
-                    session_file = os.path.join(os.path.expanduser("~"), ".dacos", "session.json")
-                    if os.path.exists(session_file):
-                        os.remove(session_file)
-                        logger.info("Session file cleared on logout")
-                except Exception as e:
-                    logger.error(f"Failed to clear session file: {e}")
-                
-                self.close()
-
-        def closeEvent(self, event):
-            """Handle window close event with comprehensive crash fix cleanup"""
-            logger.info("AutoDiagPro window close event triggered")
-            
-            # CRASH FIX: Register any active threads for cleanup
-            if hasattr(self, 'app_watchdog') and self.app_watchdog:
-                cleanup_manager = get_thread_cleanup_manager()
-                cleanup_manager.register_thread(self.app_watchdog, "HangProtectionWatchdog")
-                
-            # Stop any active operations
-            if hasattr(self, 'diagnostics_controller') and self.diagnostics_controller:
-                try:
-                    self.diagnostics_controller.stop_live_stream()
-                except:
-                    pass
-            
-            # CRASH FIX: Clean up hang protection with error handling
-            if hasattr(self, 'app_watchdog') and self.app_watchdog:
-                try:
-                    self.app_watchdog.stop()
-                    logger.info("🔒 Hang protection cleaned up safely")
-                except Exception as e:
-                    logger.error(f"❌ Error cleaning up hang protection: {e}")
-            
-            # CRASH FIX: Execute safe shutdown sequence
-            safe_shutdown()
-            
-            super().closeEvent(event)
-            logger.info("✅ AutoDiagPro window closed safely")
-
-        def resizeEvent(self, event):
-            """Handle window resize for responsive layout"""
-            super().resizeEvent(event)
-            if hasattr(self, 'header'):
-                self.header.update_layout()
-
-        # Additional methods expected by diagnostics_tab.py
-        def scan_for_vci(self):
-            """Scan for VCI devices - wrapper for diagnostics controller method"""
-            if not self.diagnostics_controller:
-                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
-                    self.diagnostics_tab.results_text.setPlainText(
-                        "❌ Diagnostics controller not available\n\n"
-                        "Please restart the application."
-                    )
-                return
-            
-            result = self.diagnostics_controller.scan_for_vci_devices()
-            
-            # Update results in diagnostics tab
-            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
-                if result.get("status") == "success":
-                    devices = result.get("devices", [])
-                    if devices:
-                        device_list = "\n".join([
-                            f"• {d['name']} ({d['type']}) on {d.get('port', 'Unknown')}" 
-                            for d in devices
-                        ])
-                        self.diagnostics_tab.results_text.setPlainText(
-                            f"✅ VCI Devices Found\n\n"
-                            f"Discovered {len(devices)} device(s):\n\n{device_list}\n\n"
-                            f"Click 'Connect VCI' to establish connection."
-                        )
-                        self.diagnostics_tab.vci_connect_btn.setEnabled(True)
-                    else:
-                        self.diagnostics_tab.results_text.setPlainText(
-                            "⚠️ No VCI Devices Found\n\n"
-                            "No VCI devices were detected.\n\n"
-                            "Troubleshooting:\n"
-                            "• Ensure your VCI device is connected via USB\n"
-                            "• Check that the device is powered on\n"
-                            "• Verify driver installation\n"
-                            "• Try a different USB port\n"
-                            "• Restart the application"
-                        )
-                        self.diagnostics_tab.vci_connect_btn.setEnabled(False)
+                if save_theme_config(theme_name):
+                    self.status_label.setText(f"✨ Theme changed to {theme_name} - Restart required")
+                    QMessageBox.information(self, "Restart Required", 
+                                          "Theme preference saved.\n\nPlease restart the application to apply changes.")
                 else:
-                    self.diagnostics_tab.results_text.setPlainText(
-                        f"❌ VCI Scan Failed\n\n"
-                        f"Error: {result.get('message', 'Unknown error')}\n\n"
-                        f"Please check your VCI device connection and try again."
-                    )
-                    self.diagnostics_tab.vci_connect_btn.setEnabled(False)
-
-        def connect_vci(self):
-            """Connect to VCI device - wrapper for diagnostics controller method"""
-            if not self.diagnostics_controller:
-                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
-                    self.diagnostics_tab.results_text.setPlainText(
-                        "❌ Diagnostics controller not available\n\n"
-                        "Cannot connect to VCI device."
-                    )
-                return
-            
-            result = self.diagnostics_controller.connect_to_vci(device_index=0)
-            
-            # Update results in diagnostics tab
+                    QMessageBox.warning(self, "Error", "Failed to save theme configuration.")
+            else:
+                # Revert combo box
+                index = self.header.theme_combo.findText(get_current_theme_name())
+                if index >= 0:
+                    self.header.theme_combo.blockSignals(True)
+                    self.header.theme_combo.setCurrentIndex(index)
+                    self.header.theme_combo.blockSignals(False)
+        except Exception as e:
+            logger.error(f"Error changing theme: {e}")
+    def on_brand_changed(self, brand):
+        """Handle brand change"""
+        if brand == "-- Select Brand --":
+            self.status_label.setText("✨ Select a vehicle brand to begin")
+        else:
+            self.status_label.setText(f"🚗 Vehicle brand: {brand} - Connect VCI Device")
+        # Update diagnostics controller with new brand
+        if self.diagnostics_controller:
+            self.diagnostics_controller.set_brand(brand)
+    # UI Callback methods for diagnostics controller
+    def _set_button_enabled(self, button_name, enabled):
+        """Enable/disable buttons"""
+        if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+            if button_name == 'dtc_btn' and hasattr(self.diagnostics_tab, 'dtc_btn'):
+                self.diagnostics_tab.dtc_btn.setEnabled(enabled)
+            elif button_name == 'clear_btn' and hasattr(self.diagnostics_tab, 'clear_btn'):
+                self.diagnostics_tab.clear_btn.setEnabled(enabled)
+    def _set_status_text(self, text):
+        """Set status text"""
+        if hasattr(self, 'status_label'):
+            self.status_label.setText(text)
+    def _set_results_text(self, text):
+        """Set results text in diagnostics tab"""
+        if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'results_text'):
+            self.diagnostics_tab.results_text.setPlainText(text)
+    def _update_card_value(self, card_name, value):
+        """Update card values (placeholder)"""
+        pass
+    def _switch_to_tab(self, index):
+        """Switch to specific tab"""
+        if hasattr(self, 'tab_widget'):
+            self.tab_widget.setCurrentIndex(index)
+    def _show_message_dialog(self, title, text, msg_type="info"):
+        """Show message dialog"""
+        if msg_type == "error":
+            QMessageBox.critical(self, title, text)
+        elif msg_type == "warning":
+            QMessageBox.warning(self, title, text)
+        else:
+            QMessageBox.information(self, title, text)
+    def _update_live_data_table(self, data):
+        """Update live data table"""
+        if hasattr(self, 'live_data_tab') and self.live_data_tab:
+            self.live_data_tab.update_live_data_table(data)
+    def _populate_live_data_table(self, data):
+        """Populate live data table"""
+        if hasattr(self, 'live_data_tab') and self.live_data_tab:
+            self.live_data_tab.populate_live_data_table(data)
+    def _on_vci_status_changed(self, event, data):
+        """Handle VCI status change events"""
+        try:
             if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
-                if result.get("status") == "success":
-                    device = result.get("device", {})
-                    capabilities = ', '.join(device.get('capabilities', ['Unknown']))
-                    
-                    self.diagnostics_tab.results_text.setPlainText(
-                        f"✅ Successfully Connected to VCI\n\n"
-                        f"Device Information:\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"Device Name: {device.get('name', 'Unknown')}\n"
-                        f"Device Type: {device.get('type', 'Unknown')}\n"
-                        f"Port: {device.get('port', 'Unknown')}\n"
-                        f"Capabilities: {capabilities}\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"The VCI device is ready for diagnostics.\n"
-                        f"You can now perform system scans and read DTCs."
-                    )
-                    self.diagnostics_tab.vci_connect_btn.setEnabled(False)
-                    self.diagnostics_tab.vci_disconnect_btn.setEnabled(True)
-                else:
-                    self.diagnostics_tab.results_text.setPlainText(
-                        f"❌ VCI Connection Failed\n\n"
-                        f"Error: {result.get('message', 'Unknown error')}\n\n"
-                        f"Please verify:\n"
-                        f"• VCI device is properly connected\n"
-                        f"• No other application is using the device\n"
-                        f"• Device drivers are installed correctly"
-                    )
-
-        def disconnect_vci(self):
-            """Disconnect from VCI device - wrapper for diagnostics controller method"""
-            if not self.diagnostics_controller:
-                if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
-                    self.diagnostics_tab.results_text.setPlainText(
-                        "❌ Diagnostics controller not available\n\n"
-                        "Cannot disconnect VCI device."
-                    )
-                return
-            
-            result = self.diagnostics_controller.disconnect_vci()
-            
-            # Update results in diagnostics tab
+                self.diagnostics_tab.update_vci_status_display({"status": "connected" if event == "connected" else "disconnected"})
+        except Exception as e:
+            logger.error(f"Error handling VCI status change: {e}")
+    def _update_vci_status_display(self, status_info):
+        """Update VCI status display"""
+        try:
             if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
-                if result.get("status") == "success":
+                self.diagnostics_tab.update_vci_status_display(status_info)
+        except Exception as e:
+            logger.error(f"Error updating VCI status display: {e}")
+    def _update_can_bus_data(self, can_data):
+        """Update CAN bus data in CAN bus tab"""
+        try:
+            if hasattr(self, 'can_bus_tab') and self.can_bus_tab:
+                self.can_bus_tab.update_realtime_data(can_data)
+        except Exception as e:
+            logger.error(f"Error updating CAN bus data: {e}")
+    def run_full_scan(self):
+        """Execute full system scan using diagnostics controller"""
+        if not self.diagnostics_controller:
+            QMessageBox.warning(self, "Hardware Required", 
+                              "Diagnostics controller not initialized. Please restart the application.")
+            return
+        # Check if VCI is connected
+        vci_status = self.diagnostics_controller.get_vci_status()
+        if vci_status.get('status') != 'connected':
+            QMessageBox.warning(self, "Hardware Required", 
+                              "VCI device not connected. Please connect a VCI device first.")
+            return        
+        # Execute real scan
+        result = self.diagnostics_controller.run_full_scan()
+        if not result.get("success"):
+            QMessageBox.critical(self, "Scan Failed", 
+                               f"Full system scan failed: {result.get('error', 'Unknown error')}")
+    def read_dtcs(self):
+        """Read diagnostic trouble codes using diagnostics controller"""
+        if not self.diagnostics_controller:
+            QMessageBox.warning(self, "Hardware Required", 
+                              "Diagnostics controller not initialized. Please restart the application.")
+            return        
+        # Check if VCI is connected
+        vci_status = self.diagnostics_controller.get_vci_status()
+        if vci_status.get('status') != 'connected':
+            QMessageBox.warning(self, "Hardware Required", 
+                              "VCI device not connected. Please connect a VCI device first.")
+            return        
+        # Execute real DTC read
+        result = self.diagnostics_controller.read_dtcs()
+        if not result.get("success"):
+            QMessageBox.critical(self, "DTC Read Failed", 
+                               f"Failed to read DTCs: {result.get('error', 'Unknown error')}")
+    def clear_dtcs(self):
+        """Clear diagnostic trouble codes using diagnostics controller"""
+        if not self.diagnostics_controller:
+            QMessageBox.warning(self, "Hardware Required", 
+                              "Diagnostics controller not initialized. Please restart the application.")
+            return        
+        # Check if VCI is connected
+        vci_status = self.diagnostics_controller.get_vci_status()
+        if vci_status.get('status') != 'connected':
+            QMessageBox.warning(self, "Hardware Required", 
+                              "VCI device not connected. Please connect a VCI device first.")
+            return
+        # Execute real DTC clear
+        result = self.diagnostics_controller.clear_dtcs()
+        if not result.get("success"):
+            QMessageBox.critical(self, "DTC Clear Failed", 
+                               f"Failed to clear DTCs: {result.get('error', 'Unknown error')}")
+    def start_live_stream(self):
+        """Start live data streaming using diagnostics controller"""
+        if not self.diagnostics_controller:
+            QMessageBox.warning(self, "Hardware Required", 
+                              "Diagnostics controller not initialized. Please restart the application.")
+            return        
+        # Check if VCI is connected
+        vci_status = self.diagnostics_controller.get_vci_status()
+        if vci_status.get('status') != 'connected':
+            QMessageBox.warning(self, "Hardware Required", 
+                              "VCI device not connected. Please connect a VCI device first.")
+            return        
+        # Execute real live stream start
+        result = self.diagnostics_controller.start_live_stream()
+        if not result.get("success"):
+            QMessageBox.critical(self, "Live Stream Failed", 
+                               f"Failed to start live data stream: {result.get('error', 'Unknown error')}")
+        else:
+            # Start realtime CAN bus monitoring
+            if hasattr(self, 'can_bus_tab') and self.can_bus_tab:
+                self.can_bus_tab.start_realtime_monitoring()
+    def stop_live_stream(self):
+        """Stop live data streaming using diagnostics controller"""
+        if not self.diagnostics_controller:
+            return
+        # Execute real live stream stop
+        result = self.diagnostics_controller.stop_live_stream()
+        if not result.get("success"):
+            QMessageBox.critical(self, "Stop Stream Failed", 
+                               f"Failed to stop live data stream: {result.get('error', 'Unknown error')}")
+        else:
+            # Stop realtime CAN bus monitoring
+            if hasattr(self, 'can_bus_tab') and self.can_bus_tab:
+                self.can_bus_tab.stop_realtime_monitoring()
+    def run_quick_scan(self):
+        """Quick scan using diagnostics controller"""
+        if not self.diagnostics_controller:
+            QMessageBox.warning(self, "Hardware Required", 
+                              "Diagnostics controller not initialized. Please restart the application.")
+            return
+        # Check if VCI is connected
+        vci_status = self.diagnostics_controller.get_vci_status()
+        if vci_status.get('status') != 'connected':
+            QMessageBox.warning(self, "Hardware Required", 
+                              "VCI device not connected. Please connect a VCI device first.")
+            return        
+        # Execute real quick scan
+        result = self.diagnostics_controller.run_quick_scan()
+        if not result.get("success"):
+            QMessageBox.critical(self, "Quick Scan Failed", 
+                               f"Quick scan failed: {result.get('error', 'Unknown error')}")
+    def show_live_data(self):
+        """Switch to live data tab"""
+        if not self.diagnostics_controller:
+            QMessageBox.warning(self, "Hardware Required", 
+                              "Diagnostics controller not initialized. Please restart the application.")
+            return        
+        # Check if VCI is connected
+        vci_status = self.diagnostics_controller.get_vci_status()
+        if vci_status.get('status') != 'connected':
+            QMessageBox.warning(self, "Hardware Required", 
+                              "VCI device not connected. Please connect a VCI device first.")
+            return        
+        self.tab_widget.setCurrentIndex(2)  # Switch to live data tab
+        self.status_label.setText("📊 Live Data tab selected")
+    def show_ecu_info(self):
+        """Show ECU information"""
+        if not self.diagnostics_controller:
+            QMessageBox.warning(self, "Hardware Required", 
+                              "Diagnostics controller not initialized. Please restart the application.")
+            return        
+        # Check if VCI is connected
+        vci_status = self.diagnostics_controller.get_vci_status()
+        if vci_status.get('status') != 'connected':
+            QMessageBox.warning(self, "Hardware Required", 
+                              "VCI device not connected. Please connect a VCI device first.")
+            return        
+        brand = self.header.brand_combo.currentText()
+        result = self.diagnostics_controller.get_ecu_info(brand)        
+        if result.get("success"):
+            self.tab_widget.setCurrentIndex(1)  # Switch to diagnostics
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab and hasattr(self.diagnostics_tab, 'results_text'):
+                self.diagnostics_tab.results_text.setPlainText(result.get("data", "No ECU information available"))
+            self.status_label.setText(f"💾 ECU info for {brand}")
+        else:
+            QMessageBox.critical(self, "ECU Info Failed", 
+                               f"Failed to get ECU information: {result.get('error', 'Unknown error')}")
+    def secure_logout(self):
+        """Enhanced logout dialog with DACOS styling"""
+        reply = QMessageBox.question(self, "Logout",
+                                    "Are you sure you want to logout?",
+                                    QMessageBox.StandardButton.Yes |
+                                    QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
+            # Clear session file if it exists
+            try:
+                session_file = os.path.join(os.path.expanduser("~"), ".dacos", "session.json")
+                if os.path.exists(session_file):
+                    os.remove(session_file)
+                    logger.info("Session file cleared on logout")
+            except Exception as e:
+                logger.error(f"Failed to clear session file: {e}")
+            
+            self.close()
+
+    def closeEvent(self, event):
+        """Handle window close event with comprehensive crash fix cleanup"""
+        logger.info("AutoDiagPro window close event triggered")
+        
+        # CRASH FIX: Register any active threads for cleanup
+        if hasattr(self, 'app_watchdog') and self.app_watchdog:
+            cleanup_manager = get_thread_cleanup_manager()
+            cleanup_manager.register_thread(self.app_watchdog, "HangProtectionWatchdog")
+            
+        # Stop any active operations
+        if hasattr(self, 'diagnostics_controller') and self.diagnostics_controller:
+            try:
+                self.diagnostics_controller.stop_live_stream()
+            except:
+                pass
+        
+        # CRASH FIX: Clean up hang protection with error handling
+        if hasattr(self, 'app_watchdog') and self.app_watchdog:
+            try:
+                self.app_watchdog.stop()
+                logger.info("🔒 Hang protection cleaned up safely")
+            except Exception as e:
+                logger.error(f"❌ Error cleaning up hang protection: {e}")
+        
+        # CRASH FIX: Execute safe shutdown sequence
+        safe_shutdown()
+        
+        super().closeEvent(event)
+        logger.info("✅ AutoDiagPro window closed safely")
+
+    def resizeEvent(self, event):
+        """Handle window resize for responsive layout"""
+        super().resizeEvent(event)
+        if hasattr(self, 'header'):
+            self.header.update_layout()
+
+    # Additional methods expected by diagnostics_tab.py
+    def scan_for_vci(self):
+        """Scan for VCI devices - wrapper for diagnostics controller method"""
+        if not self.diagnostics_controller:
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                self.diagnostics_tab.results_text.setPlainText(
+                    "❌ Diagnostics controller not available\n\n"
+                    "Please restart the application."
+                )
+            return
+        
+        result = self.diagnostics_controller.scan_for_vci_devices()
+        
+        # Update results in diagnostics tab
+        if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+            if result.get("status") == "success":
+                devices = result.get("devices", [])
+                if devices:
+                    device_list = "\n".join([
+                        f"• {d['name']} ({d['type']}) on {d.get('port', 'Unknown')}" 
+                        for d in devices
+                    ])
                     self.diagnostics_tab.results_text.setPlainText(
-                        "✅ VCI Disconnected Successfully\n\n"
-                        "The VCI device has been safely disconnected.\n\n"
-                        "You can:\n"
-                        "• Scan for devices again\n"
-                        "• Connect to a different VCI\n"
-                        "• Close the application"
+                        f"✅ VCI Devices Found\n\n"
+                        f"Discovered {len(devices)} device(s):\n\n{device_list}\n\n"
+                        f"Click 'Connect VCI' to establish connection."
                     )
                     self.diagnostics_tab.vci_connect_btn.setEnabled(True)
-                    self.diagnostics_tab.vci_disconnect_btn.setEnabled(False)
                 else:
                     self.diagnostics_tab.results_text.setPlainText(
-                        f"❌ VCI Disconnect Failed\n\n"
-                        f"Error: {result.get('message', 'Unknown error')}"
+                        "⚠️ No VCI Devices Found\n\n"
+                        "No VCI devices were detected.\n\n"
+                        "Troubleshooting:\n"
+                        "• Ensure your VCI device is connected via USB\n"
+                        "• Check that the device is powered on\n"
+                        "• Verify driver installation\n"
+                        "• Try a different USB port\n"
+                        "• Restart the application"
                     )
-
-        def get_system_health(self):
-            """Get system health information"""
-            if not self.diagnostics_controller:
-                return {"status": "error", "message": "Diagnostics controller not available"}
-            
-            # This method would need to be implemented in the diagnostics controller
-            # For now, return a basic health status
-            return {
-                "status": "success",
-                "data": {
-                    "vci_status": self.diagnostics_controller.get_vci_status().get("status", "unknown"),
-                    "app_status": "running",
-                    "ui_status": "responsive"
-                }
+                    self.diagnostics_tab.vci_connect_btn.setEnabled(False)
+            else:
+                self.diagnostics_tab.results_text.setPlainText(
+                    f"❌ VCI Scan Failed\n\n"
+                    f"Error: {result.get('message', 'Unknown error')}\n\n"
+                    f"Please check your VCI device connection and try again."
+                )
+                self.diagnostics_tab.vci_connect_btn.setEnabled(False)
+    def connect_vci(self):
+        """Connect to VCI device - wrapper for diagnostics controller method"""
+        if not self.diagnostics_controller:
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                self.diagnostics_tab.results_text.setPlainText(
+                    "❌ Diagnostics controller not available\n\n"
+                    "Cannot connect to VCI device."
+                )
+            return
+        result = self.diagnostics_controller.connect_to_vci(device_index=0)        
+        # Update results in diagnostics tab
+        if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+            if result.get("status") == "success":
+                device = result.get("device", {})
+                capabilities = ', '.join(device.get('capabilities', ['Unknown']))
+                self.diagnostics_tab.results_text.setPlainText(
+                    f"✅ Successfully Connected to VCI\n\n"
+                    f"Device Information:\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"Device Name: {device.get('name', 'Unknown')}\n"
+                    f"Device Type: {device.get('type', 'Unknown')}\n"
+                    f"Port: {device.get('port', 'Unknown')}\n"
+                    f"Capabilities: {capabilities}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"The VCI device is ready for diagnostics.\n"
+                    f"You can now perform system scans and read DTCs."
+                )
+                self.diagnostics_tab.vci_connect_btn.setEnabled(False)
+                self.diagnostics_tab.vci_disconnect_btn.setEnabled(True)
+            else:
+                self.diagnostics_tab.results_text.setPlainText(
+                    f"❌ VCI Connection Failed\n\n"
+                    f"Error: {result.get('message', 'Unknown error')}\n\n"
+                    f"Please verify:\n"
+                    f"• VCI device is properly connected\n"
+                    f"• No other application is using the device\n"
+                    f"• Device drivers are installed correctly"
+                )
+    def disconnect_vci(self):
+        """Disconnect from VCI device - wrapper for diagnostics controller method"""
+        if not self.diagnostics_controller:
+            if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+                self.diagnostics_tab.results_text.setPlainText(
+                    "❌ Diagnostics controller not available\n\n"
+                    "Cannot disconnect VCI device."
+                )
+            return        
+        result = self.diagnostics_controller.disconnect_vci()        
+        # Update results in diagnostics tab
+        if hasattr(self, 'diagnostics_tab') and self.diagnostics_tab:
+            if result.get("status") == "success":
+                self.diagnostics_tab.results_text.setPlainText(
+                    "✅ VCI Disconnected Successfully\n\n"
+                    "The VCI device has been safely disconnected.\n\n"
+                    "You can:\n"
+                    "• Scan for devices again\n"
+                    "• Connect to a different VCI\n"
+                    "• Close the application"
+                )
+                self.diagnostics_tab.vci_connect_btn.setEnabled(True)
+                self.diagnostics_tab.vci_disconnect_btn.setEnabled(False)
+            else:
+                self.diagnostics_tab.results_text.setPlainText(
+                    f"❌ VCI Disconnect Failed\n\n"
+                    f"Error: {result.get('message', 'Unknown error')}"
+                )
+    def get_system_health(self):
+        """Get system health information"""
+        if not self.diagnostics_controller:
+            return {"status": "error", "message": "Diagnostics controller not available"}        
+        # This method would need to be implemented in the diagnostics controller
+        # For now, return a basic health status
+        return {
+            "status": "success",
+            "data": {
+                "vci_status": self.diagnostics_controller.get_vci_status().get("status", "unknown"),
+                "app_status": "running",
+                "ui_status": "responsive"
             }
-
-
+        }
 class HeadlessDiagnostics:
     """Headless diagnostic operations for CLI mode"""
-
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-
     def check_device_detection(self):
         """Check device detection capabilities"""
         self.logger.info("Starting device detection...")
@@ -1495,7 +1298,6 @@ class HeadlessDiagnostics:
                 self.logger.info("✓ J2534 registry detected")
             except FileNotFoundError:
                 self.logger.warning("⚠️ J2534 registry not found")
-
             # Check SocketCAN (though this is Linux-specific)
             try:
                 import socket
@@ -1503,31 +1305,25 @@ class HeadlessDiagnostics:
                 self.logger.info("✓ SocketCAN base available")
             except ImportError:
                 self.logger.info("✓ SocketCAN base available (simulated)")
-
             return True
         except Exception as e:
             self.logger.error(f"Device detection failed: {e}")
             return False
-
     def run_quick_scan(self, brand="Toyota"):
         """Run a quick diagnostic scan - REAL IMPLEMENTATION ONLY"""
-        self.logger.info(f"Running quick scan for {brand}...")
-        
+        self.logger.info(f"Running quick scan for {brand}...")        
         # REAL IMPLEMENTATION - no mock data
         try:
             from AutoDiag.core.diagnostics import DiagnosticsController
-            controller = DiagnosticsController()
-            
+            controller = DiagnosticsController()            
             # Check if VCI device is connected
             vci_status = controller.get_vci_status()
             if vci_status.get('status') != 'connected':
                 self.logger.error("❌ VCI device not connected")
                 self.logger.info("Please connect a VCI device to perform diagnostics")
                 return None
-            
             # Execute real scan
-            result = controller.run_quick_scan()
-            
+            result = controller.run_quick_scan()            
             if result.get("success"):
                 self.logger.info("✅ Quick scan completed successfully")
                 # Log real results
@@ -1537,11 +1333,9 @@ class HeadlessDiagnostics:
             else:
                 self.logger.error(f"❌ Quick scan failed: {result.get('error', 'Unknown error')}")
                 return result
-                
         except Exception as e:
             self.logger.error(f"❌ Quick scan failed with exception: {e}")
             return None
-
     def read_dtcs(self, brand="Toyota"):
         """Read diagnostic trouble codes - REAL IMPLEMENTATION ONLY"""
         self.logger.info(f"Reading DTCs for {brand}...")
@@ -1549,18 +1343,15 @@ class HeadlessDiagnostics:
         # REAL IMPLEMENTATION - no mock data
         try:
             from AutoDiag.core.diagnostics import DiagnosticsController
-            controller = DiagnosticsController()
-            
+            controller = DiagnosticsController()            
             # Check if VCI device is connected
             vci_status = controller.get_vci_status()
             if vci_status.get('status') != 'connected':
                 self.logger.error("❌ VCI device not connected")
                 self.logger.info("Please connect a VCI device to read DTCs")
-                return None
-            
+                return None            
             # Execute real DTC read
             result = controller.read_dtcs()
-            
             if result.get("success"):
                 dtc_data = result.get('data', [])
                 if dtc_data:
@@ -1577,26 +1368,21 @@ class HeadlessDiagnostics:
         except Exception as e:
             self.logger.error(f"❌ DTC read failed with exception: {e}")
             return None
-
     def check_system_health(self):
         """Check overall system health - REAL IMPLEMENTATION ONLY"""
         self.logger.info("Checking system health...")
-        
         # REAL IMPLEMENTATION - no mock data
         try:
             from AutoDiag.core.diagnostics import DiagnosticsController
-            controller = DiagnosticsController()
-            
+            controller = DiagnosticsController()            
             # Check if VCI device is connected
             vci_status = controller.get_vci_status()
             if vci_status.get('status') != 'connected':
                 self.logger.error("❌ VCI device not connected")
                 self.logger.info("System Health: Hardware Required")
-                return {"status": "hardware_required"}
-            
+                return {"status": "hardware_required"}            
             # Get real system health
             health_result = controller.get_system_health()
-            
             if health_result.get("success"):
                 health_data = health_result.get('data', {})
                 self.logger.info("✅ System Health Report:")
@@ -1605,12 +1391,10 @@ class HeadlessDiagnostics:
                 return health_data
             else:
                 self.logger.error(f"❌ System health check failed: {health_result.get('error', 'Unknown error')}")
-                return health_result
-                
+                return health_result                
         except Exception as e:
             self.logger.error(f"❌ System health check failed with exception: {e}")
             return {"status": "error", "error": str(e)}
-
 def main():
     """Main application entry point with DACOS theme and headless support"""
     # Parse command line arguments
@@ -1625,9 +1409,7 @@ def main():
                        help="Check system health")
     parser.add_argument("--brand", default="Toyota",
                        help="Vehicle brand for diagnostics (default: Toyota)")
-
     args = parser.parse_args()
-
     # Check if running in headless mode
     if args.headless or any([args.scan, args.dtc, args.health]):
         # Setup logging
@@ -1635,34 +1417,25 @@ def main():
             level=logging.INFO,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
-
         logger = logging.getLogger(__name__)
         logger.info("🔧 Starting AutoDiag Pro in headless mode - RELEASE VERSION")
-
         # Initialize headless diagnostics
         diagnostics = HeadlessDiagnostics()
-
         try:
             # Perform requested operations
             if args.scan or not any([args.dtc, args.health]):
                 diagnostics.run_quick_scan(args.brand)
-
             if args.dtc:
                 diagnostics.read_dtcs(args.brand)
-
             if args.health:
                 diagnostics.check_system_health()
-
             # Check device detection by default
             diagnostics.check_device_detection()
-
             logger.info("✅ Headless diagnostics completed")
             sys.exit(0)
-
         except Exception as e:
             logger.error(f"❌ Headless diagnostics failed: {e}")
             sys.exit(1)
-
     # Check if PyQt6 is available for GUI mode
     if not PYQT6_AVAILABLE:
         logger.critical("PyQt6 is required but not installed. Please install PyQt6 using: pip install PyQt6")
@@ -1670,46 +1443,36 @@ def main():
         print("Please install PyQt6 using: pip install PyQt6")
         print("Or run the installer again to install dependencies automatically.")
         sys.exit(1)
-
     # GUI mode - create QApplication first before any PyQt operations
     app = QApplication(sys.argv)
     app.setApplicationName("AutoDiag Pro")
-    app.setApplicationVersion("3.1.2")
-
+    app.setApplicationVersion("0.0.2")
     # Set application icon
     icon_path = os.path.join(project_root, 'assets', 'app_icon.ico')
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
-
-
     # Setup logging after app creation
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-
     logger = logging.getLogger(__name__)
-
     try:
         # Apply global theme first
         if style_manager:
             style_manager.set_app(app)
             style_manager.ensure_theme()
-
         # Show login dialog first
         login_dialog = LoginDialog()
         result = login_dialog.exec()
-
         if result == QDialog.DialogCode.Accepted:
             # Login successful, show main window with user info
             user_info = getattr(login_dialog, 'user_info', None)
             logger.info(f"Login successful, user_info: {user_info}")
-
             try:
                 # Create main window
                 window = AutoDiagPro(current_user_info=user_info)
-                logger.info("AutoDiagPro window created successfully")
-                
+                logger.info("AutoDiagPro window created successfully")                
                 try:
                     logger.info("About to show window")
                     window.show()
@@ -1720,7 +1483,6 @@ def main():
                     logger.critical(f"Window show traceback: {traceback.format_exc()}")
                     QMessageBox.critical(None, "Fatal Error", f"Failed to show main window: {e}")
                     sys.exit(1)
-                    
                 try:
                     exit_code = app.exec()
                     logger.info(f"Application exited normally with code: {exit_code}")
@@ -1728,11 +1490,9 @@ def main():
                     logger.critical(f"Exception during event loop: {e}")
                     import traceback
                     logger.critical(f"Event loop traceback: {traceback.format_exc()}")
-                    exit_code = 1
-                    
+                    exit_code = 1                    
                 logger.info(f"Application exited with code: {exit_code}")
-                sys.exit(exit_code)
-                
+                sys.exit(exit_code)                
             except Exception as e:
                 logger.critical(f"Failed to create main window: {e}")
                 import traceback
@@ -1749,6 +1509,5 @@ def main():
         logger.critical(f"Startup traceback: {traceback.format_exc()}")
         QMessageBox.critical(None, "Fatal Error", f"Application failed to start: {e}")
         sys.exit(1)
-
 if __name__ == '__main__':
     main()
