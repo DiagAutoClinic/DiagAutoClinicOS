@@ -78,14 +78,17 @@ docs/AI_IMPLEMENTATION_PLAN.md
 .trae/
 
 # Tests
-tests/
+# Note: tests/ is intentionally tracked so CI can discover and run them.
+# Only AI-generated and local-only test data is excluded:
+tests/ai/
 Windows Test/
-test_*.py
 performance_test*.py
 verify_*test*.py
 trash/
 live_tests/
 parsed_databases/
+# Exclude ad-hoc test scripts outside the tests/ package
+/test_*.py
 
 # Security & Secrets
 *.env
