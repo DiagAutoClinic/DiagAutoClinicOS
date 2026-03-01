@@ -1,6 +1,7 @@
 """
 DiagAutoClinicOS - Central Configuration
 """
+import os
 from pathlib import Path
 
 # === PROJECT STRUCTURE ===
@@ -11,6 +12,15 @@ AUTOECU_DIR = PROJECT_ROOT / 'AutoECU'
 AUTOKEY_DIR = PROJECT_ROOT / 'AutoKey'
 DOCS_DIR = PROJECT_ROOT / 'docs'
 TESTS_DIR = PROJECT_ROOT / 'tests'
+
+# === APPLICATION DATA (Windows: %AppData%\DACOS, Linux/Mac: ~/.dacos) ===
+if os.name == 'nt':
+    _appdata = os.environ.get('APPDATA', os.path.expanduser('~'))
+    APP_DATA_DIR = Path(_appdata) / 'DACOS'
+else:
+    APP_DATA_DIR = Path(os.path.expanduser('~')) / '.dacos'
+
+APP_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # === APPLICATION INFO ===
 APP_NAME = "DiagAutoClinicOS"
@@ -38,7 +48,7 @@ MOCK_MODE_DEFAULT = False
 
 # === LOGGING SETTINGS ===
 LOG_LEVEL = "INFO"
-LOG_FILE = PROJECT_ROOT / "dacos.log"
+LOG_FILE = APP_DATA_DIR / "dacos.log"
 LOG_ROTATION = "1 day"
 LOG_RETENTION = "30 days"
 

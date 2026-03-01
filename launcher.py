@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-DiagAutoClinicOS Launcher - Fixed Vehicle Diagnostics Launch
-FIXES:
-- Proper subprocess detachment (CREATE_NEW_CONSOLE flag)
-- Better process monitoring
-- Cleaner output handling
+DiagAutoClinicOS Launcher
+Production entrypoint for the DiagAutoClinicOS suite on Windows 10/11.
+
+Start-up sequence:
+  1. Initialise logging → %AppData%\\DACOS\\launcher.log
+  2. Check HWID (soft enforcement – warn on change, never hard-lock)
+  3. Show login dialog – gates access to the main diagnostic dashboard
+  4. Present main launcher UI on successful authentication
 """
 
 import sys
@@ -20,31 +23,41 @@ import math
 import platform
 from datetime import datetime
 
-# Configure logging
-log_file = 'launcher_debug.log'
-handlers = [logging.StreamHandler(sys.stdout)]
+# ---------------------------------------------------------------------------
+# Add project root to Python path early so shared modules resolve correctly
+# ---------------------------------------------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
+# ---------------------------------------------------------------------------
+# Configure logging → predictable location (%AppData%\DACOS\launcher.log)
+# ---------------------------------------------------------------------------
 try:
-    handlers.append(logging.FileHandler(log_file, encoding='utf-8'))
-except PermissionError:
-    try:
-        import tempfile
-        log_file = os.path.join(tempfile.gettempdir(), 'launcher_debug.log')
-        handlers.append(logging.FileHandler(log_file, encoding='utf-8'))
-    except Exception:
-        pass # Fallback to just stdout if even temp fails
+    from config import APP_DATA_DIR  # type: ignore
+    _log_dir = APP_DATA_DIR
+except Exception:
+    if os.name == 'nt':
+        _appdata = os.environ.get('APPDATA', os.path.expanduser('~'))
+        _log_dir = Path(_appdata) / 'DACOS'
+    else:
+        _log_dir = Path(os.path.expanduser('~')) / '.dacos'
+    _log_dir.mkdir(parents=True, exist_ok=True)
+
+_log_file = _log_dir / 'launcher.log'
+_handlers: list = [logging.StreamHandler(sys.stdout)]
+try:
+    _handlers.append(logging.FileHandler(str(_log_file), encoding='utf-8'))
+except Exception:
+    pass  # stdout only as fallback
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=handlers
+    handlers=_handlers,
 )
 
 logger = logging.getLogger("DiagLauncher")
-
-# Add project root to Python path
-PROJECT_ROOT = Path(__file__).resolve().parent
-sys.path.insert(0, str(PROJECT_ROOT))
+logger.info("Log file: %s", _log_file)
 
 try:
     from shared.theme_manager import get_theme_dict, AVAILABLE_THEMES, save_config as save_theme_config, get_current_theme_name
@@ -99,9 +112,167 @@ ERROR = to_hex(THEME.get("error", "#ff0000"))
 WARNING = to_hex(THEME.get("warning", "#ffff00"))
 SUCCESS = to_hex(THEME.get("success", "#00ff00"))
 
+# ---------------------------------------------------------------------------
+# HWID manager – soft enforcement on hardware changes
+# ---------------------------------------------------------------------------
+try:
+    from shared.hwid_manager import check_hwid, get_hwid_status_message  # type: ignore
+    _HWID_AVAILABLE = True
+except ImportError as _hwid_err:
+    logger.warning("HWID manager not available: %s", _hwid_err)
+    _HWID_AVAILABLE = False
+    def check_hwid():
+        return ("unavailable", False, False)
+    def get_hwid_status_message(is_first_run, hwid_changed):
+        return None
+
+# ---------------------------------------------------------------------------
+# Authentication backend – use SQLite-based local user DB
+# ---------------------------------------------------------------------------
+try:
+    from shared.user_database_sqlite import UserDatabase as _UserDatabase  # type: ignore
+    _user_db = _UserDatabase()
+    _AUTH_AVAILABLE = True
+    logger.info("Local user database loaded successfully")
+except Exception as _db_err:
+    logger.error("Failed to load user database: %s", _db_err)
+    _user_db = None
+    _AUTH_AVAILABLE = False
+
+
+def _authenticate(username: str, password: str):
+    """
+    Authenticate via the local SQLite user database.
+    Returns (success: bool, message: str, user_info: dict).
+    """
+    if _AUTH_AVAILABLE and _user_db is not None:
+        try:
+            return _user_db.authenticate_user(username, password)
+        except Exception as e:
+            logger.error("Authentication error: %s", e)
+            return False, f"Authentication error: {e}", {}
+    # Fallback: allow entry but mark as unauthenticated
+    logger.warning("Auth not available – falling back to unauthenticated access")
+    return True, "Login successful (auth unavailable)", {"username": username}
+
+
+# ---------------------------------------------------------------------------
+# Tkinter login dialog – gates access to the main diagnostic dashboard
+# ---------------------------------------------------------------------------
+
+class LoginDialog(tk.Toplevel):
+    """
+    Simple tkinter login dialog shown before the main launcher window.
+    Blocks until the user either authenticates or cancels.
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("DiagAutoClinicOS – Secure Login")
+        self.resizable(False, False)
+        self.configure(bg=BG_MAIN)
+        self.result = None  # set to user_info dict on success
+
+        # Make modal
+        self.transient(parent)
+        self.grab_set()
+
+        self._build_ui()
+
+        # Center over parent
+        self.update_idletasks()
+        px = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2
+        py = parent.winfo_y() + (parent.winfo_height() - self.winfo_height()) // 2
+        self.geometry(f"+{px}+{py}")
+
+        self.protocol("WM_DELETE_WINDOW", self._on_cancel)
+        self.bind("<Return>", lambda _e: self._on_login())
+        self.bind("<Escape>", lambda _e: self._on_cancel())
+
+    def _build_ui(self):
+        pad = {"padx": 30, "pady": 8}
+
+        tk.Label(
+            self, text="🔒  DiagAutoClinicOS",
+            fg=ACCENT, bg=BG_MAIN, font=("Segoe UI", 18, "bold"),
+        ).pack(pady=(30, 2))
+        tk.Label(
+            self, text="Secure Login Required",
+            fg=TEXT_MUTED, bg=BG_MAIN, font=("Segoe UI", 10),
+        ).pack(pady=(0, 20))
+
+        form = tk.Frame(self, bg=BG_PANEL, padx=20, pady=15)
+        form.pack(fill="x", **pad)
+
+        tk.Label(form, text="Username:", fg=TEXT_MAIN, bg=BG_PANEL,
+                 font=("Segoe UI", 10)).grid(row=0, column=0, sticky="w", pady=5, padx=(0, 10))
+        self._username_var = tk.StringVar()
+        tk.Entry(form, textvariable=self._username_var, bg=BG_CARD, fg=TEXT_MAIN,
+                 insertbackground=TEXT_MAIN, font=("Segoe UI", 10), width=22,
+                 relief="flat").grid(row=0, column=1, pady=5)
+
+        tk.Label(form, text="Password:", fg=TEXT_MAIN, bg=BG_PANEL,
+                 font=("Segoe UI", 10)).grid(row=1, column=0, sticky="w", pady=5, padx=(0, 10))
+        self._password_var = tk.StringVar()
+        tk.Entry(form, textvariable=self._password_var, show="*", bg=BG_CARD, fg=TEXT_MAIN,
+                 insertbackground=TEXT_MAIN, font=("Segoe UI", 10), width=22,
+                 relief="flat").grid(row=1, column=1, pady=5)
+
+        self._status_var = tk.StringVar()
+        tk.Label(self, textvariable=self._status_var, fg=ERROR, bg=BG_MAIN,
+                 font=("Segoe UI", 9), wraplength=300).pack(**pad)
+
+        btn_frame = tk.Frame(self, bg=BG_MAIN)
+        btn_frame.pack(pady=(0, 25))
+        tk.Button(btn_frame, text="Login", command=self._on_login,
+                  bg=ACCENT, fg=BG_MAIN, font=("Segoe UI", 10, "bold"),
+                  relief="flat", padx=20, pady=6, cursor="hand2").pack(side="left", padx=8)
+        tk.Button(btn_frame, text="Cancel", command=self._on_cancel,
+                  bg=BG_PANEL, fg=TEXT_MAIN, font=("Segoe UI", 10),
+                  relief="flat", padx=20, pady=6, cursor="hand2").pack(side="left", padx=8)
+
+    def _on_login(self):
+        username = self._username_var.get().strip()
+        password = self._password_var.get()
+        if not username or not password:
+            self._status_var.set("⚠️  Username and password are required.")
+            return
+
+        self._status_var.set("Authenticating…")
+        self.update_idletasks()
+
+        success, message, user_info = _authenticate(username, password)
+        if success:
+            logger.info("Login successful for user: %s", username)
+            self.result = user_info
+            self.grab_release()
+            self.destroy()
+        else:
+            logger.warning("Login failed for user '%s': %s", username, message)
+            self._status_var.set(f"❌  {message}")
+            self._password_var.set("")
+
+    def _on_cancel(self):
+        logger.info("Login cancelled by user")
+        self.result = None
+        self.grab_release()
+        self.destroy()
+
+
+def show_login(parent) -> dict | None:
+    """
+    Display the login dialog and return the authenticated user_info dict,
+    or None if the user cancelled.
+    """
+    dlg = LoginDialog(parent)
+    parent.wait_window(dlg)
+    return dlg.result
+
+
 class DiagLauncher(tk.Tk):
-    def __init__(self):
+    def __init__(self, user_info: dict = None):
         super().__init__()
+        self.user_info = user_info or {}
         self.title("DiagAutoClinicOS Launcher - Where Mechanics Meet Future Intelligence")
         self.geometry("1000x650")
         self.configure(bg=BG_MAIN)
@@ -166,9 +337,11 @@ class DiagLauncher(tk.Tk):
         status_frame = tk.Frame(header, bg=BG_PANEL, height=30)
         status_frame.pack(fill="x", padx=50, pady=5)
         status_frame.pack_propagate(False)
-        
+
+        username = self.user_info.get("username", "")
+        user_label = f"👤 {username}  |  " if username else ""
         self.system_status = tk.Label(status_frame,
-                                     text="SYSTEM READY - All modules operational",
+                                     text=f"{user_label}SYSTEM READY - All modules operational",
                                      fg=GLOW, bg=BG_PANEL, font=("Segoe UI", 10, "bold"))
         self.system_status.pack(side="left", padx=15, pady=5)
 
@@ -529,7 +702,7 @@ class DiagLauncher(tk.Tk):
         reset_dialog = tk.Toplevel(self)
         reset_dialog.title("Service Reset Tools - DiagAutoClinicOS")
         reset_dialog.geometry("600x500")
-        reset_dialog.configure(bg=self.BG_MAIN)
+        reset_dialog.configure(bg=BG_MAIN)
         reset_dialog.resizable(False, False)
 
         # Center the dialog
@@ -538,110 +711,110 @@ class DiagLauncher(tk.Tk):
 
         # Title
         title_label = tk.Label(reset_dialog, text="🔧 Service Reset Tools",
-                              fg=self.ACCENT, bg=self.BG_MAIN,
+                              fg=ACCENT, bg=BG_MAIN,
                               font=("Segoe UI", 16, "bold"))
         title_label.pack(pady=(20, 10))
 
         subtitle_label = tk.Label(reset_dialog,
                                  text="Reset maintenance intervals and service indicators",
-                                 fg=self.TEXT_MUTED, bg=self.BG_MAIN,
+                                 fg=TEXT_MUTED, bg=BG_MAIN,
                                  font=("Segoe UI", 10))
         subtitle_label.pack(pady=(0, 20))
 
         # Service options frame
-        options_frame = tk.Frame(reset_dialog, bg=self.BG_PANEL)
+        options_frame = tk.Frame(reset_dialog, bg=BG_PANEL)
         options_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
         # Oil Service Reset
-        oil_frame = tk.Frame(options_frame, bg=self.BG_CARD, relief="raised", bd=1)
+        oil_frame = tk.Frame(options_frame, bg=BG_CARD, relief="raised", bd=1)
         oil_frame.pack(fill="x", padx=10, pady=5)
 
         oil_title = tk.Label(oil_frame, text="🛢️ Oil Service Reset",
-                            fg=self.TEXT_MAIN, bg=self.BG_CARD,
+                            fg=TEXT_MAIN, bg=BG_CARD,
                             font=("Segoe UI", 12, "bold"))
         oil_title.pack(anchor="w", padx=15, pady=(10, 5))
 
         oil_desc = tk.Label(oil_frame,
                            text="Reset oil change interval and service indicator light",
-                           fg=self.TEXT_MUTED, bg=self.BG_CARD,
+                           fg=TEXT_MUTED, bg=BG_CARD,
                            font=("Segoe UI", 9), justify="left")
         oil_desc.pack(anchor="w", padx=15, pady=(0, 10))
 
         oil_btn = tk.Button(oil_frame, text="Reset Oil Service",
-                           bg=self.ACCENT, fg=self.BG_MAIN,
+                           bg=ACCENT, fg=BG_MAIN,
                            font=("Segoe UI", 10, "bold"),
                            command=lambda: self._perform_oil_reset(reset_dialog))
         oil_btn.pack(anchor="e", padx=15, pady=(0, 10))
 
         # DPF Reset
-        dpf_frame = tk.Frame(options_frame, bg=self.BG_CARD, relief="raised", bd=1)
+        dpf_frame = tk.Frame(options_frame, bg=BG_CARD, relief="raised", bd=1)
         dpf_frame.pack(fill="x", padx=10, pady=5)
 
         dpf_title = tk.Label(dpf_frame, text="🌫️ DPF (Diesel Particulate Filter) Reset",
-                            fg=self.TEXT_MAIN, bg=self.BG_CARD,
+                            fg=TEXT_MAIN, bg=BG_CARD,
                             font=("Segoe UI", 12, "bold"))
         dpf_title.pack(anchor="w", padx=15, pady=(10, 5))
 
         dpf_desc = tk.Label(dpf_frame,
                            text="Reset DPF regeneration cycle and warning indicators",
-                           fg=self.TEXT_MUTED, bg=self.BG_CARD,
+                           fg=TEXT_MUTED, bg=BG_CARD,
                            font=("Segoe UI", 9), justify="left")
         dpf_desc.pack(anchor="w", padx=15, pady=(0, 10))
 
         dpf_btn = tk.Button(dpf_frame, text="Reset DPF",
-                           bg=self.ACCENT, fg=self.BG_MAIN,
+                           bg=ACCENT, fg=BG_MAIN,
                            font=("Segoe UI", 10, "bold"),
                            command=lambda: self._perform_dpf_reset(reset_dialog))
         dpf_btn.pack(anchor="e", padx=15, pady=(0, 10))
 
         # EPB Reset
-        epb_frame = tk.Frame(options_frame, bg=self.BG_CARD, relief="raised", bd=1)
+        epb_frame = tk.Frame(options_frame, bg=BG_CARD, relief="raised", bd=1)
         epb_frame.pack(fill="x", padx=10, pady=5)
 
         epb_title = tk.Label(epb_frame, text="🅿️ EPB (Electronic Parking Brake) Reset",
-                            fg=self.TEXT_MAIN, bg=self.BG_CARD,
+                            fg=TEXT_MAIN, bg=BG_CARD,
                             font=("Segoe UI", 12, "bold"))
         epb_title.pack(anchor="w", padx=15, pady=(10, 5))
 
         epb_desc = tk.Label(epb_frame,
                            text="Calibrate electronic parking brake system",
-                           fg=self.TEXT_MUTED, bg=self.BG_CARD,
+                           fg=TEXT_MUTED, bg=BG_CARD,
                            font=("Segoe UI", 9), justify="left")
         epb_desc.pack(anchor="w", padx=15, pady=(0, 10))
 
         epb_btn = tk.Button(epb_frame, text="Reset EPB",
-                           bg=self.ACCENT, fg=self.BG_MAIN,
+                           bg=ACCENT, fg=BG_MAIN,
                            font=("Segoe UI", 10, "bold"),
                            command=lambda: self._perform_epb_reset(reset_dialog))
         epb_btn.pack(anchor="e", padx=15, pady=(0, 10))
 
         # Maintenance Interval Reset
-        maint_frame = tk.Frame(options_frame, bg=self.BG_CARD, relief="raised", bd=1)
+        maint_frame = tk.Frame(options_frame, bg=BG_CARD, relief="raised", bd=1)
         maint_frame.pack(fill="x", padx=10, pady=5)
 
         maint_title = tk.Label(maint_frame, text="🔧 Maintenance Interval Reset",
-                              fg=self.TEXT_MAIN, bg=self.BG_CARD,
+                              fg=TEXT_MAIN, bg=BG_CARD,
                               font=("Segoe UI", 12, "bold"))
         maint_title.pack(anchor="w", padx=15, pady=(10, 5))
 
         maint_desc = tk.Label(maint_frame,
                              text="Reset all maintenance service intervals and reminders",
-                             fg=self.TEXT_MUTED, bg=self.BG_CARD,
+                             fg=TEXT_MUTED, bg=BG_CARD,
                              font=("Segoe UI", 9), justify="left")
         maint_desc.pack(anchor="w", padx=15, pady=(0, 10))
 
         maint_btn = tk.Button(maint_frame, text="Reset Maintenance",
-                             bg=self.ACCENT, fg=self.BG_MAIN,
+                             bg=ACCENT, fg=BG_MAIN,
                              font=("Segoe UI", 10, "bold"),
                              command=lambda: self._perform_maintenance_reset(reset_dialog))
         maint_btn.pack(anchor="e", padx=15, pady=(0, 10))
 
         # Bottom buttons
-        btn_frame = tk.Frame(reset_dialog, bg=self.BG_MAIN)
+        btn_frame = tk.Frame(reset_dialog, bg=BG_MAIN)
         btn_frame.pack(fill="x", padx=20, pady=(0, 20))
 
         close_btn = tk.Button(btn_frame, text="Close",
-                             bg=self.BG_PANEL, fg=self.TEXT_MAIN,
+                             bg=BG_PANEL, fg=TEXT_MAIN,
                              font=("Segoe UI", 10),
                              command=reset_dialog.destroy)
         close_btn.pack(side="right", padx=(10, 0))
@@ -649,7 +822,7 @@ class DiagLauncher(tk.Tk):
         # Hardware warning
         warning_label = tk.Label(btn_frame,
                                 text="⚠️ Hardware Required: Connect VCI device for actual resets",
-                                fg=self.WARNING, bg=self.BG_MAIN,
+                                fg=WARNING, bg=BG_MAIN,
                                 font=("Segoe UI", 9, "italic"))
         warning_label.pack(side="left")
 
@@ -785,7 +958,7 @@ class DiagLauncher(tk.Tk):
         monitor_dialog = tk.Toplevel(self)
         monitor_dialog.title("Sensor Monitor - DiagAutoClinicOS")
         monitor_dialog.geometry("700x600")
-        monitor_dialog.configure(bg=self.BG_MAIN)
+        monitor_dialog.configure(bg=BG_MAIN)
         monitor_dialog.resizable(False, False)
 
         # Center the dialog
@@ -794,30 +967,30 @@ class DiagLauncher(tk.Tk):
 
         # Title
         title_label = tk.Label(monitor_dialog, text="📊 Sensor Monitor",
-                              fg=self.ACCENT, bg=self.BG_MAIN,
+                              fg=ACCENT, bg=BG_MAIN,
                               font=("Segoe UI", 16, "bold"))
         title_label.pack(pady=(20, 10))
 
         subtitle_label = tk.Label(monitor_dialog,
                                  text="Real-time sensor data visualization and graphing",
-                                 fg=self.TEXT_MUTED, bg=self.BG_MAIN,
+                                 fg=TEXT_MUTED, bg=BG_MAIN,
                                  font=("Segoe UI", 10))
         subtitle_label.pack(pady=(0, 20))
 
         # Main content frame
-        content_frame = tk.Frame(monitor_dialog, bg=self.BG_PANEL)
+        content_frame = tk.Frame(monitor_dialog, bg=BG_PANEL)
         content_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
 
         # Sensor categories
-        categories_frame = tk.Frame(content_frame, bg=self.BG_PANEL)
+        categories_frame = tk.Frame(content_frame, bg=BG_PANEL)
         categories_frame.pack(fill="x", padx=10, pady=10)
 
         # Engine sensors
-        engine_frame = tk.Frame(categories_frame, bg=self.BG_CARD, relief="raised", bd=1)
+        engine_frame = tk.Frame(categories_frame, bg=BG_CARD, relief="raised", bd=1)
         engine_frame.pack(fill="x", pady=5)
 
         engine_title = tk.Label(engine_frame, text="🔥 Engine Sensors",
-                               fg=self.TEXT_MAIN, bg=self.BG_CARD,
+                               fg=TEXT_MAIN, bg=BG_CARD,
                                font=("Segoe UI", 12, "bold"))
         engine_title.pack(anchor="w", padx=15, pady=(10, 5))
 
@@ -825,22 +998,22 @@ class DiagLauncher(tk.Tk):
                          "Engine RPM", "Throttle Position", "Fuel Pressure"]
         engine_text = "• " + "\n• ".join(engine_sensors)
         engine_label = tk.Label(engine_frame, text=engine_text,
-                               fg=self.TEXT_MUTED, bg=self.BG_CARD,
+                               fg=TEXT_MUTED, bg=BG_CARD,
                                font=("Segoe UI", 9), justify="left")
         engine_label.pack(anchor="w", padx=15, pady=(0, 10))
 
         engine_btn = tk.Button(engine_frame, text="Monitor Engine",
-                              bg=self.ACCENT, fg=self.BG_MAIN,
+                              bg=ACCENT, fg=BG_MAIN,
                               font=("Segoe UI", 10, "bold"),
                               command=lambda: self._start_engine_monitoring(monitor_dialog))
         engine_btn.pack(anchor="e", padx=15, pady=(0, 10))
 
         # Transmission sensors
-        trans_frame = tk.Frame(categories_frame, bg=self.BG_CARD, relief="raised", bd=1)
+        trans_frame = tk.Frame(categories_frame, bg=BG_CARD, relief="raised", bd=1)
         trans_frame.pack(fill="x", pady=5)
 
         trans_title = tk.Label(trans_frame, text="⚙️ Transmission Sensors",
-                              fg=self.TEXT_MAIN, bg=self.BG_CARD,
+                              fg=TEXT_MAIN, bg=BG_CARD,
                               font=("Segoe UI", 12, "bold"))
         trans_title.pack(anchor="w", padx=15, pady=(10, 5))
 
@@ -848,22 +1021,22 @@ class DiagLauncher(tk.Tk):
                         "Line Pressure", "Shift Solenoid Status"]
         trans_text = "• " + "\n• ".join(trans_sensors)
         trans_label = tk.Label(trans_frame, text=trans_text,
-                              fg=self.TEXT_MUTED, bg=self.BG_CARD,
+                              fg=TEXT_MUTED, bg=BG_CARD,
                               font=("Segoe UI", 9), justify="left")
         trans_label.pack(anchor="w", padx=15, pady=(0, 10))
 
         trans_btn = tk.Button(trans_frame, text="Monitor Transmission",
-                             bg=self.ACCENT, fg=self.BG_MAIN,
+                             bg=ACCENT, fg=BG_MAIN,
                              font=("Segoe UI", 10, "bold"),
                              command=lambda: self._start_transmission_monitoring(monitor_dialog))
         trans_btn.pack(anchor="e", padx=15, pady=(0, 10))
 
         # Brake system sensors
-        brake_frame = tk.Frame(categories_frame, bg=self.BG_CARD, relief="raised", bd=1)
+        brake_frame = tk.Frame(categories_frame, bg=BG_CARD, relief="raised", bd=1)
         brake_frame.pack(fill="x", pady=5)
 
         brake_title = tk.Label(brake_frame, text="🛑 Brake System Sensors",
-                              fg=self.TEXT_MAIN, bg=self.BG_CARD,
+                              fg=TEXT_MAIN, bg=BG_CARD,
                               font=("Segoe UI", 12, "bold"))
         brake_title.pack(anchor="w", padx=15, pady=(10, 5))
 
@@ -871,45 +1044,45 @@ class DiagLauncher(tk.Tk):
                         "Brake Fluid Level", "Parking Brake Status"]
         brake_text = "• " + "\n• ".join(brake_sensors)
         brake_label = tk.Label(brake_frame, text=brake_text,
-                              fg=self.TEXT_MUTED, bg=self.BG_CARD,
+                              fg=TEXT_MUTED, bg=BG_CARD,
                               font=("Segoe UI", 9), justify="left")
         brake_label.pack(anchor="w", padx=15, pady=(0, 10))
 
         brake_btn = tk.Button(brake_frame, text="Monitor Brakes",
-                             bg=self.ACCENT, fg=self.BG_MAIN,
+                             bg=ACCENT, fg=BG_MAIN,
                              font=("Segoe UI", 10, "bold"),
                              command=lambda: self._start_brake_monitoring(monitor_dialog))
         brake_btn.pack(anchor="e", padx=15, pady=(0, 10))
 
         # Live data display area
-        data_frame = tk.Frame(content_frame, bg=self.BG_CARD, relief="sunken", bd=1)
+        data_frame = tk.Frame(content_frame, bg=BG_CARD, relief="sunken", bd=1)
         data_frame.pack(fill="both", expand=True, padx=10, pady=(10, 10))
 
         data_title = tk.Label(data_frame, text="📈 Live Sensor Data",
-                             fg=self.TEXT_MAIN, bg=self.BG_CARD,
+                             fg=TEXT_MAIN, bg=BG_CARD,
                              font=("Segoe UI", 12, "bold"))
         data_title.pack(pady=(10, 5))
 
         # Text area for live data
         self.live_data_text = tk.Text(data_frame, height=8, width=60,
-                                     bg=self.BG_PANEL, fg=self.TEXT_MAIN,
+                                     bg=BG_PANEL, fg=TEXT_MAIN,
                                      font=("Consolas", 9))
         self.live_data_text.pack(padx=10, pady=(0, 10), fill="both", expand=True)
         self.live_data_text.insert("1.0", "🔌 Connect VCI device to start monitoring sensors...\n\n"
                                         "Available sensors will be displayed here with real-time values.")
 
         # Control buttons
-        btn_frame = tk.Frame(monitor_dialog, bg=self.BG_MAIN)
+        btn_frame = tk.Frame(monitor_dialog, bg=BG_MAIN)
         btn_frame.pack(fill="x", padx=20, pady=(0, 20))
 
         stop_btn = tk.Button(btn_frame, text="Stop Monitoring",
-                            bg=self.ERROR, fg=self.BG_MAIN,
+                            bg=ERROR, fg=BG_MAIN,
                             font=("Segoe UI", 10, "bold"),
                             command=lambda: self._stop_sensor_monitoring(monitor_dialog))
         stop_btn.pack(side="right", padx=(10, 0))
 
         close_btn = tk.Button(btn_frame, text="Close",
-                             bg=self.BG_PANEL, fg=self.TEXT_MAIN,
+                             bg=BG_PANEL, fg=TEXT_MAIN,
                              font=("Segoe UI", 10),
                              command=monitor_dialog.destroy)
         close_btn.pack(side="right", padx=(10, 0))
@@ -917,7 +1090,7 @@ class DiagLauncher(tk.Tk):
         # Hardware warning
         warning_label = tk.Label(btn_frame,
                                 text="⚠️ Hardware Required: Connect VCI device for live data",
-                                fg=self.WARNING, bg=self.BG_MAIN,
+                                fg=WARNING, bg=BG_MAIN,
                                 font=("Segoe UI", 9, "italic"))
         warning_label.pack(side="left")
 
@@ -942,9 +1115,48 @@ class DiagLauncher(tk.Tk):
 if __name__ == "__main__":
     try:
         logger.info("Starting DiagAutoClinicOS Launcher")
+
+        # --- Step 1: HWID check (before any windows) ---
+        hwid_changed = False
+        if _HWID_AVAILABLE:
+            try:
+                hwid_hash, is_first_run, hwid_changed = check_hwid()
+                logger.info("HWID: %s… (first_run=%s, changed=%s)",
+                            hwid_hash[:12], is_first_run, hwid_changed)
+            except Exception as he:
+                logger.error("HWID check failed: %s", he)
+
+        # --- Step 2: Create main window but keep it hidden during login ---
         app = DiagLauncher()
+        app.withdraw()  # hide until login succeeds
+
+        # --- Step 3: HWID warning (soft enforcement) ---
+        if hwid_changed:
+            msg = get_hwid_status_message(False, True)
+            if msg:
+                messagebox.showwarning("Hardware Change Detected", msg, parent=app)
+
+        # --- Step 4: Login dialog ---
+        user_info = show_login(app)
+        if user_info is None:
+            logger.info("Login cancelled – exiting")
+            app.destroy()
+            sys.exit(0)
+
+        # --- Step 5: Update user info in UI and show main window ---
+        app.user_info = user_info
+        username = user_info.get("username", "")
+        if username and hasattr(app, "system_status"):
+            app.system_status.config(
+                text=f"👤 {username}  |  SYSTEM READY - All modules operational"
+            )
+        app.deiconify()
         app.mainloop()
         logger.info("DiagAutoClinicOS Launcher closed successfully")
     except Exception as e:
-        logger.critical(f"Fatal error in launcher: {e}")
-        messagebox.showerror("Critical Error", f"Launcher failed to start:\n{str(e)}")
+        logger.critical("Fatal error in launcher: %s", e, exc_info=True)
+        try:
+            messagebox.showerror("Critical Error", f"Launcher failed to start:\n{e}")
+        except Exception:
+            pass
+        sys.exit(1)
