@@ -33,8 +33,8 @@ logger = logging.getLogger("ECU_Emulator")
 
 # Constants
 ECU_REQUEST_ID = b'\x00\x00\x07\xE0'  # What the scanner sends to us
-ECU_RESPONSE_ID = b'\x00\x00\x07\E8' # What we send back
-BROADCAST_ID = b'\x00\x00\x07\DF'    # Functional addressing
+ECU_RESPONSE_ID = b'\x00\x00\x07\xE8' # What we send back
+BROADCAST_ID = b'\x00\x00\x07\xDF'    # Functional addressing
 
 # Simulation State
 class ECUState:
