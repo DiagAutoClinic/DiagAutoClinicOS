@@ -1,12 +1,25 @@
-# Python
-__pycache__/
+# =========================================================
+
+# DiagAutoClinicOS .gitignore
+
+# Protects secrets, AI data, runtime artifacts and local envs
+
+# =========================================================
+
+# ---------------------------------------------------------
+
+# Python / Build Artifacts
+
+# ---------------------------------------------------------
+
+**pycache**/
 *.py[cod]
 *$py.class
 *.so
 .Python
 build/
-develop-eggs/
 dist/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
@@ -19,8 +32,14 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+*.spec
 
-# Virtual environments
+# ---------------------------------------------------------
+
+# Virtual Environments
+
+# ---------------------------------------------------------
+
 venv/
 .venv/
 .venv32/
@@ -29,31 +48,78 @@ ENV/
 env.bak/
 venv.bak/
 
-# IDE
+# ---------------------------------------------------------
+
+# IDE / Editor Files
+
+# ---------------------------------------------------------
+
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 
-# OS
+# ---------------------------------------------------------
+
+# OS Artifacts
+
+# ---------------------------------------------------------
+
 .DS_Store
 Thumbs.db
 
-# Build artifacts
-dist/
-build/
-*.spec
+# ---------------------------------------------------------
 
-# Application specific
+# Runtime / Application Output
+
+# ---------------------------------------------------------
+
+logs/
+Output/
 *.log
+*_crash_log.txt
+restricted*.lock
+
+# ---------------------------------------------------------
+
+# Databases & Local Runtime Data
+
+# ---------------------------------------------------------
+
 *.db
+*.sqlite
 *.sqlite3
 users.json
-dacos_ai.sh
 
-# Excluded AI components
+# ---------------------------------------------------------
+
+# Secrets & Credentials (NEVER COMMIT)
+
+# ---------------------------------------------------------
+
+*.env
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+token.json
+client_secrets.json
+auth.json
+login.json
+
+# ---------------------------------------------------------
+
+# AI / Training Data (LOCAL ONLY)
+
+# ---------------------------------------------------------
+
 ai/
 ai_offline_training/
+ai_training_data/
 charlemaine_training_data/
 training_data/
 training_data_smoke/
@@ -61,75 +127,35 @@ vin_for_dacos/
 vin_storage/
 vin_storage_test/
 vin_truth_storage/
+
 *.h5
 *.keras
 *.pkl
 *.weights.h5
 
-# Charlemaine Strict Exclusion
+# ---------------------------------------------------------
+
+# Charlemaine AI (Strict Isolation)
+
+# ---------------------------------------------------------
+
 *charlemaine*
 *Charlemaine*
+
 scripts/charlemaine.py
 scripts/train_charlemaine_final.py
 scripts/training_generator.py
+
 ai_agent/
 tests/ai/
 docs/AI_IMPLEMENTATION_PLAN.md
-.trae/
 
-# Tests
-# Note: tests/ is intentionally tracked so CI can discover and run them.
-# Only AI-generated and local-only test data is excluded:
-tests/ai/
-Windows Test/
-performance_test*.py
-verify_*test*.py
-trash/
-live_tests/
-parsed_databases/
-# Exclude ad-hoc test scripts outside the tests/ package
-/test_*.py
+# ---------------------------------------------------------
 
-# Security & Secrets
-*.env
-*.pem
-*.key
-*.p12
-credentials.json
-token.json
-client_secrets.json
-*.ps1
+# Large Data / OEM Data
 
-# Backups & Crash Logs
-can_bus_data_backup/
-*_crash_log.txt
-*.bak
+# ---------------------------------------------------------
 
-# Documentation & Unnecessary Files
-*.pdf
-
-# Internal security verification (keep off GitHub)
-verify_*.py
-*verifier*.py
-*validation_harness*.py
-results of verifier*.txt
-DACOS Alpha Security Hardening Plan v2.md
-Security Hardening & Release Verification Plan.md
-docs/ALPHA_*REPORT.md
-docs/SECURITY_AUDIT.md
-docs/TELEMETRY_POLICY.md
-_TRASH_TO_REVIEW/
-AutoDiag/core/security.py
-shared/build_verifier.py
-shared/capability_gate.py
-shared/kill_switch.py
-shared/restricted_mode.py
-shared/telemetry_guard.py
-
-# Website (deployed separately)
-dacos.co.za/
-
-# Proprietary / OEM Data
 IMMO/
 can_bus_data/
 prognostics_training_data.csv
@@ -138,16 +164,100 @@ synthetic_vin_dataset.*
 *training_data*.csv
 *training_data*.json
 
-# Local runtime artifacts
-logs/
-restricted*.lock
+# ---------------------------------------------------------
 
-# Auto-approve configuration (should never be committed)
-# Large binaries and installers
+# Local Testing / Experimental Workspaces
+
+# ---------------------------------------------------------
+
+trash/
+parsed_databases/
+
+# ---------------------------------------------------------
+
+# Security / Internal Hardening Files
+
+# ---------------------------------------------------------
+
+verify_*.py
+*verifier*.py
+*validation_harness*.py
+results_of_verifier*.txt
+
+DACOS Alpha Security Hardening Plan v2.md
+Security Hardening & Release Verification Plan.md
+docs/ALPHA_*REPORT.md
+docs/SECURITY_AUDIT.md
+docs/TELEMETRY_POLICY.md
+
+_TRASH_TO_REVIEW/
+
+AutoDiag/core/security.py
+shared/build_verifier.py
+shared/capability_gate.py
+shared/kill_switch.py
+shared/restricted_mode.py
+shared/telemetry_guard.py
+
+# ---------------------------------------------------------
+
+# Installers / Binaries
+
+# ---------------------------------------------------------
+
 *.exe
 *.msi
 *.dmg
 Installer/
 drivers/*.exe
 drivers/*.msi
+
+# ---------------------------------------------------------
+
+# Deployment Artifacts
+
+# ---------------------------------------------------------
+
+dacos.co.za/
+
+# ---------------------------------------------------------
+
+# Local Configurations
+
+# ---------------------------------------------------------
+
 auto_approve_config/
+
+# ---------------------------------------------------------
+
+# GitHub Copilot / AI tooling artifacts
+
+# ---------------------------------------------------------
+
+.trae/
+
+# ---------------------------------------------------------
+
+# Tests
+
+# ---------------------------------------------------------
+
+# Tests are INCLUDED in repo.
+
+# Only ignore ad-hoc root test scripts.
+
+#
+
+/test_*.py
+performance_test*.py
+verify_*test*.py
+
+# ---------------------------------------------------------
+
+# Documentation (large binaries optional)
+
+# ---------------------------------------------------------
+
+# Uncomment if you do NOT want PDFs tracked
+
+# *.pdf
