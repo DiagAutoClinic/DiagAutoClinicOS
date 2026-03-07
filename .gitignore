@@ -1,18 +1,12 @@
 # =========================================================
-
 # DiagAutoClinicOS .gitignore
-
 # Protects secrets, AI data, runtime artifacts and local envs
-
 # =========================================================
 
 # ---------------------------------------------------------
-
 # Python / Build Artifacts
-
 # ---------------------------------------------------------
-
-**pycache**/
+__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -35,11 +29,8 @@ wheels/
 *.spec
 
 # ---------------------------------------------------------
-
 # Virtual Environments
-
 # ---------------------------------------------------------
-
 venv/
 .venv/
 .venv32/
@@ -49,11 +40,8 @@ env.bak/
 venv.bak/
 
 # ---------------------------------------------------------
-
 # IDE / Editor Files
-
 # ---------------------------------------------------------
-
 .vscode/
 .idea/
 .cursor/
@@ -61,20 +49,14 @@ venv.bak/
 *.swo
 
 # ---------------------------------------------------------
-
 # OS Artifacts
-
 # ---------------------------------------------------------
-
 .DS_Store
 Thumbs.db
 
 # ---------------------------------------------------------
-
 # Runtime / Application Output
-
 # ---------------------------------------------------------
-
 logs/
 Output/
 *.log
@@ -82,22 +64,16 @@ Output/
 restricted*.lock
 
 # ---------------------------------------------------------
-
 # Databases & Local Runtime Data
-
 # ---------------------------------------------------------
-
 *.db
 *.sqlite
 *.sqlite3
 users.json
 
 # ---------------------------------------------------------
-
 # Secrets & Credentials (NEVER COMMIT)
-
 # ---------------------------------------------------------
-
 *.env
 .env
 .env.*
@@ -112,11 +88,8 @@ auth.json
 login.json
 
 # ---------------------------------------------------------
-
 # AI / Training Data (LOCAL ONLY)
-
 # ---------------------------------------------------------
-
 ai/
 ai_offline_training/
 ai_training_data/
@@ -134,11 +107,8 @@ vin_truth_storage/
 *.weights.h5
 
 # ---------------------------------------------------------
-
 # Charlemaine AI (Strict Isolation)
-
 # ---------------------------------------------------------
-
 *charlemaine*
 *Charlemaine*
 
@@ -151,11 +121,8 @@ tests/ai/
 docs/AI_IMPLEMENTATION_PLAN.md
 
 # ---------------------------------------------------------
-
 # Large Data / OEM Data
-
 # ---------------------------------------------------------
-
 IMMO/
 can_bus_data/
 prognostics_training_data.csv
@@ -165,20 +132,16 @@ synthetic_vin_dataset.*
 *training_data*.json
 
 # ---------------------------------------------------------
-
 # Local Testing / Experimental Workspaces
-
 # ---------------------------------------------------------
-
 trash/
 parsed_databases/
+live_tests/
+Windows Test/
 
 # ---------------------------------------------------------
-
 # Security / Internal Hardening Files
-
 # ---------------------------------------------------------
-
 verify_*.py
 *verifier*.py
 *validation_harness*.py
@@ -200,11 +163,8 @@ shared/restricted_mode.py
 shared/telemetry_guard.py
 
 # ---------------------------------------------------------
-
 # Installers / Binaries
-
 # ---------------------------------------------------------
-
 *.exe
 *.msi
 *.dmg
@@ -213,51 +173,31 @@ drivers/*.exe
 drivers/*.msi
 
 # ---------------------------------------------------------
-
 # Deployment Artifacts
-
 # ---------------------------------------------------------
-
 dacos.co.za/
 
 # ---------------------------------------------------------
-
 # Local Configurations
-
 # ---------------------------------------------------------
-
 auto_approve_config/
 
 # ---------------------------------------------------------
-
 # GitHub Copilot / AI tooling artifacts
-
 # ---------------------------------------------------------
-
 .trae/
 
 # ---------------------------------------------------------
-
 # Tests
-
 # ---------------------------------------------------------
-
 # Tests are INCLUDED in repo.
-
 # Only ignore ad-hoc root test scripts.
-
-#
-
 /test_*.py
 performance_test*.py
 verify_*test*.py
 
 # ---------------------------------------------------------
-
 # Documentation (large binaries optional)
-
 # ---------------------------------------------------------
-
 # Uncomment if you do NOT want PDFs tracked
-
 # *.pdf
