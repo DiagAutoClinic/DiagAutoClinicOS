@@ -1,3 +1,48 @@
+# Copilot Core Rules — DiagAutoClinicOS
+
+These rules apply to all Copilot suggestions inside this repository.
+
+## Scope boundaries
+
+This repository focuses on **diagnostics, CAN analysis, and vehicle communication tooling**.
+
+Copilot must NOT introduce:
+
+- ECU flashing or programming features
+- Immobilizer bypass logic
+- Key programming functionality
+- Security access bypass routines
+- Reverse engineered vendor driver stacks
+- Any functionality that weakens safety protections
+
+These capabilities belong to future modules and are intentionally excluded from the current project scope.
+
+## Version model
+
+The repository follows this version structure:
+
+- Product / suite version: **1.0**
+- Runtime / build version: **3.2.0**
+- Internal lineage: **3.2.x**
+
+Hardcoded version strings should be avoided where possible. Prefer values from `config.py`.
+
+## Engineering principles
+
+Copilot should prefer:
+
+- minimal, targeted changes
+- maintainable architecture
+- thread-safe hardware communication
+- clear documentation
+- explicit error handling
+
+Copilot should NOT:
+
+- rewrite working modules without reason
+- invent files or commands that do not exist
+- change architecture boundaries
+- introduce hidden dependencies
 # GitHub Copilot Instructions — DiagAutoClinicOS (DACOS)
 
 ## 🧭 Project Overview
