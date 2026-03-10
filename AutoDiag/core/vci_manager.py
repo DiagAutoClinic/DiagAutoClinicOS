@@ -1,3 +1,4 @@
+import atexit
 import logging
 import threading
 import time
@@ -14,6 +15,13 @@ try:
 except ImportError:
     # Fallback/Mock for environment without shared modules (e.g. testing)
     pass
+
+# Optional Qt signal support
+try:
+    from PyQt6.QtCore import pyqtSignal, QObject
+    HAS_QT = True
+except ImportError:
+    HAS_QT = False
 
 logger = logging.getLogger(__name__)
 

@@ -17,7 +17,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from shared.j2534_passthru import J2534PassThru, MockJ2534PassThru, J2534Protocol
+from shared.j2534_passthru import J2534PassThru, MockJ2534PassThru, J2534Protocol, J2534Message
 from shared.obdlink_mxplus import OBDLinkMXPlus, CANMessage, OBDLinkProtocol
 
 logger = logging.getLogger(__name__)
@@ -523,45 +523,113 @@ class DualDeviceEngine:
     def _send_uds_request(self, request_data: bytes):
         """
         Send UDS request via primary device (OBDLink MX+).
-        
+
         Args:
             request_data: Raw UDS request bytes (e.g., b'\x22\xF1\x90')
-            
+
         Returns:
             J2534Message: Response object containing raw data
-            
+
         Raises:
-            NotImplementedError: If VCI layer is not connected/implemented
-            ConnectionError: If physical connection fails
+            ConnectionError: If no device is connected or the device does not
+                             support UDS communication.
+            IOError: If the ECU does not respond.
         """
-        try:
-            # Real implementation would send via OBDLink MX+
-            # Critical: No mock data allowed.
-            raise NotImplementedError("Hardware integration pending - VCI Layer not connected")
-            
-        except Exception as e:
-            logger.error(f"Failed to send UDS request: {e}")
-            raise e
+        if not self.session or not self.session.primary_device:
+            raise ConnectionError("No primary device in session")
+
+        primary = self.session.primary_device
+
+        # Use send_uds_request if the primary device supports it (e.g. VCIManager)
+        if hasattr(primary, 'send_uds_request'):
+            response_bytes = primary.send_uds_request(request_data)
+            if response_bytes is None:
+                raise IOError("No response from ECU")
+            return J2534Message(J2534Protocol.ISO15765, data=response_bytes)
+
+        # Fallback: use send_message / read_message directly on a J2534PassThru device
+        if hasattr(primary, 'send_message') and hasattr(primary, 'read_message'):
+            channel_id = getattr(self.session, '_channel_id', None)
+            if channel_id is None:
+                raise ConnectionError("No active protocol channel on primary device")
+            tx_id_bytes = (0x7E0).to_bytes(4, 'big')
+            msg = J2534Message(J2534Protocol.ISO15765, data=tx_id_bytes + request_data)
+            if not primary.send_message(channel_id, msg):
+                raise IOError("Failed to send UDS request")
+            response = primary.read_message(channel_id, timeout_ms=2000)
+            if response is None:
+                raise IOError("No response from ECU")
+            return response
+
+        raise ConnectionError("Primary device does not support UDS communication")
     
     def _parse_dtc_response(self, response_data: bytes) -> List[Tuple[str, str, str]]:
         """
-        Parse DTC response from UDS service 0x19.
-        
+        Parse DTC response from UDS service 0x19 (ReadDTCInformation).
+
+        Per ISO 14229-1 the positive response to subfunction 0x02 (reportDTCByStatusMask)
+        has the layout::
+
+            59 02 <DTCStatusAvailabilityMask> [<DTC byte1> <DTC byte2> <DTC byte3> <status>] ...
+
+        Each DTC record is 4 bytes: 3 DTC bytes + 1 status byte. The standard code
+        is derived from the first two DTC bytes following SAE J2012 / ISO 15031-6::
+
+            bits[15:14] of DTC → system: 00=P, 01=C, 10=B, 11=U
+            bits[13:12] → first digit (0–3)
+            bits[11:8]  → second digit (0–F)
+            bits[7:4]   → third digit  (0–F)
+            bits[3:0]   → fourth digit (0–F)
+
         Args:
-            response_data: Raw response bytes from ECU (including SID + subfunction)
-            
+            response_data: Raw response bytes from the ECU (beginning with the
+                           positive-response SID, i.e. 0x59).
+
         Returns:
             List of tuples: [(code, severity, description), ...]
             Example: [('P0300', 'Medium', 'Random Misfire')]
         """
         if len(response_data) < 4:
             return []
-        
-        # Real parsing logic required (ISO14229)
-        # No hardcoded mocks allowed.
-        # TODO: Implement byte-level DTC parsing
-        
-        return []
+
+        # Validate positive response SID for service 0x19
+        if response_data[0] != 0x59:
+            logger.warning(f"Unexpected SID in DTC response: 0x{response_data[0]:02X}")
+            return []
+
+        # Bytes: [0]=0x59, [1]=subfunction, [2]=StatusAvailabilityMask, [3+]=DTC records
+        dtc_records = response_data[3:]
+        dtcs: List[Tuple[str, str, str]] = []
+
+        # Each record is 4 bytes: 3-byte DTC value + 1-byte status mask
+        for i in range(0, len(dtc_records), 4):
+            if i + 4 > len(dtc_records):
+                break
+            high   = dtc_records[i]
+            mid    = dtc_records[i + 1]
+            # low byte (dtc_records[i+2]) encodes additional OEM info; not used in SAE code
+            status = dtc_records[i + 3]
+
+            # Derive DTC system from the two MSBs of the high byte
+            type_map = {0: 'P', 1: 'C', 2: 'B', 3: 'U'}
+            dtc_type  = type_map.get((high >> 6) & 0x03, 'P')
+            d1 = (high >> 4) & 0x03   # first digit (0–3)
+            d2 =  high       & 0x0F   # second digit (0–F)
+            d3 = (mid  >> 4) & 0x0F   # third digit  (0–F)
+            d4 =  mid        & 0x0F   # fourth digit (0–F)
+            code = f"{dtc_type}{d1}{d2:X}{d3:X}{d4:X}"
+
+            # Determine severity from status byte (ISO 14229-1 Table D.1)
+            if status & 0x08:    # bit 3 – confirmedDTC
+                severity = "High"
+            elif status & 0x04:  # bit 2 – pendingDTC
+                severity = "Medium"
+            else:
+                severity = "Low"
+
+            dtcs.append((code, severity, "Diagnostic Trouble Code"))
+
+        return dtcs
     
     def get_can_statistics(self) -> Dict:
         """Get CAN bus statistics"""
