@@ -5,7 +5,7 @@
 </p>
 
 <h1 align="center">DiagAuto Suite</h1>
-<h3 align="center">Intelligent CAN Diagnostics & Analysis Platform</h3>
+<h3 align="center">Intelligent CAN Diagnostics &amp; Analysis Platform</h3>
 
 <p align="center">
   <strong>Focused • Hardware-Agnostic • Workshop-Grade</strong><br/>
@@ -14,7 +14,7 @@
 
 ---
 
-# 💖 Sponsors / Support
+# Sponsors / Support (most important)
 
 **DiagAutoClinicOS is currently self-funded by the maintainer (Shaun Smit) and is actively seeking sponsors.**
 
@@ -26,7 +26,7 @@ Funding options are also listed in `.github/FUNDING.yml`.
 
 ---
 
-## 🤝 In-Kind Support / Thanks
+## In-Kind Support / Thanks
 
 The following organizations have provided hardware or resources used during development and testing.
 
@@ -41,15 +41,15 @@ The following organizations have provided hardware or resources used during deve
 
 ---
 
-## 📋 Sponsor Policy / Transparency
+## Sponsor Policy / Transparency
 
 Sponsor relationships remain transparent and auditable.
 
-* Sponsor support must never override safety boundaries, Restricted Mode policy, or verification gates.
-* Sponsor influence over security controls is **not permitted**.
-* Security mechanisms remain **fail-closed**.
-* Sponsor-provided code or artifacts must be reviewable and testable.
-* Sponsor acknowledgements remain visible in this repository.
+- Sponsor support must never override safety boundaries, Restricted Mode policy, or verification gates.
+- Sponsor influence over security controls is **not permitted**.
+- Security mechanisms remain **fail-closed**.
+- Sponsor-provided code or artifacts must be reviewable and testable.
+- Sponsor acknowledgements remain visible in this repository.
 
 ---
 
@@ -59,166 +59,78 @@ Sponsor relationships remain transparent and auditable.
 
 The current release focuses exclusively on:
 
-* **CAN diagnostics**
-* **signal analysis**
-* **vehicle communication logging**
+- **CAN diagnostics**
+- **signal analysis**
+- **vehicle communication logging**
 
-ECU flashing, immobilizer operations, and security access tooling are **intentionally excluded** from this release and are planned separately in the long-term roadmap.
+ECU flashing, immobilizer operations, and security access tooling are **intentionally excluded** from the AutoDiag alpha scope and are planned separately in the long-term roadmap.
 
 This design choice prioritizes **stability, safety, and workshop reliability**.
 
 ---
 
-## Versioning (clarified)
+## Versioning
 
-This project uses multiple version identifiers for different purposes.
+This repository contains multiple components with different maturity levels.
 
-| Label                      | Meaning                          | Value     |
-| -------------------------- | -------------------------------- | --------- |
-| **DiagAuto Suite Version** | Product / public release version | **1.0**   |
-| **Installer Version**      | Windows installer build          | **3.2.0** |
-| **Internal Build**         | Runtime build lineage            | **3.2.x** |
+- **AutoDiag**: diagnostics module (alpha readiness target: `v0.1`)
+- **AutoECU**: programming module (alpha readiness target: `v0.1`, safety-gated)
+- **AutoKey**: security/IMMO module (planned)
 
-Implementation note:
+`config.py` currently sets the runtime/build version (example):
 
-`config.py` currently sets:
-
-```
+```python
 APP_VERSION = "3.2.0"
 ```
 
-This value represents the **runtime / build identifier** used by the application.
-
 ---
 
-## 💬 Statement
+## Statement
 
 > "My software will fight you harder to not brick an ECU than most tools fight to stop piracy."
 > — Shaun Smit
 
 ---
 
-# Local-Only Artifacts (Not on GitHub)
-
-To protect the DACOS platform and avoid legal or security exposure, certain artifacts are intentionally **not published** in this repository.
-
-These include:
-
-* OEM or proprietary datasets
-* Immobilizer / ODM vendor bundles
-* Raw workshop CAN captures
-* AI training datasets
-* Offline training outputs and model artifacts
-* Internal verification harnesses
-* Security hardening reports
-* Runtime logs and Restricted Mode lock artifacts
-
----
-
-# ✨ Key Features
-
-* Vehicle compatibility tested across **25+ manufacturers** using standard interfaces (**CAN, OBD-II, and J2534**)
-* Glassmorphic diagnostic interface built with **PyQt6**
-* **Advanced VIN decoding** with Ford and GM recognition
-* Secure **user authentication and role management**
-* **Calibration and reset manager** with Ford / GM service routines
-* Modular architecture allowing tool extensions
-* Cross-platform codebase (Windows-first support for v1.0)
-* Real **J2534 diagnostic communication**
-* Structured CAN reference datasets and signal libraries
-
-### CAN Reference Dataset
-
-The project includes structured CAN reference datasets containing:
-
-* reference CAN captures
-* decoded signals
-* diagnostic patterns
-* workshop research datasets
-
-These datasets support analysis and testing.
-
-> This does **not imply distribution of proprietary OEM databases**.
-
----
-
-# What DiagAuto Suite Does **NOT** Do
-
-To avoid risk and instability, **v1.0 intentionally excludes**:
-
-* ECU flashing or programming
-* key programming
-* immobilizer bypass operations
-* security access routines
-* reverse-engineered vendor drivers
-* custom J2534 driver stacks
-
-These capabilities may be introduced in **future modules**, but are not part of this release.
-
----
-
-# Platform Decision: Windows First
-
-DiagAuto Suite **v1.0** officially supports:
-
-**Windows 10 / 11 (64-bit)**
-
-This decision was made to:
-
-* maximize compatibility with existing diagnostic hardware
-* avoid vendor driver limitations on Linux
-* ensure reliable workshop deployment
-
-The internal architecture remains **platform-agnostic**, allowing future Linux support once hardware abstraction is complete.
-
----
-
 # Repository Layout
 
-```
+This tree is kept in sync with the repository root.
+
+```text
 DiagAutoClinicOS/
-├── .github/              GitHub configuration
-├── AutoDiag/             CAN diagnostics suite
-├── AutoECU/              ECU programming module (future)
-├── AutoKey/              Key / immobilizer module (future)
-├── assets/               Images and static assets
-├── core/                 Core shared logic
-├── data/                 Reference datasets
-├── docs/                 Documentation
-├── drivers/              Hardware driver abstraction
-├── installers/           Windows installer scripts
-├── layout_samples/       UI prototypes
-├── live_tests/           Hardware test scripts
-├── plans/                Architecture plans
-├── pulls/                PR planning notes
-├── resources/            Application resources
-├── scripts/              Utility scripts
-├── shared/               Shared modules
-├── tests/                Automated tests
-├── ui/                   UI components
-├── utils/                General utilities
-├── Windows Test/         Windows-specific testing
-├── launcher.py           Application entry point
-├── config.py             Global configuration
-├── requirements.txt      Runtime dependencies
-└── requirements-dev.txt  Development dependencies
+├── .github/                 GitHub configuration (CI, funding, templates)
+├── AutoDiag/                CAN diagnostics suite (PyQt6)
+├── AutoECU/                 ECU programming module (alpha / safety-gated)
+├── AutoKey/                 Key / immobilizer module (planned)
+├── assets/                  Images and static assets
+├── core/                    Core shared logic
+├── data/                    Reference datasets
+├── docs/                    Documentation
+├── drivers/                 Hardware driver abstraction / J2534 DLL drop-in
+├── installers/              Windows installer scripts
+├── layout_samples/          UI prototypes / layout concepts
+├── live_tests/              Hardware test scripts
+├── plans/                   Architecture plans
+├── pulls/                   PR planning notes
+├── resources/               Application resources
+├── scripts/                 Utility scripts
+├── shared/                  Shared modules
+├── tests/                   Automated tests
+├── ui/                      UI components (shared)
+├── utils/                   General utilities
+├── Windows Test/            Windows-specific testing
+├── check_theme.py           Theme verification helper
+├── check_vci.py             VCI verification helper
+├── config.py                Global configuration
+├── dtc_faults_dataset.json  DTC dataset
+├── launcher.py              Suite launcher (PyQt6)
+├── launch_autodiag.bat      Convenience launcher for AutoDiag
+├── requirements.txt         Runtime dependencies
+├── requirements-dev.txt     Development dependencies
+├── requirements_32bit.txt   32-bit dependency set
+├── pytest.ini               Test configuration
+└── version_info.txt         Version info
 ```
-
----
-
-# Supported Hardware
-
-DiagAuto Suite communicates through **standard diagnostic interfaces**.
-
-| Device                        | Type                | Status    |
-| ----------------------------- | ------------------- | --------- |
-| OBDLink MX+ / EX              | OBD-II Adapter      | Supported |
-| GoDiag GT100 / GT100 Plus GPT | Breakout + GPT      | Supported |
-| Scanmatik 2 / Pro2            | J2534 Pass-Through  | Supported |
-| OpenPort 2.0                  | J2534 Interface     | Supported |
-| Generic USB K-Line Interfaces | Communication Layer | Supported |
-
-Other devices may function but are not officially validated.
 
 ---
 
@@ -226,109 +138,20 @@ Other devices may function but are not officially validated.
 
 ## System Requirements
 
-* Windows 10 / 11 (64-bit)
-* Python 3.10+
-* Administrator privileges for hardware drivers
-* PowerShell terminal
-
----
-
-## Windows Installer
-
-Download from the **GitHub Releases page**.
-
-```
-AutoDiag_Setup_v3.2.0.exe
-```
-
-Installation steps:
-
-1. Download installer
-2. Run as Administrator
-3. Follow installation wizard
-4. Launch AutoDiag from desktop shortcut
-
-Installer features include:
-
-* embedded Python runtime
-* pre-installed dependencies
-* desktop shortcuts
-* Afrikaans language support
-* installer validation checks
-
----
+- Windows 10 / 11 (64-bit)
+- Python 3.10+
+- Administrator privileges for hardware drivers
 
 ## Running from Source
 
-```
+```bash
 git clone https://github.com/DiagAutoClinic/DiagAutoClinicOS.git
 cd DiagAutoClinicOS
-
 python -m venv venv
-venv\Scripts\activate
-
+venv\\Scripts\\activate
 pip install -r requirements.txt
-
 python launcher.py
 ```
-
----
-
-# Architecture Philosophy
-
-DiagAuto Suite separates system responsibilities into clear layers.
-
-* **UI Layer** — PyQt interface
-* **Logic Layer** — CAN intelligence and analysis
-* **Hardware Layer** — device abstraction
-* **Data Layer** — reference datasets and logs
-
-This separation allows future expansion **without breaking v1.0 stability**.
-
----
-
-# Diagnostic Philosophy
-
-Modern vehicles behave as **distributed computer networks**.
-
-DiagAuto Suite approaches diagnostics using systems analysis principles.
-
-* **ECUs** behave as compute nodes
-* **CAN buses** are communication networks
-* **Gateways** act as routing boundaries
-* diagnostics focus on **signal behavior over time**, not only fault codes
-
-This approach enables deeper insight into vehicle behavior beyond traditional scan tools.
-
----
-
-# Project Roadmap
-
-| Component             | Status            |
-| --------------------- | ----------------- |
-| DiagAuto Suite        | Public v1.0 scope |
-| AutoECU (Programming) | Planned 2026      |
-| AutoKey (IMMO / Keys) | Planned 2026      |
-| DACOS Dedicated VCI   | In development    |
-
----
-
-# Contributing
-
-Contributions are welcome.
-
-Please review **CONTRIBUTING.md** before submitting a pull request.
-
-```
-git checkout -b feature/new-module
-git commit -am "Add new module"
-git push origin feature/new-module
-```
-
-Hardware vendors or workshops interested in testing can contact:
-
-**[shaun@diagautoclinic.co.za](mailto:shaun@diagautoclinic.co.za)**
-**[dacos@diagautoclinic.co.za](mailto:dacos@diagautoclinic.co.za)**
 
 ---
 
@@ -336,59 +159,10 @@ Hardware vendors or workshops interested in testing can contact:
 
 This project is licensed under the **GNU General Public License v3.0**.
 
-You may:
-
-* use
-* modify
-* redistribute
-
-with the condition that derivative works remain **GPL-licensed**.
-
-No warranty is provided.
-
 ---
 
 # Author
 
-**Shaun Smit**
-Founder & Lead Engineer — DiagAutoClinic
-
+**Shaun Smit**  
+Founder & Lead Engineer — DiagAutoClinic  
 [shaun@diagautoclinic.co.za](mailto:shaun@diagautoclinic.co.za)
-
----
-
-# Release Highlights
-
-### Build 3.2.0
-
-Major improvements include:
-
-* completed PyQt6 diagnostic interface
-* live vehicle testing with J2534 hardware
-* enhanced Ford / GM diagnostic workflows
-* VIN recognition improvements
-* modular tab architecture
-* improved performance and resource handling
-
----
-
-### Performance Optimization
-
-| Metric         | Result                           |
-| -------------- | -------------------------------- |
-| Startup Time   | Reduced via lazy initialization  |
-| Memory Usage   | Improved through weak references |
-| Responsiveness | Faster UI loading                |
-| Thread Safety  | Improved synchronization         |
-| Resource Leaks | Automatic cleanup mechanisms     |
-
----
-
-### Hardware Validation
-
-| Device           | Status   | Result                  |
-| ---------------- | -------- | ----------------------- |
-| GoDiag GD101     | Complete | 100% success            |
-| OBDLink MX+      | Complete | 552 CAN messages        |
-| Scanmatik 2 Pro  | Complete | Live testing successful |
-| GoDiag GT100+GPT | Complete | Full integration        |
