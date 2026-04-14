@@ -1509,5 +1509,5 @@ def main():
         logger.critical(f"Startup traceback: {traceback.format_exc()}")
         QMessageBox.critical(None, "Fatal Error", f"Application failed to start: {e}")
         sys.exit(1)
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    raise RuntimeError("Run the suite via launcher.py only.")
