@@ -12,16 +12,13 @@ Start-up sequence:
 
 import sys
 import os
-import json
-import importlib
 from pathlib import Path
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 import subprocess
 import logging
 import math
 import platform
-from datetime import datetime
 
 # ---------------------------------------------------------------------------
 # Add project root to Python path early so shared modules resolve correctly
@@ -632,7 +629,8 @@ class DiagLauncher(tk.Tk):
 
         env = os.environ.copy()
         env["PYTHONPATH"] = str(PROJECT_ROOT)
-        env["QT_QPA_PLATFORM"] = "windows"
+        if sys.platform == "win32":
+            env["QT_QPA_PLATFORM"] = "windows"
         # Fix Unicode encoding issues in subprocess
         env["PYTHONIOENCODING"] = "utf-8"
 
@@ -640,13 +638,10 @@ class DiagLauncher(tk.Tk):
             # CRITICAL FIX: Use CREATE_NEW_CONSOLE flag
             # This creates a detached process with its own console
             # Process will continue running even if launcher closes
-            import subprocess
-            
             if sys.platform == "win32":
                 # Windows: Create new console window
                 CREATE_NEW_CONSOLE = 0x00000010
-                DETACHED_PROCESS = 0x00000008
-                
+
                 process = subprocess.Popen(
                     [sys.executable, str(main_py_path)],
                     cwd=str(module_dir),
@@ -695,8 +690,6 @@ class DiagLauncher(tk.Tk):
 
         # For now, show a dialog with available service reset options
         # In future versions, this could launch a dedicated service reset application
-        import tkinter as tk
-        from tkinter import ttk, messagebox
 
         # Create service reset dialog
         reset_dialog = tk.Toplevel(self)
@@ -951,8 +944,6 @@ class DiagLauncher(tk.Tk):
 
         # For now, show a dialog with sensor monitoring options
         # In future versions, this could launch a dedicated sensor monitoring application
-        import tkinter as tk
-        from tkinter import ttk, messagebox
 
         # Create sensor monitor dialog
         monitor_dialog = tk.Toplevel(self)
