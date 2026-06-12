@@ -26,9 +26,15 @@ class AccountManagementDialog(QDialog):
         super().__init__(parent)
         self.current_user = current_user
         self.setWindowTitle("DiagAutoClinicOS - Account Management")
-        self.setModal(True)
-        self.setMinimumSize(900, 700)
+        self.setMinimumSize(900, 600)
         self.resize(1000, 800)
+        self.setSizeGripEnabled(True)
+        self.setWindowFlags(
+            Qt.WindowType.Window |
+            Qt.WindowType.WindowCloseButtonHint |
+            Qt.WindowType.WindowMaximizeButtonHint |
+            Qt.WindowType.WindowMinimizeButtonHint
+        )
         
         # Apply DACOS Theme
         try:
@@ -39,7 +45,13 @@ class AccountManagementDialog(QDialog):
             pass
 
         # Check if user has permission
-        if not security_manager.has_permission(current_user, "user_management"):
+        _ui = security_manager.get_user_info(current_user)
+        _has_access = (
+            _ui.get('role') == 'super_user' or
+            _ui.get('security_level') == 'SUPER' or
+            'user_management' in _ui.get('permissions', [])
+        )
+        if not _has_access:
             QMessageBox.critical(self, "Access Denied",
                                "You do not have permission to access account management.")
             self.reject()
@@ -216,27 +228,38 @@ class AccountManagementDialog(QDialog):
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(5)
 
-        # Edit button
-        edit_btn = QPushButton("✏️")
+        _btn_style = (
+            "QPushButton { padding: 4px 8px; font-size: 11px; font-weight: 600;"
+            " color: #ffffff; border: 1px solid #4a4560; border-radius: 4px;"
+            " background-color: rgba(136,96,244,0.15); }"
+            "QPushButton:hover { background-color: rgba(136,96,244,0.35); }"
+            "QPushButton:disabled { color: #555566; border-color: #2a2a40; }"
+        )
+        _del_style = (
+            "QPushButton { padding: 4px 8px; font-size: 11px; font-weight: 600;"
+            " color: #ff6b6b; border: 1px solid #ff5252; border-radius: 4px;"
+            " background-color: rgba(255,82,82,0.1); }"
+            "QPushButton:hover { background-color: rgba(255,82,82,0.25); }"
+        )
+
+        edit_btn = QPushButton("Edit")
         edit_btn.setToolTip("Edit User")
-        edit_btn.setMaximumWidth(30)
+        edit_btn.setStyleSheet(_btn_style)
         edit_btn.clicked.connect(lambda: self.edit_user(username))
         layout.addWidget(edit_btn)
 
-        # Reset password button
-        reset_btn = QPushButton("🔑")
+        reset_btn = QPushButton("Reset PW")
         reset_btn.setToolTip("Reset Password")
-        reset_btn.setMaximumWidth(30)
+        reset_btn.setStyleSheet(_btn_style)
         reset_btn.clicked.connect(lambda: self.reset_password(username))
         layout.addWidget(reset_btn)
 
-        # Delete button (disabled for self)
+        # Delete button — not rendered for the logged-in user's own row
         if username != self.current_user:
-            delete_btn = QPushButton("🗑️")
+            delete_btn = QPushButton("Delete")
             delete_btn.setToolTip("Delete User")
-            delete_btn.setMaximumWidth(30)
-            delete_btn.clicked.connect(lambda: self.delete_user(username))
-            delete_btn.setProperty("class", "danger")
+            delete_btn.setStyleSheet(_del_style)
+            delete_btn.clicked.connect(lambda checked=False, u=username: self.delete_user(u))
             layout.addWidget(delete_btn)
 
         layout.addStretch()
@@ -387,9 +410,10 @@ class CreateUserDialog(QDialog):
         self.email_input.setPlaceholderText("Enter email (optional)")
         form_layout.addRow("Email:", self.email_input)
 
-        # Tier
+        # Tier — TierSystem names (FREE→ADVANCED, no SUPERUSER)
         self.tier_combo = QComboBox()
-        self.tier_combo.addItems(["BASIC", "STANDARD", "ADVANCED", "PROFESSIONAL"])
+        self.tier_combo.addItems(["FREE", "BASIC", "INTERMEDIATE", "PROFESSIONAL", "ADVANCED"])
+        self.tier_combo.setCurrentText("BASIC")
         form_layout.addRow("Access Tier:", self.tier_combo)
 
         # Initial Password
@@ -422,37 +446,20 @@ class CreateUserDialog(QDialog):
         tier_name = self.tier_combo.currentText()
         password = self.password_input.text()
 
-        # Validation
         if not username or not full_name or not password:
             QMessageBox.warning(self, "Validation Error", "Please fill in all required fields.")
             return
 
-        if len(password) < 8:
-            QMessageBox.warning(self, "Validation Error", "Password must be at least 8 characters long.")
-            return
+        security_level, role = self.user_db._TIER_MAP.get(
+            tier_name, (SecurityLevel.BASIC, UserRole.VIEWER)
+        )
 
-        # Map Tier to Role/Security Level
-        security_level = SecurityLevel.BASIC
-        role = UserRole.VIEWER
-        
-        if tier_name == "PROFESSIONAL":
-            security_level = SecurityLevel.DEALER
-            role = UserRole.DEALER
-        elif tier_name == "ADVANCED":
-            security_level = SecurityLevel.ADVANCED
-            role = UserRole.SUPERVISOR
-        elif tier_name == "STANDARD":
-            security_level = SecurityLevel.STANDARD
-            role = UserRole.TECHNICIAN
-
-        # Create user
-        success, message = self.user_db.add_user(username, password, role, security_level, full_name)
+        success, message = self.user_db.add_user(
+            username, password, role, security_level, full_name,
+            email=email, created_by=self.created_by
+        )
 
         if success:
-            # Update email if provided (since add_user doesn't take email)
-            if email:
-                self.user_db.update_user_details(username, full_name, email, tier_name, "ACTIVE", self.created_by)
-                
             QMessageBox.information(self, "Success", f"User {username} created successfully!")
             self.accept()
         else:
@@ -518,21 +525,11 @@ class EditUserDialog(QDialog):
         # Tier (only if not superuser/self)
         if self.username != self.edited_by:
             self.tier_combo = QComboBox()
-            self.tier_combo.addItems(["BASIC", "STANDARD", "ADVANCED", "PROFESSIONAL"])
-            # Try to match current tier
-            current_tier = self.user_info['tier']
-            # Map back from SecurityLevel name if needed, but get_all_users returns name string
-            # Just do best effort match
+            self.tier_combo.addItems(["FREE", "BASIC", "INTERMEDIATE", "PROFESSIONAL", "ADVANCED"])
+            current_tier = self.user_info['tier']  # now a TierSystem name from get_all_users()
             index = self.tier_combo.findText(current_tier)
             if index >= 0:
                 self.tier_combo.setCurrentIndex(index)
-            elif current_tier == "DEALER":
-                self.tier_combo.setCurrentText("PROFESSIONAL")
-            elif current_tier == "FACTORY":
-                self.tier_combo.addItem("FACTORY")
-                self.tier_combo.setCurrentText("FACTORY")
-                self.tier_combo.setEnabled(False) # Don't edit factory tiers easily
-                
             form_layout.addRow("Access Tier:", self.tier_combo)
         else:
             tier_label = QLabel(f"{self.user_info['tier']} (Cannot change own tier)")

@@ -490,49 +490,9 @@ class CANBusDataTab:
                 logger.error(f"Failed to load CAN database: {e}")
                 self.current_database = None
         else:
-            # Mock DB
-            from dataclasses import dataclass, field
-            from typing import List, Dict
-
-            @dataclass
-            class Sig:
-                name: str
-                unit: str = ""
-                min_value: float = 0
-                max_value: float = 100
-
-            @dataclass
-            class Msg:
-                can_id: int
-                name: str
-                dlc: int = 8
-                signals: list = field(default_factory=list)
-
-            @dataclass
-            class DB:
-                manufacturer: str
-                model: str
-                messages: Dict[int, Msg] = field(default_factory=dict)
-
-            db = DB(m, md)
-            db.messages = {
-                0x7E8: Msg(0x7E8, "ECU_Response", 8, [
-                    Sig("Engine_RPM", "RPM", 0, 8000),
-                    Sig("Vehicle_Speed", "km/h", 0, 300),
-                ]),
-                0x1D0: Msg(0x1D0, "Engine_Data", 8, [
-                    Sig("Throttle", "%", 0, 100),
-                ]),
-                0x3E8: Msg(0x3E8, "Transmission", 8, [
-                    Sig("Gear_Position", "", 0, 6),
-                    Sig("Oil_Temp", "°C", 0, 150),
-                ]),
-                0x2D0: Msg(0x2D0, "ABS_Data", 8, [
-                    Sig("Wheel_Speed_FL", "km/h", 0, 300),
-                    Sig("Wheel_Speed_FR", "km/h", 0, 300),
-                ]),
-            }
-            self.current_database = db
+            logger.error("CAN parser unavailable — cannot load vehicle database")
+            self._log("❌ CAN parser not available. Install the CAN database module.")
+            self.current_database = None
 
         if not self.current_database:
             self._log("❌ Load failed.")
@@ -701,7 +661,7 @@ class CANBusDataTab:
                 if controller.vci_manager and controller.vci_manager.is_connected():
                     self._log("✅ Connected to VCI device for realtime monitoring")
                 else:
-                    self._log("⚠️ No VCI device connected - Using simulated data")
+                    self._log("⚠️ No VCI device connected — CAN monitoring inactive until VCI is connected")
 
     def stop_realtime_monitoring(self):
         """Stop realtime CAN bus monitoring"""

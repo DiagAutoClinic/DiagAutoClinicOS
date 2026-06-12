@@ -5,6 +5,7 @@
 #!/usr/bin/env python3
 
 import logging
+from datetime import datetime
 from PyQt6.QtWidgets import (
     QMainWindow, QTabWidget, QVBoxLayout, QWidget, QFrame,
     QLabel, QComboBox, QHBoxLayout, QMessageBox, QPushButton
@@ -21,10 +22,19 @@ from AutoDiag.ui.calibrations_tab import CalibrationsTab
 from AutoDiag.ui.advanced_tab import AdvancedTab
 from AutoDiag.ui.security_tab import SecurityTab
 from AutoDiag.ui.can_bus_tab import CANBusDataTab
+from AutoDiag.ui.tier_gate_widget import TierGateWidget
 from AutoDiag.core.diagnostics import DiagnosticsController
 from ai.agent import CharlemaineAgent
 
 logger = logging.getLogger(__name__)
+
+# Brand database
+try:
+    from shared.brand_database import get_brand_list
+    BRAND_DATABASE_AVAILABLE = True
+except ImportError:
+    logger.error("Brand database not available - hardware required")
+    BRAND_DATABASE_AVAILABLE = False
 
 class ResponsiveHeader(QFrame):
     """Responsive header with brand selector and user info"""
@@ -34,12 +44,9 @@ class ResponsiveHeader(QFrame):
         self.setMinimumHeight(120)
         self.setMaximumHeight(140)
 
-        self.user_info = user_info or {
-            'username': 'guest',
-            'full_name': 'Guest User',
-            'tier': 'BASIC',
-            'permissions': []
-        }
+        if not user_info:
+            raise ValueError("ResponsiveHeader requires authenticated user_info")
+        self.user_info = user_info
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(25, 15, 25, 15)
@@ -65,8 +72,16 @@ class ResponsiveHeader(QFrame):
         self.brand_combo = QComboBox()
         self.brand_combo.setProperty("class", "combo-glass")
         self.brand_combo.setMinimumWidth(200)
-        brands = ["Toyota", "Honda", "Ford", "BMW", "Mercedes", "Volkswagen", "Nissan", "Hyundai", "GM/Chevrolet", "Subaru"]
-        self.brand_combo.addItems(brands)
+        
+        # Load brands from actual database
+        brands = self._load_brands_from_database()
+        if brands:
+            self.brand_combo.addItems(sorted(brands))
+        else:
+            # Fallback - should not happen as hardware/database required
+            logger.error("No brands loaded from database - hardware/database required")
+            self.brand_combo.addItems(["HARDWARE REQUIRED"])
+        
         self.brand_combo.currentTextChanged.connect(parent.update_brand if parent else lambda x: None)
         layout.addWidget(self.brand_combo)
 
@@ -105,9 +120,10 @@ class ResponsiveHeader(QFrame):
 
 class AutoDiagPro(QMainWindow):
     """Main application window"""
-    def __init__(self, user_info=None, parent=None):
+    def __init__(self, current_user_info=None, vci_manager=None, parent=None):
         super().__init__(parent)
-        self.user_info = user_info or {}
+        self.user_info = current_user_info or {}
+        self.vci_manager = vci_manager
         self.current_brand = "Toyota"
 
         self.setWindowTitle("AutoDiag Pro - Professional Diagnostic Suite v3.1.2")
@@ -125,6 +141,15 @@ class AutoDiagPro(QMainWindow):
             
             # Connect VCI status signals
             self.diagnostics_controller.vci_status_changed.connect(self.on_vci_status_changed)
+
+            # Connect async diagnostic result signals
+            self.diagnostics_controller.scan_completed.connect(self._on_scan_completed)
+            self.diagnostics_controller.dtc_read.connect(self._on_dtc_read)
+            self.diagnostics_controller.dtc_cleared.connect(self._on_dtc_cleared)
+            self.diagnostics_controller.pending_dtc_read.connect(self._on_pending_dtc_read)
+            self.diagnostics_controller.freeze_frame_read.connect(self._on_freeze_frame_read)
+            self.diagnostics_controller.readiness_read.connect(self._on_readiness_read)
+
             logger.info("Core components (Charlemaine, DiagnosticsController) initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize core components: {e}")
@@ -154,57 +179,90 @@ class AutoDiagPro(QMainWindow):
         self.status_label.setProperty("class", "status-text")
         self.statusBar().addWidget(self.status_label)
 
+    def _get_user_tier(self):
+        """Map the logged-in user's SecurityLevel to a subscription Tier enum."""
+        try:
+            from shared.tier_system import Tier
+            mapping = {
+                'BASIC':    Tier.FREE,
+                'STANDARD': Tier.BASIC,
+                'ADVANCED': Tier.INTERMEDIATE,
+                'DEALER':   Tier.PROFESSIONAL,
+                'FACTORY':  Tier.ADVANCED,
+                'SUPER':    Tier.SUPERUSER,
+            }
+            level_name = self.user_info.get('security_level', 'BASIC')
+            return mapping.get(level_name, Tier.FREE)
+        except ImportError:
+            return None
+
+    def _add_tab(self, key, tab_obj_or_widget, title, required_tier, user_tier, create_kwargs=None):
+        """
+        Add a tab to the tab widget, gating it behind TierGateWidget if the user's
+        tier is insufficient. Locked tabs are visible (hidden tabs don't convert).
+        """
+        from shared.tier_system import Tier
+
+        # SUPERUSER and None (tier system unavailable) bypass all gates
+        is_unlocked = (
+            user_tier is None
+            or user_tier == Tier.SUPERUSER
+            or user_tier.value >= required_tier.value
+        )
+
+        if is_unlocked:
+            if callable(tab_obj_or_widget):
+                # It's a factory callable — build the real tab
+                tab_obj = tab_obj_or_widget()
+                if create_kwargs:
+                    result = tab_obj.create_tab(**create_kwargs)
+                else:
+                    result = tab_obj.create_tab()
+                widget = result[0] if isinstance(result, tuple) else result
+                display_title = result[1] if isinstance(result, tuple) else title
+                self.tabs[key] = tab_obj
+            else:
+                widget = tab_obj_or_widget
+                display_title = title
+                self.tabs[key] = widget
+        else:
+            widget = TierGateWidget(required_tier, user_tier, title)
+            display_title = f"🔒 {title}"
+            self.tabs[key] = widget
+
+        self.tab_widget.addTab(widget, display_title)
+
     def setup_tabs(self):
-        """Initialize and add all tabs"""
+        """Initialize and add all tabs, gated by the user's subscription tier."""
+        from shared.tier_system import Tier
         self.tabs = {}
+        user_tier = self._get_user_tier()
 
-        # Dashboard
-        dashboard_tab = DashboardTab(self)
-        tab_widget, title = dashboard_tab.create_tab()
-        self.tab_widget.addTab(tab_widget, title)
-        self.tabs['dashboard'] = dashboard_tab
+        # --- FREE tier (always open) ---
+        self._add_tab('dashboard',   lambda: DashboardTab(self),   "🏠 Dashboard",   Tier.FREE, user_tier)
+        self._add_tab('live_data',   lambda: LiveDataTab(self),    "📊 Live Data",   Tier.FREE, user_tier)
 
-        # Diagnostics
+        # Diagnostics tab returns a plain widget, not a tuple — handle directly
         diagnostics_tab = DiagnosticsTab(self)
-        tab_widget = diagnostics_tab.create_tab()
-        self.tab_widget.addTab(tab_widget, "🔧 Diagnostics")
+        diag_widget = diagnostics_tab.create_tab()
+        self.tab_widget.addTab(diag_widget, "🔧 Diagnostics")
         self.tabs['diagnostics'] = diagnostics_tab
 
-        # Live Data
-        live_data_tab = LiveDataTab(self)
-        tab_widget, title = live_data_tab.create_tab()
-        self.tab_widget.addTab(tab_widget, title)
-        self.tabs['live_data'] = live_data_tab
+        # --- BASIC tier (R249/mo) ---
+        self._add_tab('special',       lambda: SpecialFunctionsTab(self), "⚡ Special Functions", Tier.BASIC,        user_tier)
 
-        # Special Functions
-        special_tab = SpecialFunctionsTab(self)
-        tab_widget, title = special_tab.create_tab()
-        self.tab_widget.addTab(tab_widget, title)
-        self.tabs['special'] = special_tab
+        # --- INTERMEDIATE tier (R599/mo) ---
+        self._add_tab('calibrations',  lambda: CalibrationsTab(self),    "🔩 Calibrations",     Tier.INTERMEDIATE, user_tier)
 
-        # Calibrations & Resets
-        cal_tab = CalibrationsTab(self)
-        tab_widget, title = cal_tab.create_tab()
-        self.tab_widget.addTab(tab_widget, title)
-        self.tabs['calibrations'] = cal_tab
+        # --- PROFESSIONAL tier (R1299/mo) ---
+        self._add_tab('advanced',      lambda: AdvancedTab(self),        "🧠 Advanced",          Tier.PROFESSIONAL, user_tier)
 
-        # Advanced
-        advanced_tab = AdvancedTab(self)
-        tab_widget, title = advanced_tab.create_tab()
-        self.tab_widget.addTab(tab_widget, title)
-        self.tabs['advanced'] = advanced_tab
+        # --- ADVANCED tier (R2499/mo) ---
+        self._add_tab('can_bus',       lambda: CANBusDataTab(self),      "📡 CAN Bus",           Tier.ADVANCED,     user_tier,
+                      create_kwargs={'app': self})
 
-        # CAN Bus
-        can_tab = CANBusDataTab(self)
-        tab_widget, title = can_tab.create_tab(app=self)
-        self.tab_widget.addTab(tab_widget, title)
-        self.tabs['can_bus'] = can_tab
-
-        # Security
-        security_tab = SecurityTab(self)
-        tab_widget, title = security_tab.create_tab()
-        self.tab_widget.addTab(tab_widget, title)
-        self.tabs['security'] = security_tab
+        # --- Security (always open — account management) ---
+        self._add_tab('security',      lambda: SecurityTab(self),        "🔐 Security",          Tier.FREE, user_tier)
 
     def start_timers(self):
         """Start any periodic updates"""
@@ -274,78 +332,171 @@ class AutoDiagPro(QMainWindow):
             self.status_label.setText(f"VCI: {status} | Brand: {self.current_brand}")
 
     def run_full_scan(self):
-        """Execute full system scan via controller"""
+        """Execute full system scan via controller (async — results arrive via scan_completed signal)"""
         if not self.diagnostics_controller:
             QMessageBox.critical(self, "Error", "Diagnostics Controller not initialized")
             return
 
+        vci_status = self.diagnostics_controller.get_vci_status()
+        if vci_status.get('status') != 'connected':
+            QMessageBox.warning(self, "VCI Not Connected", "Please connect a VCI device in the VCI Connection tab first.")
+            return
+
         self.status_label.setText("Running Full System Scan...")
         if 'diagnostics' in self.tabs:
-            self.tabs['diagnostics'].results_text.append(f"\n[{datetime.now().strftime('%H:%M:%S')}] Starting Full System Scan for {self.current_brand}...")
-            # Force UI update
-            QApplication.processEvents()
+            self.tabs['diagnostics'].results_text.append(
+                f"\n[{datetime.now().strftime('%H:%M:%S')}] Full System Scan started for {self.current_brand}..."
+            )
 
         try:
-            # Check VCI first
-            vci_status = self.diagnostics_controller.get_vci_status()
-            if vci_status.get('status') != 'connected':
-                QMessageBox.warning(self, "VCI Not Connected", "Please connect a VCI device in the VCI Connection tab first.")
-                if 'diagnostics' in self.tabs:
-                    self.tabs['diagnostics'].results_text.append("❌ Scan aborted: VCI not connected")
-                return
-
-            # Run scan
-            result = self.diagnostics_controller.run_full_scan(self.current_brand)
-            
-            # Display results
-            if 'diagnostics' in self.tabs:
-                output = f"\nScan Completed: {'SUCCESS' if result.get('success') else 'FAILED'}\n"
-                if result.get('success'):
-                    data = result.get('data', {})
-                    output += f"Modules Scanned: {len(data)}\n"
-                    for module, details in data.items():
-                        output += f"- {module}: {details.get('status', 'Unknown')}\n"
-                        if 'dtcs' in details and details['dtcs']:
-                            output += f"  ⚠️ {len(details['dtcs'])} DTCs found\n"
-                else:
-                    output += f"Error: {result.get('error', 'Unknown error')}\n"
-                
-                self.tabs['diagnostics'].results_text.append(output)
-                
+            self.diagnostics_controller.run_full_scan(self.current_brand)
         except Exception as e:
-            logger.error(f"Scan failed: {e}")
+            logger.error(f"Scan start failed: {e}")
             if 'diagnostics' in self.tabs:
-                self.tabs['diagnostics'].results_text.append(f"❌ Critical Error during scan: {str(e)}")
+                self.tabs['diagnostics'].results_text.append(f"❌ Failed to start scan: {e}")
+            self.status_label.setText(f"Ready | Brand: {self.current_brand}")
 
+    def _on_scan_completed(self, results: dict):
+        """Handle scan_completed signal from DiagnosticsController worker"""
         self.status_label.setText(f"Ready | Brand: {self.current_brand}")
+        if 'diagnostics' not in self.tabs:
+            return
+
+        tab = self.tabs['diagnostics']
+        if results.get('error'):
+            tab.results_text.append(f"❌ Scan error: {results['error']}")
+            return
+
+        modules = results.get('modules', [])
+        dtcs = results.get('dtcs', [])
+        output = f"\n✅ Scan completed — {len(modules)} modules, {len(dtcs)} total DTCs\n"
+
+        for module in modules:
+            output += f"  [{module.get('name', '?')}] {module.get('status', '?')}\n"
+            for dtc in module.get('dtcs', []):
+                output += f"    ⚠️ {dtc.get('code')}: {dtc.get('description')}\n"
+
+        if results.get('ai_fault_prediction'):
+            ai = results['ai_fault_prediction'].get('ai_analysis', {})
+            score = ai.get('health_score', 0.0)
+            output += f"\n🧠 AI Health Score: {int(score * 100)}/100\n"
+            for p in ai.get('fault_predictions', []):
+                output += f"  ⚠️ {p['type'].upper()}: {p['description']} ({int(p['confidence']*100)}%)\n"
+
+        tab.results_text.append(output)
+
+    def _on_dtc_read(self, dtc_data: dict):
+        """Handle dtc_read signal"""
+        self.status_label.setText(f"Ready | Brand: {self.current_brand}")
+        if 'diagnostics' not in self.tabs:
+            return
+        dtcs = dtc_data.get('dtcs', [])
+        if not dtcs:
+            self.tabs['diagnostics'].results_text.append("✅ No DTCs found")
+        else:
+            output = f"\nFound {len(dtcs)} DTC(s):\n"
+            for dtc in dtcs:
+                output += f"  {dtc.get('code')}: {dtc.get('description')} [{dtc.get('status')}]\n"
+            self.tabs['diagnostics'].results_text.append(output)
+
+    def _on_dtc_cleared(self, success: bool):
+        """Handle dtc_cleared signal"""
+        self.status_label.setText(f"Ready | Brand: {self.current_brand}")
+        if 'diagnostics' in self.tabs:
+            if success:
+                self.tabs['diagnostics'].results_text.append("✅ DTCs cleared. Cycle ignition to confirm.")
+            else:
+                self.tabs['diagnostics'].results_text.append("❌ DTC clear failed.")
+
+    def _on_pending_dtc_read(self, data: dict):
+        """Handle pending_dtc_read signal."""
+        self.status_label.setText(f"Ready | Brand: {self.current_brand}")
+        if 'diagnostics' not in self.tabs:
+            return
+        text = self.diagnostics_controller._format_pending_dtc_results(data)
+        self.tabs['diagnostics'].results_text.append(f"\n{text}")
+
+    def _on_freeze_frame_read(self, data: dict):
+        """Handle freeze_frame_read signal."""
+        self.status_label.setText(f"Ready | Brand: {self.current_brand}")
+        if 'diagnostics' not in self.tabs:
+            return
+        text = self.diagnostics_controller._format_freeze_frame(data)
+        self.tabs['diagnostics'].results_text.append(f"\n{text}")
+
+    def _on_readiness_read(self, data: dict):
+        """Handle readiness_read signal."""
+        self.status_label.setText(f"Ready | Brand: {self.current_brand}")
+        if 'diagnostics' not in self.tabs:
+            return
+        text = self.diagnostics_controller._format_readiness_monitors(data)
+        self.tabs['diagnostics'].results_text.append(f"\n{text}")
+
+    def read_pending_dtcs(self):
+        """Read pending DTCs via controller."""
+        if not self.diagnostics_controller:
+            return
+        if 'diagnostics' in self.tabs:
+            self.tabs['diagnostics'].results_text.append(
+                f"\n[{datetime.now().strftime('%H:%M:%S')}] Reading pending DTCs..."
+            )
+        self.status_label.setText("Reading pending DTCs...")
+        try:
+            self.diagnostics_controller.read_pending_dtcs(self.current_brand)
+        except Exception as e:
+            logger.error(f"Read pending DTCs failed: {e}")
+            if 'diagnostics' in self.tabs:
+                self.tabs['diagnostics'].results_text.append(f"❌ Error: {e}")
+
+    def read_freeze_frame(self):
+        """Read freeze frame via controller."""
+        if not self.diagnostics_controller:
+            return
+        if 'diagnostics' in self.tabs:
+            self.tabs['diagnostics'].results_text.append(
+                f"\n[{datetime.now().strftime('%H:%M:%S')}] Reading freeze frame..."
+            )
+        self.status_label.setText("Reading freeze frame...")
+        try:
+            self.diagnostics_controller.read_freeze_frame(self.current_brand)
+        except Exception as e:
+            logger.error(f"Read freeze frame failed: {e}")
+            if 'diagnostics' in self.tabs:
+                self.tabs['diagnostics'].results_text.append(f"❌ Error: {e}")
+
+    def read_readiness_monitors(self):
+        """Read readiness monitors via controller."""
+        if not self.diagnostics_controller:
+            return
+        if 'diagnostics' in self.tabs:
+            self.tabs['diagnostics'].results_text.append(
+                f"\n[{datetime.now().strftime('%H:%M:%S')}] Reading readiness monitors..."
+            )
+        self.status_label.setText("Reading readiness monitors...")
+        try:
+            self.diagnostics_controller.read_readiness_monitors(self.current_brand)
+        except Exception as e:
+            logger.error(f"Read readiness monitors failed: {e}")
+            if 'diagnostics' in self.tabs:
+                self.tabs['diagnostics'].results_text.append(f"❌ Error: {e}")
 
     def read_dtcs(self):
-        """Read DTCs via controller"""
+        """Read DTCs via controller (async — results arrive via dtc_read signal)"""
         if not self.diagnostics_controller:
             return
 
         if 'diagnostics' in self.tabs:
-            self.tabs['diagnostics'].results_text.append(f"\n[{datetime.now().strftime('%H:%M:%S')}] Reading DTCs...")
-            QApplication.processEvents()
+            self.tabs['diagnostics'].results_text.append(
+                f"\n[{datetime.now().strftime('%H:%M:%S')}] Reading DTCs..."
+            )
+        self.status_label.setText("Reading DTCs...")
 
         try:
-            result = self.diagnostics_controller.read_dtcs()
-            
-            if 'diagnostics' in self.tabs:
-                if result.get('success'):
-                    dtcs = result.get('data', [])
-                    output = f"\nFound {len(dtcs)} Diagnostic Trouble Codes:\n"
-                    if not dtcs:
-                        output += "No Fault Codes Detected (System OK)\n"
-                    else:
-                        for dtc in dtcs:
-                            output += f"• {dtc.get('code')}: {dtc.get('description')} [{dtc.get('status')}]\n"
-                    self.tabs['diagnostics'].results_text.append(output)
-                else:
-                    self.tabs['diagnostics'].results_text.append(f"❌ Failed to read DTCs: {result.get('error')}")
-
+            self.diagnostics_controller.read_dtcs()
         except Exception as e:
             logger.error(f"Read DTCs failed: {e}")
+            if 'diagnostics' in self.tabs:
+                self.tabs['diagnostics'].results_text.append(f"❌ Read DTCs error: {e}")
 
     def clear_dtcs(self):
         """Clear DTCs via controller"""
@@ -353,26 +504,25 @@ class AutoDiagPro(QMainWindow):
             return
 
         reply = QMessageBox.question(
-            self, "Clear DTCs", 
+            self, "Clear DTCs",
             "Are you sure you want to clear all diagnostic trouble codes?\nThis will reset engine check lights.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
-        
         if reply != QMessageBox.StandardButton.Yes:
             return
 
         if 'diagnostics' in self.tabs:
-            self.tabs['diagnostics'].results_text.append(f"\n[{datetime.now().strftime('%H:%M:%S')}] Clearing DTCs...")
-            QApplication.processEvents()
+            self.tabs['diagnostics'].results_text.append(
+                f"\n[{datetime.now().strftime('%H:%M:%S')}] Clearing DTCs..."
+            )
+        self.status_label.setText("Clearing DTCs...")
 
         try:
-            result = self.diagnostics_controller.clear_dtcs()
-            
+            self.diagnostics_controller.clear_dtcs()
+        except Exception as e:
+            logger.error(f"Clear DTCs failed: {e}")
             if 'diagnostics' in self.tabs:
-                if result.get('success'):
-                    self.tabs['diagnostics'].results_text.append("✅ DTCs Cleared Successfully. Cycle ignition to verify.")
-                else:
-                    self.tabs['diagnostics'].results_text.append(f"❌ Failed to clear DTCs: {result.get('error')}")
+                self.tabs['diagnostics'].results_text.append(f"❌ Clear DTCs error: {e}")
 
         except Exception as e:
             logger.error(f"Clear DTCs failed: {e}")
@@ -384,6 +534,13 @@ class AutoDiagPro(QMainWindow):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply == QMessageBox.StandardButton.Yes:
+            # Stop any running diagnostic workers before exit
+            if self.diagnostics_controller:
+                for attr in ('_scan_worker', '_dtc_worker', '_clear_worker'):
+                    worker = getattr(self.diagnostics_controller, attr, None)
+                    if worker and worker.isRunning():
+                        worker.quit()
+                        worker.wait(2000)
             logger.info("Application closing - goodbye!")
             event.accept()
         else:

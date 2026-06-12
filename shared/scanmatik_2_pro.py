@@ -627,7 +627,7 @@ class ScanMatik2Pro:
         }
 
 
-def create_scanmatik_2_pro_handler(mock_mode: bool = True, device_name: str = "ScanMatik 2 Pro") -> ScanMatik2Pro:
+def create_scanmatik_2_pro_handler(mock_mode: bool = False, device_name: str = "ScanMatik 2 Pro") -> ScanMatik2Pro:
     """Factory function to create ScanMatik 2 Pro handler"""
     return ScanMatik2Pro(mock_mode=mock_mode, device_name=device_name)
 

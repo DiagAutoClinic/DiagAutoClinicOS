@@ -24,10 +24,21 @@ class SecurityTab:
         security_frame.setProperty("class", "glass-card")
         security_layout = QVBoxLayout(security_frame)
 
-        user_info = QLabel("Current User: Demo Technician\n"
-                          "Security Level: BASIC\n"
-                          "Access: Standard Diagnostics\n"
-                          "Session: Active")
+        _ui = getattr(self.parent, 'current_user_info', {}) or {}
+        _name     = _ui.get('full_name') or _ui.get('username', 'Unknown')
+        _tier     = _ui.get('security_level') or _ui.get('tier', 'BASIC')
+        _username = _ui.get('username', 'unknown')
+        _perms    = _ui.get('permissions', [])
+        _access   = 'Full System Access' if 'user_management' in _perms else \
+                    'Advanced Diagnostics' if 'full_diagnostics' in _perms else \
+                    'Standard Diagnostics'
+
+        user_info = QLabel(
+            f"Current User: {_name}\n"
+            f"Security Level: {_tier}\n"
+            f"Access: {_access}\n"
+            f"Session: Active | {_username}"
+        )
         user_info.setProperty("class", "section-title")
 
         security_layout.addWidget(user_info)

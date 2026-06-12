@@ -277,41 +277,14 @@ class CalibrationsResetsManager:
         return required_level <= 3
     
     def _execute_brand_procedure(self, brand: str, procedure_id: str, parameters: Dict) -> Dict:
-        """Execute brand-specific procedure"""
-        
-        # Mock implementations
-        if "steering" in procedure_id:
-            return self._execute_steering_calibration(brand, procedure_id)
-        elif "battery" in procedure_id:
-            return self._execute_battery_reset(brand, procedure_id, parameters)
-        
-        return {"success": True, "message": "Procedure completed successfully"}
-    
-    def _execute_steering_calibration(self, brand: str, procedure_id: str) -> Dict:
-        """Execute steering angle calibration"""
+        """Execute brand-specific procedure via VCI"""
         return {
-            "success": True,
-            "message": f"{brand} steering angle calibration completed",
-            "steps_completed": [
-                "Steering angle sensor zero point set",
-                "Left and right stop positions learned",
-                "Calibration values stored",
-                "System test completed successfully"
-            ],
-            "verification": "Steering angle reading: 0.0° (centered)"
-        }
-    
-    def _execute_battery_reset(self, brand: str, procedure_id: str, parameters: Dict) -> Dict:
-        """Execute battery reset/registration"""
-        return {
-            "success": True,
-            "message": f"{brand} battery registration completed",
-            "details": {
-                "battery_type": parameters.get('battery_type', 'Unknown'),
-                "capacity": parameters.get('capacity', 'Unknown'),
-                "registration_date": "2024-01-01",
-                "power_management_updated": True
-            }
+            "success": False,
+            "error": "VCI hardware required",
+            "message": (
+                f"Procedure '{procedure_id}' cannot execute without a connected VCI device. "
+                "Connect a VCI in the VCI Connection tab, then retry."
+            ),
         }
 
 # Singleton instance

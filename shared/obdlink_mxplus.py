@@ -675,7 +675,7 @@ class OBDLinkMXPlus:
             return ""
 
 
-def create_obdlink_mxplus(mock_mode: bool = True) -> OBDLinkMXPlus:
+def create_obdlink_mxplus(mock_mode: bool = False) -> OBDLinkMXPlus:
     """Factory function to create OBDLink MX+ instance"""
     return OBDLinkMXPlus(mock_mode=mock_mode)
 

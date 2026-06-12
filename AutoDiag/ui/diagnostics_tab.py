@@ -20,6 +20,9 @@ class DiagnosticsTab:
         self.scan_btn = None
         self.dtc_btn = None
         self.clear_btn = None
+        self.pending_btn = None
+        self.freeze_btn = None
+        self.readiness_btn = None
         self.results_text = None
         self.vci_status_label = None
 
@@ -105,6 +108,35 @@ class DiagnosticsTab:
         buttons_layout.addStretch()
 
         control_layout.addLayout(buttons_layout)
+
+        # ADVANCED DIAGNOSTICS ROW — Bosch Service Center features
+        advanced_layout = QHBoxLayout()
+        advanced_layout.setSpacing(15)
+
+        self.pending_btn = QPushButton("Pending DTCs")
+        self.pending_btn.setProperty("class", "secondary")
+        self.pending_btn.setFixedHeight(40)
+        self.pending_btn.setToolTip("Mode $07 — faults detected but not yet confirmed")
+        self.pending_btn.clicked.connect(self.parent.read_pending_dtcs)
+
+        self.freeze_btn = QPushButton("Freeze Frame")
+        self.freeze_btn.setProperty("class", "secondary")
+        self.freeze_btn.setFixedHeight(40)
+        self.freeze_btn.setToolTip("Mode $02 — sensor snapshot at DTC trigger point")
+        self.freeze_btn.clicked.connect(self.parent.read_freeze_frame)
+
+        self.readiness_btn = QPushButton("Readiness Monitors")
+        self.readiness_btn.setProperty("class", "secondary")
+        self.readiness_btn.setFixedHeight(40)
+        self.readiness_btn.setToolTip("Mode $01 PID $01 — emission readiness status")
+        self.readiness_btn.clicked.connect(self.parent.read_readiness_monitors)
+
+        advanced_layout.addWidget(self.pending_btn)
+        advanced_layout.addWidget(self.freeze_btn)
+        advanced_layout.addWidget(self.readiness_btn)
+        advanced_layout.addStretch()
+
+        control_layout.addLayout(advanced_layout)
         layout.addWidget(control_frame)
 
         # RESULTS AREA

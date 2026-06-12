@@ -63,6 +63,13 @@ Output/
 *_crash_log.txt
 restricted*.lock
 
+# CAN bus captures (vehicle-specific data, NEVER COMMIT)
+can_log_*
+*.dbc
+*.asc
+*.trc
+*.pcapng
+
 # ---------------------------------------------------------
 # Databases & Local Runtime Data
 # ---------------------------------------------------------
@@ -70,6 +77,12 @@ restricted*.lock
 *.sqlite
 *.sqlite3
 users.json
+
+# DTC / Diagnostic data (vehicle-specific, NEVER COMMIT)
+dtc_faults_dataset.json
+dtc_model_metadata_*
+pid_*
+sensor_calibration_*
 
 # ---------------------------------------------------------
 # Secrets & Credentials (NEVER COMMIT)
@@ -161,6 +174,50 @@ shared/capability_gate.py
 shared/kill_switch.py
 shared/restricted_mode.py
 shared/telemetry_guard.py
+
+# ---------------------------------------------------------
+# Auth & User Database (NEVER COMMIT — public repo)
+# ---------------------------------------------------------
+AutoDiag/ui/login_dialog.py
+AutoDiag/ui/password_change_dialog.py
+ui/login_dialog.py
+scripts/check_password.py
+shared/user_database.py
+shared/user_database_sqlite.py
+shared/dtc_database.py
+shared/dtc_database_sql.py
+shared/dtc_database_sqlite.py
+shared/dtc_database_sqlite_backup.py
+AutoDiag/core/can_database_sqlite.py
+core/can_database.py
+core/security.py
+core/dacos_vin_truth_engin.py
+docs/ADVANCED_PASSWORD_HASHING.md
+docs/reports/LOGIN_ISSUE_FIX_REPORT.md
+
+# ---------------------------------------------------------
+# CAN / Vehicle / VIN Data (NEVER COMMIT)
+# ---------------------------------------------------------
+CAN_Files/
+CAN_DBC/
+Vehicle_CAN_Files_REF/
+dacos vin/
+dacos-core/
+analyze_dbc.py
+get_vin_dtcs_final.py
+
+# Customer vehicle files
+audi-tt/
+*.eeprom
+*.EPR
+*.FLS
+*.sgo
+
+# ---------------------------------------------------------
+# Virtual Environments (all variants)
+# ---------------------------------------------------------
+.venv*/
+venv*/
 
 # ---------------------------------------------------------
 # Installers / Binaries

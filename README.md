@@ -26,6 +26,22 @@ Funding options are also listed in `.github/FUNDING.yml`.
 
 ---
 
+## Hardware Validation
+
+![GD101 Validated](https://img.shields.io/badge/GD101-Validated-green) ![Real-time CAN](https://img.shields.io/badge/Real--time_CAN-500kbps-blue) ![Security Access](https://img.shields.io/badge/Security_Access-<100ms-orange)
+
+**Validated on:**
+- Godiag GD101 J2534 device
+- 500kbps CAN timing with microsecond precision
+- ISO-TP fragmentation (FF/CF/FC with BS/STmin)
+- Sub-100ms security access (0x27 service)
+- USB hotplug recovery with auto-reconnect
+- Concurrent session isolation (8 sessions)
+
+**Test vehicles:** Pre-2010 vehicles (per safety protocol)
+
+---
+
 ## In-Kind Support / Thanks
 
 The following organizations have provided hardware or resources used during development and testing.

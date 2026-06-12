@@ -58,7 +58,7 @@ class CANBusDataManager:
                 return False
             
             # Detect file format and parse accordingly
-            if file_path.suffix.lower() == '.ref':
+            if file_path.suffix.lower() in ('.ref', '.dbc'):
                 success = self._parse_ref_format(file_path, brand)
             elif file_path.suffix.lower() == '.csv':
                 success = self._parse_csv_format(file_path, brand)
@@ -67,6 +67,7 @@ class CANBusDataManager:
             else:
                 logger.error(f"Unsupported file format: {file_path.suffix}")
                 return False
+
             
             if success:
                 self.current_brand = brand
@@ -82,22 +83,28 @@ class CANBusDataManager:
             return False
     
     def _parse_ref_format(self, file_path: Path, brand: str) -> bool:
-        """Parse proprietary .REF format - supports Racelogic format"""
+        """Parse proprietary .REF or .DBC format — DBC‑backed."""
         try:
-            # First try to detect if it's a Racelogic file
+            # Detect file type
+            ext = file_path.suffix.lower()
+
+            # .dbc → direct DBC-backed RacelogicParser
+            if ext == '.dbc':
+                return self._parse_racelogic_format(file_path, brand)
+
+            # .ref — check if binary Racelogic or text
             with open(file_path, 'rb') as f:
                 header = f.read(100)
-            
+
             if b'Racelogic' in header:
-                # Use Racelogic parser
                 return self._parse_racelogic_format(file_path, brand)
             else:
-                # Try text-based REF format
                 return self._parse_text_ref_format(file_path, brand)
-            
+
         except Exception as e:
             logger.error(f"Error detecting REF format: {e}")
             return False
+
     
     def _parse_racelogic_format(self, file_path: Path, brand: str) -> bool:
         """Parse Racelogic CAN Data File format"""

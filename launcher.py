@@ -5,10 +5,10 @@ Production entrypoint for the DiagAutoClinicOS suite on Windows 10/11.
 
 Start-up sequence:
   1. Initialise logging → %AppData%\\DACOS\\launcher.log
-  2. Check HWID (soft enforcement – warn on change, never hard-lock)
-  3. Show login dialog – gates access to the main diagnostic dashboard
-  4. Present main launcher UI on successful authentication
+  2. Show login dialog – gates access to the main diagnostic dashboard
+  3. Present main launcher UI on successful authentication
 """
+
 
 import sys
 import os
@@ -21,13 +21,35 @@ import subprocess
 import logging
 import math
 import platform
+import threading
 from datetime import datetime
+
+# --- Alpha Test Mode ---
+# Credentials are now managed by shared/security_manager.py
+# Default users: testuser / TestUserAlpha2026!  and  supernova / Charaun@8576
+ALPHA_TEST_MODE = True  # Enables brand unlock, checklist, Charlemaine buttons
+CHARLEMAINE_LOCAL = True
 
 # ---------------------------------------------------------------------------
 # Add project root to Python path early so shared modules resolve correctly
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# ---------------------------------------------------------------------------
+# Use project virtual environment if available (cross-platform)
+# ---------------------------------------------------------------------------
+if os.name == 'nt':
+    _venv_python = PROJECT_ROOT / "venv" / "Scripts" / "python.exe"
+else:
+    _venv_python = PROJECT_ROOT / "venv" / "bin" / "python"
+
+if _venv_python.exists():
+    import subprocess as _sp
+    _test = _sp.run([str(_venv_python), "-c", "import encodings"], capture_output=True)
+    VENV_PYTHON_PATH = _venv_python if _test.returncode == 0 else sys.executable
+else:
+    VENV_PYTHON_PATH = sys.executable
 
 # ---------------------------------------------------------------------------
 # Configure logging → predictable location (%AppData%\DACOS\launcher.log)
@@ -113,47 +135,39 @@ WARNING = to_hex(THEME.get("warning", "#ffff00"))
 SUCCESS = to_hex(THEME.get("success", "#00ff00"))
 
 # ---------------------------------------------------------------------------
-# HWID manager – soft enforcement on hardware changes
+# Authentication backend — use the unified security manager
 # ---------------------------------------------------------------------------
-try:
-    from shared.hwid_manager import check_hwid, get_hwid_status_message  # type: ignore
-    _HWID_AVAILABLE = True
-except ImportError as _hwid_err:
-    logger.warning("HWID manager not available: %s", _hwid_err)
-    _HWID_AVAILABLE = False
-    def check_hwid():
-        return ("unavailable", False, False)
-    def get_hwid_status_message(is_first_run, hwid_changed):
-        return None
 
-# ---------------------------------------------------------------------------
-# Authentication backend – use SQLite-based local user DB
-# ---------------------------------------------------------------------------
 try:
-    from shared.user_database_sqlite import UserDatabase as _UserDatabase  # type: ignore
-    _user_db = _UserDatabase()
+    # Use the SINGLE shared instance — creating a second EnhancedSecurityManager()
+    # causes dual in-memory copies of users.json that fight each other.
+    from shared.security_manager import security_manager as _security  # type: ignore
     _AUTH_AVAILABLE = True
-    logger.info("Local user database loaded successfully")
-except Exception as _db_err:
-    logger.error("Failed to load user database: %s", _db_err)
-    _user_db = None
+    logger.info("Security manager loaded successfully (shared instance)")
+except Exception as _sec_err:
+    logger.error("Failed to load security manager: %s", _sec_err)
+    _security = None
     _AUTH_AVAILABLE = False
+
 
 
 def _authenticate(username: str, password: str):
     """
-    Authenticate via the local SQLite user database.
+    Authenticate via the unified security manager.
     Returns (success: bool, message: str, user_info: dict).
     """
-    if _AUTH_AVAILABLE and _user_db is not None:
+    if _AUTH_AVAILABLE and _security is not None:
         try:
-            return _user_db.authenticate_user(username, password)
+            success, message, user_info = _security.authenticate_user(username, password)
+            if success and user_info:
+                return True, message, user_info
+            return False, message or "Invalid credentials", {}
         except Exception as e:
             logger.error("Authentication error: %s", e)
             return False, f"Authentication error: {e}", {}
-    # Fallback: allow entry but mark as unauthenticated
-    logger.warning("Auth not available – falling back to unauthenticated access")
-    return True, "Login successful (auth unavailable)", {"username": username}
+    # Fallback: security unavailable — deny access
+    logger.critical("Security manager unavailable — denying access")
+    return False, "Security system unavailable. Contact your administrator.", {}
 
 
 # ---------------------------------------------------------------------------
@@ -162,28 +176,45 @@ def _authenticate(username: str, password: str):
 
 class LoginDialog(tk.Toplevel):
     """
-    Simple tkinter login dialog shown before the main launcher window.
-    Blocks until the user either authenticates or cancels.
+    Tkinter login dialog shown before the main launcher window.
+    Runs password hashing (scrypt) in a background thread to keep the UI responsive.
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent, on_complete):
+        """
+        Args:
+            parent: parent Tk widget (withdrawn root)
+            on_complete: callback(user_info_dict | None) called on success or cancel
+        """
         super().__init__(parent)
         self.title("DiagAutoClinicOS – Secure Login")
         self.resizable(False, False)
         self.configure(bg=BG_MAIN)
         self.result = None  # set to user_info dict on success
+        self.on_complete = on_complete
+        self._authenticating = False
 
-        # Make modal
+        # Make modal — transient + topmost first, then grab_set() after
+        # the dialog is realized.  grab_set() on a Toplevel of a withdrawn
+        # parent can deadlock on Windows Tk; we use a 1x1 transparent root
+        # instead (see _run_login_flow) so grab_set() is safe here.
         self.transient(parent)
-        self.grab_set()
+        self.attributes('-topmost', True)
 
         self._build_ui()
 
-        # Center over parent
+        # Center on screen (parent is a 1x1 transparent stub)
         self.update_idletasks()
-        px = parent.winfo_x() + (parent.winfo_width() - self.winfo_width()) // 2
-        py = parent.winfo_y() + (parent.winfo_height() - self.winfo_height()) // 2
+        sw = self.winfo_screenwidth()
+        sh = self.winfo_screenheight()
+        w = self.winfo_reqwidth()
+        h = self.winfo_reqheight()
+        px = (sw - w) // 2
+        py = (sh - h) // 2
         self.geometry(f"+{px}+{py}")
+
+        self.grab_set()
+        self.focus_force()
 
         self.protocol("WM_DELETE_WINDOW", self._on_cancel)
         self.bind("<Return>", lambda _e: self._on_login())
@@ -224,49 +255,215 @@ class LoginDialog(tk.Toplevel):
 
         btn_frame = tk.Frame(self, bg=BG_MAIN)
         btn_frame.pack(pady=(0, 25))
-        tk.Button(btn_frame, text="Login", command=self._on_login,
+        self._login_btn = tk.Button(btn_frame, text="Login", command=self._on_login,
                   bg=ACCENT, fg=BG_MAIN, font=("Segoe UI", 10, "bold"),
-                  relief="flat", padx=20, pady=6, cursor="hand2").pack(side="left", padx=8)
+                  relief="flat", padx=20, pady=6, cursor="hand2")
+        self._login_btn.pack(side="left", padx=8)
         tk.Button(btn_frame, text="Cancel", command=self._on_cancel,
                   bg=BG_PANEL, fg=TEXT_MAIN, font=("Segoe UI", 10),
                   relief="flat", padx=20, pady=6, cursor="hand2").pack(side="left", padx=8)
 
     def _on_login(self):
+        """Initiate login — runs scrypt auth in a background thread to keep UI responsive."""
+        if self._authenticating:
+            return  # Prevent double-submit
+
         username = self._username_var.get().strip()
         password = self._password_var.get()
         if not username or not password:
             self._status_var.set("⚠️  Username and password are required.")
             return
 
+        self._authenticating = True
+        self._login_btn.config(state="disabled", text="Authenticating…")
         self._status_var.set("Authenticating…")
         self.update_idletasks()
 
+        # Run password hashing (scrypt) on a background thread —
+        # prevents the UI from freezing during CPU-intensive key derivation.
+        t = threading.Thread(
+            target=self._run_auth_thread,
+            args=(username, password),
+            daemon=True,
+        )
+        t.start()
+
+    def _run_auth_thread(self, username: str, password: str):
+        """Execute authentication on a background thread, then post result to main thread."""
         success, message, user_info = _authenticate(username, password)
+        # Schedule UI update on the main thread via Tkinter's event queue
+        self.after(0, self._on_auth_complete, username, success, message, user_info)
+
+    def _on_auth_complete(self, username: str, success: bool, message: str, user_info: dict):
+        """Handle authentication result on the main Tkinter thread."""
+        self._authenticating = False
+        self._login_btn.config(state="normal", text="Login")
+
         if success:
+            # Check if password change is required BEFORE accepting the login
+            if "password change" in message.lower():
+                logger.info("Password change required for user: %s", username)
+                self._status_var.set("Password change required — enter a new password below.")
+                self._show_password_change_ui(username, user_info)
+                return
+
             logger.info("Login successful for user: %s", username)
             self.result = user_info
+            # Write session file so AutoDiag (PyQt6) can auto-login — no second prompt
+            self._write_launcher_session(username)
             self.grab_release()
             self.destroy()
+            self.on_complete(user_info)
         else:
             logger.warning("Login failed for user '%s': %s", username, message)
             self._status_var.set(f"❌  {message}")
             self._password_var.set("")
 
+    def _show_password_change_ui(self, username: str, user_info: dict):
+        """Replace the login form with a password change form."""
+        # Clear existing widgets
+        for widget in self.winfo_children():
+            widget.destroy()
+
+        self.title("DiagAutoClinicOS – Password Change Required")
+        pad = {"padx": 30, "pady": 8}
+
+        tk.Label(
+            self, text="🔐  Password Change Required",
+            fg=ACCENT, bg=BG_MAIN, font=("Segoe UI", 16, "bold"),
+        ).pack(pady=(30, 2))
+        tk.Label(
+            self, text=f"User: {username} — You must set a new password before continuing.",
+            fg=TEXT_MUTED, bg=BG_MAIN, font=("Segoe UI", 10), wraplength=350,
+        ).pack(pady=(0, 10))
+        tk.Label(
+            self, text="Min 8 chars • Upper + lower case • At least 1 number",
+            fg=TEXT_MUTED, bg=BG_MAIN, font=("Segoe UI", 9),
+        ).pack(pady=(0, 15))
+
+        form = tk.Frame(self, bg=BG_PANEL, padx=20, pady=15)
+        form.pack(fill="x", **pad)
+
+        tk.Label(form, text="New Password:", fg=TEXT_MAIN, bg=BG_PANEL,
+                 font=("Segoe UI", 10)).grid(row=0, column=0, sticky="w", pady=5, padx=(0, 10))
+        new_pw_var = tk.StringVar()
+        tk.Entry(form, textvariable=new_pw_var, show="*", bg=BG_CARD, fg=TEXT_MAIN,
+                 insertbackground=TEXT_MAIN, font=("Segoe UI", 10), width=22,
+                 relief="flat").grid(row=0, column=1, pady=5)
+
+        tk.Label(form, text="Confirm:", fg=TEXT_MAIN, bg=BG_PANEL,
+                 font=("Segoe UI", 10)).grid(row=1, column=0, sticky="w", pady=5, padx=(0, 10))
+        confirm_pw_var = tk.StringVar()
+        tk.Entry(form, textvariable=confirm_pw_var, show="*", bg=BG_CARD, fg=TEXT_MAIN,
+                 insertbackground=TEXT_MAIN, font=("Segoe UI", 10), width=22,
+                 relief="flat").grid(row=1, column=1, pady=5)
+
+        self._status_var = tk.StringVar()
+        tk.Label(self, textvariable=self._status_var, fg=ERROR, bg=BG_MAIN,
+                 font=("Segoe UI", 9), wraplength=300).pack(**pad)
+
+        btn_frame = tk.Frame(self, bg=BG_MAIN)
+        btn_frame.pack(pady=(0, 25))
+
+        def _do_password_change():
+            new_pw = new_pw_var.get()
+            confirm_pw = confirm_pw_var.get()
+
+            if not new_pw or not confirm_pw:
+                self._status_var.set("⚠️  Both fields are required.")
+                return
+            if new_pw != confirm_pw:
+                self._status_var.set("⚠️  Passwords do not match.")
+                return
+
+            # Use the shared security_manager instance for consistency
+            ok, msg = _security.change_password(username, "", new_pw)
+            if ok:
+                logger.info("Password changed successfully for user: %s", username)
+                self.result = user_info
+                self.grab_release()
+                self.destroy()
+                self.on_complete(user_info)
+            else:
+                self._status_var.set(f"❌  {msg}")
+
+        tk.Button(btn_frame, text="Change Password", command=_do_password_change,
+                  bg=ACCENT, fg=BG_MAIN, font=("Segoe UI", 10, "bold"),
+                  relief="flat", padx=20, pady=6, cursor="hand2").pack(side="left", padx=8)
+        tk.Button(btn_frame, text="Cancel", command=self._on_cancel,
+                  bg=BG_PANEL, fg=TEXT_MAIN, font=("Segoe UI", 10),
+                  relief="flat", padx=20, pady=6, cursor="hand2").pack(side="left", padx=8)
+
+        self.bind("<Return>", lambda _e: _do_password_change())
+
     def _on_cancel(self):
+        if self._authenticating:
+            return  # Don't allow cancel while auth is in progress
         logger.info("Login cancelled by user")
         self.result = None
         self.grab_release()
         self.destroy()
+        self.on_complete(None)
+
+    @staticmethod
+    def _write_launcher_session(username: str):
+        """Write a session file so the PyQt6 AutoDiag login auto-authenticates."""
+        try:
+            session_dir = Path(os.path.expanduser("~")) / ".dacos"
+            session_dir.mkdir(parents=True, exist_ok=True)
+            session_file = session_dir / "session.json"
+            with open(session_file, "w") as f:
+                json.dump({"username": username}, f)
+            logger.info("Launcher session written for: %s", username)
+        except Exception as e:
+            logger.warning("Failed to write launcher session: %s", e)
 
 
-def show_login(parent) -> dict | None:
+def _run_login_flow():
     """
-    Display the login dialog and return the authenticated user_info dict,
+    Run the login dialog and return the authenticated user_info dict,
     or None if the user cancelled.
+
+    Uses a callback-based flow with a short-lived Tk root — avoids
+    wait_window() which can deadlock with grab_set() on some Windows builds.
     """
-    dlg = LoginDialog(parent)
-    parent.wait_window(dlg)
-    return dlg.result
+    result_holder: dict = {"user_info": None}
+
+    def on_login_complete(user_info):
+        result_holder["user_info"] = user_info
+        login_root.quit()  # Break out of mainloop()
+
+    # Create a minimal invisible root.  We CANNOT use withdraw() because
+    # grab_set() on a Toplevel of a withdrawn window hangs on Windows Tk.
+    # Instead: 1×1 fully-transparent window — invisible in practice.
+    login_root = tk.Tk()
+    login_root.geometry("1x1+0+0")
+    login_root.attributes('-alpha', 0)   # Fully transparent
+    login_root.overrideredirect(True)     # No title bar / borders
+
+    LoginDialog(login_root, on_login_complete)
+    login_root.mainloop()  # Block until root.quit() is called
+    login_root.destroy()
+
+    return result_holder["user_info"]
+
+
+def _write_session(username: str):
+    """Write a session file so AutoDiag can skip its own login screen."""
+    try:
+        from config import APP_DATA_DIR
+        session_dir = APP_DATA_DIR
+    except Exception:
+        import os as _os
+        if _os.name == 'nt':
+            session_dir = Path(_os.environ.get('APPDATA', _os.path.expanduser('~'))) / 'DACOS'
+        else:
+            session_dir = Path(_os.path.expanduser('~')) / '.dacos'
+    session_dir.mkdir(parents=True, exist_ok=True)
+    session_file = session_dir / 'session.json'
+    with open(session_file, 'w') as f:
+        json.dump({'username': username, 'timestamp': datetime.now().isoformat()}, f)
+    logger.info("Session written to %s", session_file)
 
 
 class DiagLauncher(tk.Tk):
@@ -473,15 +670,15 @@ class DiagLauncher(tk.Tk):
     def _build_bottom_bar(self):
         """Build bottom status and control section"""
         bottom = tk.Frame(self.canvas, bg=BG_MAIN)
-        self.canvas.create_window(0, 550, window=bottom, anchor="nw", width=1000, height=100)
+        self.canvas.create_window(0, 540, window=bottom, anchor="nw", width=1000, height=110)
         
         self.status_label = tk.Label(bottom,
                                      text="SYSTEM READY - Click 'Vehicle Diagnostics' to launch AutoDiag Pro",
                                      fg=GLOW, bg=BG_MAIN, font=("Segoe UI", 10, "bold"))
-        self.status_label.pack(pady=10)
+        self.status_label.pack(pady=5)
         
         btn_frame = tk.Frame(bottom, bg=BG_MAIN)
-        btn_frame.pack(pady=5)
+        btn_frame.pack(pady=2)
         
         refresh_btn = tk.Button(btn_frame, text="Refresh System", command=self.refresh_system,
                                bg=BG_PANEL, fg=TEXT_MAIN, font=("Segoe UI", 9),
@@ -497,6 +694,67 @@ class DiagLauncher(tk.Tk):
                             bg=BG_PANEL, fg=ERROR, font=("Segoe UI", 9),
                             relief="flat", padx=15, pady=5, cursor="hand2")
         exit_btn.pack(side="left", padx=10)
+
+        # Alpha buttons integrated into the bottom bar (no overlap)
+        if ALPHA_TEST_MODE:
+            tk.Button(btn_frame, text="Test Platform Checklist",
+                      command=self._show_test_checklist,
+                      bg=ACCENT, fg=BG_MAIN, font=("Segoe UI", 9, "bold"),
+                      relief="flat", padx=12, pady=5, cursor="hand2").pack(side="left", padx=10)
+            tk.Button(btn_frame, text="Charlemaine (Local)",
+                      command=self._show_charlemaine_info,
+                      bg=BG_PANEL, fg=ACCENT, font=("Segoe UI", 9),
+                      relief="flat", padx=12, pady=5, cursor="hand2").pack(side="left", padx=10)
+
+    def _show_test_checklist(self):
+        """Alpha test platform checklist dialog."""
+        dialog = tk.Toplevel(self)
+        dialog.title("Alpha Test Platform Checklist")
+        dialog.geometry("600x500")
+        dialog.configure(bg=BG_MAIN)
+        dialog.transient(self)
+        dialog.grab_set()
+        tk.Label(dialog, text="Alpha Test Platform Checklist", fg=ACCENT, bg=BG_MAIN,
+                 font=("Segoe UI", 16, "bold")).pack(pady=20)
+        checklist = [
+            "AutoDiag launches and connects to VCI",
+            "All vehicle brands/models are selectable",
+            "Live data and DTCs work for all supported protocols",
+            "Test User has full access (Professional)",
+            "Charlemaine local integration present",
+            "PDF report generation works",
+            "No crashes or UI freezes",
+            "All tabs accessible",
+            "Offline mode functional"
+        ]
+        for item in checklist:
+            var = tk.BooleanVar(value=False)
+            cb = tk.Checkbutton(dialog, text=item, variable=var, fg=TEXT_MAIN, bg=BG_MAIN,
+                               font=("Segoe UI", 11), selectcolor=ACCENT,
+                               activebackground=BG_PANEL)
+            cb.pack(anchor="w", padx=40, pady=4)
+        tk.Button(dialog, text="Close", command=dialog.destroy,
+                  bg=BG_PANEL, fg=TEXT_MAIN, font=("Segoe UI", 10),
+                  padx=20, pady=6).pack(pady=20)
+
+    def _show_charlemaine_info(self):
+        """Charlemaine integration info dialog."""
+        dialog = tk.Toplevel(self)
+        dialog.title("Charlemaine (Local)")
+        dialog.geometry("400x250")
+        dialog.configure(bg=BG_MAIN)
+        dialog.transient(self)
+        dialog.grab_set()
+        tk.Label(dialog, text="Charlemaine Integration", fg=ACCENT, bg=BG_MAIN,
+                 font=("Segoe UI", 15, "bold")).pack(pady=20)
+        tk.Label(dialog, text="Charlemaine is running locally for Alpha Test.\n"
+                              "No network calls are made.\n"
+                              "All AI/assistant features are sandboxed.",
+                 fg=TEXT_MAIN, bg=BG_MAIN, font=("Segoe UI", 11),
+                 wraplength=350, justify="left").pack(pady=10)
+        tk.Button(dialog, text="Close", command=dialog.destroy,
+                  bg=BG_PANEL, fg=TEXT_MAIN, font=("Segoe UI", 10),
+                  padx=20, pady=6).pack(pady=20)
 
     def select_theme_dialog(self):
         """Open dialog to select theme"""
@@ -632,7 +890,8 @@ class DiagLauncher(tk.Tk):
 
         env = os.environ.copy()
         env["PYTHONPATH"] = str(PROJECT_ROOT)
-        env["QT_QPA_PLATFORM"] = "windows"
+        if sys.platform == "win32":
+                env["QT_QPA_PLATFORM"] = "windows"
         # Fix Unicode encoding issues in subprocess
         env["PYTHONIOENCODING"] = "utf-8"
 
@@ -648,7 +907,7 @@ class DiagLauncher(tk.Tk):
                 DETACHED_PROCESS = 0x00000008
                 
                 process = subprocess.Popen(
-                    [sys.executable, str(main_py_path)],
+                    [str(VENV_PYTHON_PATH), str(main_py_path)],
                     cwd=str(module_dir),
                     env=env,
                     creationflags=CREATE_NEW_CONSOLE,  # Creates independent window
@@ -659,7 +918,7 @@ class DiagLauncher(tk.Tk):
             else:
                 # Linux/Mac
                 process = subprocess.Popen(
-                    [sys.executable, str(main_py_path)],
+                    [str(VENV_PYTHON_PATH), str(main_py_path)],
                     cwd=str(module_dir),
                     env=env,
                     start_new_session=True
@@ -684,10 +943,108 @@ class DiagLauncher(tk.Tk):
         self._launch_module("AutoDiag Pro", "AutoDiag")
 
     def launch_ecu_programming(self):
-        self._launch_module("AutoECU", "AutoECU")
+        """Show AutoECU preview — planned for Q1/Q2 2027."""
+        self.update_status("AutoECU — Preview")
+        self._show_coming_soon(
+            title="⚡ AutoECU — Coming Q1/Q2 2027",
+            description="ECU Flash Programming & Coding Suite",
+            features=[
+                "ECU Flash Programming (Bootloader + J2534)",
+                "Parameter Coding & Adaptation Channels",
+                "Firmware Version Management & Backup",
+                "Checksum Correction & Validation",
+                "Multi-ECU Synchronisation",
+            ],
+            note="AutoECU is under active development.\nAutoDiag is our current priority for the Alpha release.",
+        )
 
     def launch_security_immo(self):
-        self._launch_module("AutoKey", "AutoKey")
+        """Show AutoKey preview — planned for Q1/Q2 2027."""
+        self.update_status("AutoKey — Preview")
+        self._show_coming_soon(
+            title="🔐 AutoKey — Coming Q1/Q2 2027",
+            description="Security & Immobiliser Programming Suite",
+            features=[
+                "Key Programming & Transponder Cloning",
+                "Immobiliser Synchronisation (Ford / GM)",
+                "Security Access — Seed/Key Authentication",
+                "Remote Key Fob Programming",
+                "EEPROM / MCU Security Data Read",
+            ],
+            note="AutoKey is under active development.\nAutoDiag is our current priority for the Alpha release.",
+        )
+
+    def _show_coming_soon(self, title: str, description: str, features: list, note: str):
+        """Display a clean 'Coming Soon' preview dialog for planned modules."""
+        import tkinter as tk
+
+        dialog = tk.Toplevel(self)
+        dialog.title(title.split("—")[0].strip())
+        dialog.geometry("480x420")
+        dialog.configure(bg=BG_MAIN)
+        dialog.resizable(False, False)
+        dialog.transient(self)
+        dialog.grab_set()
+
+        # Center over parent
+        dialog.update_idletasks()
+        px = self.winfo_x() + (self.winfo_width() - dialog.winfo_width()) // 2
+        py = self.winfo_y() + (self.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{px}+{py}")
+
+        # Header
+        tk.Label(
+            dialog, text=title, fg=ACCENT, bg=BG_MAIN,
+            font=("Segoe UI", 16, "bold"),
+        ).pack(pady=(25, 5))
+
+        tk.Label(
+            dialog, text=description, fg=TEXT_MUTED, bg=BG_MAIN,
+            font=("Segoe UI", 11),
+        ).pack(pady=(0, 15))
+
+        # Separator
+        sep = tk.Frame(dialog, bg=ACCENT, height=1)
+        sep.pack(fill="x", padx=40, pady=(0, 15))
+
+        # Feature list
+        features_frame = tk.Frame(dialog, bg=BG_MAIN)
+        features_frame.pack(fill="x", padx=50)
+
+        tk.Label(
+            features_frame, text="Planned Features:",
+            fg=TEXT_MAIN, bg=BG_MAIN,
+            font=("Segoe UI", 11, "bold"),
+        ).pack(anchor="w", pady=(0, 8))
+
+        for feature in features:
+            row = tk.Frame(features_frame, bg=BG_MAIN)
+            row.pack(fill="x", pady=2)
+            tk.Label(
+                row, text="▸", fg=ACCENT, bg=BG_MAIN,
+                font=("Segoe UI", 10),
+            ).pack(side="left")
+            tk.Label(
+                row, text=feature, fg=TEXT_MAIN, bg=BG_MAIN,
+                font=("Segoe UI", 10),
+            ).pack(side="left", padx=(5, 0))
+
+        # Note
+        if note:
+            tk.Label(
+                dialog, text=note, fg=TEXT_MUTED, bg=BG_MAIN,
+                font=("Segoe UI", 9, "italic"), justify="center",
+            ).pack(pady=(15, 5))
+
+        # Close button
+        tk.Button(
+            dialog, text="Close", command=dialog.destroy,
+            bg=BG_PANEL, fg=TEXT_MAIN,
+            font=("Segoe UI", 10),
+            relief="flat", padx=25, pady=6, cursor="hand2",
+        ).pack(pady=(10, 20))
+
+        dialog.bind("<Escape>", lambda _e: dialog.destroy())
 
     def launch_service_reset(self):
         """Launch Service Reset tools - Oil, DPF, EPB, and maintenance resets"""
@@ -1112,45 +1469,38 @@ class DiagLauncher(tk.Tk):
         self.update_status("SYSTEM REFRESHED")
         self.system_status.config(text="SYSTEM READY - All modules operational", fg=GLOW)
 
+
 if __name__ == "__main__":
     try:
         logger.info("Starting DiagAutoClinicOS Launcher")
 
-        # --- Step 1: HWID check (before any windows) ---
-        hwid_changed = False
-        if _HWID_AVAILABLE:
-            try:
-                hwid_hash, is_first_run, hwid_changed = check_hwid()
-                logger.info("HWID: %s… (first_run=%s, changed=%s)",
-                            hwid_hash[:12], is_first_run, hwid_changed)
-            except Exception as he:
-                logger.error("HWID check failed: %s", he)
-
-        # --- Step 2: Create main window but keep it hidden during login ---
-        app = DiagLauncher()
-        app.withdraw()  # hide until login succeeds
-
-        # --- Step 3: HWID warning (soft enforcement) ---
-        if hwid_changed:
-            msg = get_hwid_status_message(False, True)
-            if msg:
-                messagebox.showwarning("Hardware Change Detected", msg, parent=app)
-
-        # --- Step 4: Login dialog ---
-        user_info = show_login(app)
+        # --- Step 1: Show login dialog FIRST (before creating main window) ---
+        # Uses callback-based flow — no wait_window() which can deadlock with grab_set()
+        user_info = _run_login_flow()
+        
         if user_info is None:
             logger.info("Login cancelled – exiting")
-            app.destroy()
             sys.exit(0)
 
-        # --- Step 5: Update user info in UI and show main window ---
-        app.user_info = user_info
+        # Save session so AutoDiag (child process) can skip its own login
         username = user_info.get("username", "")
-        if username and hasattr(app, "system_status"):
-            app.system_status.config(
-                text=f"👤 {username}  |  SYSTEM READY - All modules operational"
-            )
-        app.deiconify()
+        if username:
+            _write_session(username)
+        
+        # --- Step 2: Create main window with authenticated user ---
+        app = DiagLauncher(user_info)
+
+        # --- Step 3: Patch brand database for Alpha (all brands/models available) ---
+        if ALPHA_TEST_MODE:
+            try:
+                import shared.brand_database as _brand_db
+                def all_brands_patch(*args, **kwargs):
+                    return list(_brand_db.brand_database.brand_data.keys())
+                _brand_db.brand_database.get_brand_list = all_brands_patch
+                logger.info("Alpha Test Mode: All brands/models unlocked.")
+            except Exception as e:
+                logger.error(f"Alpha Test Mode: Failed to patch brand database: {e}")
+
         app.mainloop()
         logger.info("DiagAutoClinicOS Launcher closed successfully")
     except Exception as e:

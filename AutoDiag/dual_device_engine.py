@@ -521,47 +521,70 @@ class DualDeviceEngine:
             }
     
     def _send_uds_request(self, request_data: bytes):
+        """Send UDS request via primary J2534 device and return the response message.
+
+        Raises ConnectionError if no session or no open channels.
+        Returns J2534Message on success, None if no response within timeout.
         """
-        Send UDS request via primary device (OBDLink MX+).
-        
-        Args:
-            request_data: Raw UDS request bytes (e.g., b'\x22\xF1\x90')
-            
-        Returns:
-            J2534Message: Response object containing raw data
-            
-        Raises:
-            NotImplementedError: If VCI layer is not connected/implemented
-            ConnectionError: If physical connection fails
-        """
-        try:
-            # Real implementation would send via OBDLink MX+
-            # Critical: No mock data allowed.
-            raise NotImplementedError("Hardware integration pending - VCI Layer not connected")
-            
-        except Exception as e:
-            logger.error(f"Failed to send UDS request: {e}")
-            raise e
+        if not self.session or not self.session.primary_device:
+            raise ConnectionError("No primary device in session")
+
+        channels = getattr(self.session.primary_device, 'channels', {})
+        if not channels:
+            raise ConnectionError("Primary device has no open channels — call connect_devices() first")
+
+        channel_id = next(iter(channels))
+        protocol = channels[channel_id]
+
+        from shared.j2534_passthru import J2534Message
+        msg = J2534Message(protocol, 0, request_data)
+
+        if not self.session.primary_device.send_message(channel_id, msg, timeout_ms=1000):
+            raise ConnectionError(
+                f"send_message failed: {self.session.primary_device.get_last_error()}"
+            )
+
+        response = self.session.primary_device.read_message(channel_id, timeout_ms=2000)
+        if response is None:
+            logger.warning(f"No response to UDS request {request_data.hex()} within 2000 ms")
+
+        return response
     
     def _parse_dtc_response(self, response_data: bytes) -> List[Tuple[str, str, str]]:
-        """
-        Parse DTC response from UDS service 0x19.
-        
-        Args:
-            response_data: Raw response bytes from ECU (including SID + subfunction)
-            
-        Returns:
-            List of tuples: [(code, severity, description), ...]
-            Example: [('P0300', 'Medium', 'Random Misfire')]
+        """Parse DTC response from UDS service 0x19 (ISO 14229).
+
+        Returns list of (code, severity, description) tuples.
+        Each DTC record is 4 bytes: 3 bytes DTC + 1 byte status mask.
+        Header is 3 bytes: SID 0x59 + sub-function + availability-mask.
         """
         if len(response_data) < 4:
             return []
-        
-        # Real parsing logic required (ISO14229)
-        # No hardcoded mocks allowed.
-        # TODO: Implement byte-level DTC parsing
-        
-        return []
+
+        type_map = {0: 'P', 1: 'C', 2: 'B', 3: 'U'}
+        dtcs = []
+        dtc_data = response_data[3:]
+
+        for i in range(0, len(dtc_data) - 3, 4):
+            high, mid, low, status = dtc_data[i], dtc_data[i+1], dtc_data[i+2], dtc_data[i+3]
+
+            dtc_type  = type_map.get((high >> 6) & 0x03, 'P')
+            d1        = (high >> 4) & 0x03
+            d2        = high & 0x0F
+            d3        = (mid  >> 4) & 0x0F
+            d4        = mid  & 0x0F
+            code      = f"{dtc_type}{d1}{d2:X}{d3:X}{d4:X}"
+
+            if status & 0x08:
+                severity = "High"
+            elif status & 0x04:
+                severity = "Medium"
+            else:
+                severity = "Low"
+
+            dtcs.append((code, severity, f"DTC {code}"))
+            logger.debug(f"Parsed DTC: {code} status=0x{status:02X}")
+
+        return dtcs
     
     def get_can_statistics(self) -> Dict:
         """Get CAN bus statistics"""

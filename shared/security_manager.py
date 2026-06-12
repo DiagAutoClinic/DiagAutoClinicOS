@@ -31,6 +31,7 @@ class SecurityLevel(Enum):
     ADVANCED = 3
     DEALER = 4
     FACTORY = 5
+    SUPER = 6  # DAC root — unrestricted access
 
 class UserRole(Enum):
     """User roles for the system"""
@@ -40,9 +41,27 @@ class UserRole(Enum):
     DEALER = "dealer"
     FACTORY = "factory"
     ADMIN = "admin"
+    SUPER_USER = "super_user"  # DAC root
 
 class EnhancedSecurityManager:
     """Enhanced security management for DiagAutoClinicOS with advanced features"""
+
+    # Canonical mapping: TierSystem name → (SecurityLevel, UserRole)
+    _TIER_MAP = {
+        "FREE":         (SecurityLevel.BASIC,   UserRole.VIEWER),
+        "BASIC":        (SecurityLevel.STANDARD, UserRole.TECHNICIAN),
+        "INTERMEDIATE": (SecurityLevel.ADVANCED, UserRole.SUPERVISOR),
+        "PROFESSIONAL": (SecurityLevel.DEALER,   UserRole.DEALER),
+        "ADVANCED":     (SecurityLevel.FACTORY,  UserRole.FACTORY),
+    }
+    _LEVEL_TO_TIER = {
+        SecurityLevel.BASIC:    "FREE",
+        SecurityLevel.STANDARD: "BASIC",
+        SecurityLevel.ADVANCED: "INTERMEDIATE",
+        SecurityLevel.DEALER:   "PROFESSIONAL",
+        SecurityLevel.FACTORY:  "ADVANCED",
+        SecurityLevel.SUPER:    "SUPERUSER",
+    }
 
     def __init__(self, config_path: Optional[str] = None):
         self.current_user = None
@@ -59,9 +78,18 @@ class EnhancedSecurityManager:
         # Load security configuration
         self.security_config = self._load_security_config(config_path)
 
-        # Initialize user database
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        self.user_db_path = os.path.join(base_dir, 'users.json')
+        # Initialize user database — use %AppData%\DACOS\ (user-writable, not Program Files)
+        try:
+            from config import APP_DATA_DIR  # type: ignore
+            _data_dir = APP_DATA_DIR
+        except ImportError:
+            if os.name == 'nt':
+                _appdata_dir = os.environ.get('APPDATA', os.path.expanduser('~'))
+                _data_dir = os.path.join(_appdata_dir, 'DACOS')
+            else:
+                _data_dir = os.path.join(os.path.expanduser('~'), '.dacos')
+        os.makedirs(_data_dir, exist_ok=True)
+        self.user_db_path = os.path.join(_data_dir, 'users.json')
         self.user_database = self._initialize_user_database()
 
         logger.info(f"EnhancedSecurityManager initialized using DB at {self.user_db_path}")
@@ -111,6 +139,7 @@ class EnhancedSecurityManager:
                     user_copy['security_level'] = data['security_level'].name
                 if isinstance(data['role'], UserRole):
                     user_copy['role'] = data['role'].value
+                # Keep email and created_by as-is (already strings)
                 serializable_users[username] = user_copy
             
             with open(self.user_db_path, 'w') as f:
@@ -131,10 +160,12 @@ class EnhancedSecurityManager:
                 users[username] = {
                     "password_hash": user_data["password_hash"],
                     "salt": user_data["salt"],
-                    "hash_version": user_data.get("hash_version", "v1"),  # Default to v1 (SHA-256)
+                    "hash_version": user_data.get("hash_version", "v1"),
                     "security_level": SecurityLevel[user_data["security_level"]],
                     "role": UserRole(user_data["role"]),
                     "full_name": user_data["full_name"],
+                    "email": user_data.get("email", ""),
+                    "created_by": user_data.get("created_by", "system"),
                     "failed_attempts": user_data.get("failed_attempts", 0),
                     "locked_until": user_data.get("locked_until"),
                     "last_login": user_data.get("last_login"),
@@ -147,10 +178,46 @@ class EnhancedSecurityManager:
             return None
 
     def _create_default_users(self) -> Dict[str, Dict[str, Any]]:
-        """Create default users"""
+        """Create default users on first run — includes tech1, testuser, and dacos superuser."""
         users = {}
 
-        # Create tech1 user
+        # --- DACOS Superuser (level 6 — root) ---
+        dacos_salt = self._generate_salt()
+        users["supernova"] = {
+            "password_hash": self._hash_password("Charaun@8576", dacos_salt, "v3"),
+            "salt": dacos_salt,
+            "hash_version": "v3",
+            "security_level": SecurityLevel.SUPER,
+            "role": UserRole.SUPER_USER,
+            "full_name": "DACOS Superuser",
+            "email": "superuser@diagautoclinic.co.za",
+            "created_by": "system",
+            "failed_attempts": 0,
+            "locked_until": None,
+            "last_login": None,
+            "created_at": time.time(),
+            "force_password_change": True  # Change on first login
+        }
+
+        # --- Alpha Test User (level 4 — DEALER) ---
+        testuser_salt = self._generate_salt()
+        users["testuser"] = {
+            "password_hash": self._hash_password("TestUserAlpha2026!", testuser_salt, "v3"),
+            "salt": testuser_salt,
+            "hash_version": "v3",
+            "security_level": SecurityLevel.DEALER,
+            "role": UserRole.DEALER,
+            "full_name": "Alpha Test User",
+            "email": "testuser@diagautoclinic.co.za",
+            "created_by": "system",
+            "failed_attempts": 0,
+            "locked_until": None,
+            "last_login": None,
+            "created_at": time.time(),
+            "force_password_change": False
+        }
+
+        # --- Technician (level 2) ---
         tech1_salt = self._generate_salt()
         users["tech1"] = {
             "password_hash": self._hash_password("tech123", tech1_salt, "v3"),
@@ -159,6 +226,8 @@ class EnhancedSecurityManager:
             "security_level": SecurityLevel.STANDARD,
             "role": UserRole.TECHNICIAN,
             "full_name": "Technician One",
+            "email": "",
+            "created_by": "system",
             "failed_attempts": 0,
             "locked_until": None,
             "last_login": None,
@@ -166,7 +235,7 @@ class EnhancedSecurityManager:
             "force_password_change": False
         }
 
-        # Create supervisor user
+        # --- Supervisor (level 3) ---
         super_salt = self._generate_salt()
         users["supervisor"] = {
             "password_hash": self._hash_password("super789", super_salt, "v3"),
@@ -175,22 +244,8 @@ class EnhancedSecurityManager:
             "security_level": SecurityLevel.ADVANCED,
             "role": UserRole.SUPERVISOR,
             "full_name": "System Supervisor",
-            "failed_attempts": 0,
-            "locked_until": None,
-            "last_login": None,
-            "created_at": time.time(),
-            "force_password_change": False
-        }
-
-        # Create admin user
-        admin_salt = self._generate_salt()
-        users["admin"] = {
-            "password_hash": self._hash_password("admin345", admin_salt, "v3"),
-            "salt": admin_salt,
-            "hash_version": "v3",
-            "security_level": SecurityLevel.FACTORY,
-            "role": UserRole.ADMIN,
-            "full_name": "System Administrator",
+            "email": "",
+            "created_by": "system",
             "failed_attempts": 0,
             "locked_until": None,
             "last_login": None,
@@ -313,11 +368,11 @@ class EnhancedSecurityManager:
 
             # Successful authentication
             
-            # MIGRATION: Upgrade legacy hashes to v2
-            if hash_version == 'v1':
-                logger.info(f"Migrating user {username} to v2 password hash")
-                user_data['password_hash'] = self._hash_password(password, user_data['salt'], 'v2')
-                user_data['hash_version'] = 'v2'
+            # MIGRATION: Upgrade legacy hashes to v3
+            if hash_version in ('v1', 'v2'):
+                logger.info(f"Migrating user {username} from {hash_version} to v3 password hash")
+                user_data['password_hash'] = self._hash_password(password, user_data['salt'], 'v3')
+                user_data['hash_version'] = 'v3'
                 self._save_users_to_file()
 
             self.current_user = normalized_username  # Store normalized username
@@ -374,6 +429,10 @@ class EnhancedSecurityManager:
         if not self.session_active or not self.session_expiry:
             return False
 
+        # SUPER session never expires
+        if self.security_level == SecurityLevel.SUPER:
+            return True
+
         if datetime.now() >= self.session_expiry:
             self.logout()
             return False
@@ -397,30 +456,82 @@ class EnhancedSecurityManager:
         """Get current security level"""
         return self.security_level
 
-    def get_user_info(self) -> Dict[str, Any]:
-        """Get current user information"""
-        if not self.current_user or not self.session_active:
+    def get_user_info(self, username: Optional[str] = None) -> Dict[str, Any]:
+        """Get user information for the given username, or current user if omitted."""
+        lookup = username or self.current_user
+        if not lookup:
             return {}
 
-        user_data = self.user_database.get(self.current_user, {})
+        user_data = self.user_database.get(lookup, {})
+        if not user_data:
+            return {}
 
-        # Determine permissions based on role/security level
+        # Determine permissions based on security level
         permissions = []
-        if self.security_level.value >= SecurityLevel.FACTORY.value or self.user_role == UserRole.ADMIN:
+        if isinstance(user_data.get('security_level'), SecurityLevel):
+            level_value = user_data['security_level'].value
+        else:
+            level_value = 0
+
+        if level_value >= SecurityLevel.SUPER.value:
             permissions.append('user_management')
+            permissions.append('all_suites')
+            permissions.append('full_diagnostics')
+            permissions.append('all_brands')
+        elif level_value >= SecurityLevel.FACTORY.value:
+            permissions.append('full_diagnostics')
+            permissions.append('all_brands')
+        elif level_value >= SecurityLevel.ADVANCED.value:
+            permissions.append('full_diagnostics')
 
         return {
-            "username": self.current_user,
-            "full_name": user_data.get("full_name", self.current_user),
-            "security_level": self.security_level.name,
-            "tier": self.security_level.name,
-            "role": self.user_role.value,
+            "username": lookup,
+            "full_name": user_data.get("full_name", lookup),
+            "security_level": user_data['security_level'].name if isinstance(user_data.get('security_level'), SecurityLevel) else user_data.get('security_level', 'BASIC'),
+            "tier": user_data['security_level'].name if isinstance(user_data.get('security_level'), SecurityLevel) else user_data.get('security_level', 'BASIC'),
+            "role": user_data['role'].value if isinstance(user_data.get('role'), UserRole) else user_data.get('role', 'viewer'),
+            "email": user_data.get('email', ''),
             "permissions": permissions,
             "is_restricted": self.is_restricted_mode,
             "session_expiry": self.session_expiry.timestamp() if self.session_expiry else 0,
             "last_login": user_data.get("last_login"),
             "force_password_change": user_data.get("force_password_change", False)
         }
+
+    def user_exists(self, username: str) -> bool:
+        """Check if a username exists in the database (case-insensitive)."""
+        return username.lower() in self.user_database
+
+    @property
+    def is_super_user(self) -> bool:
+        """Return True if the currently authenticated user is SUPER level."""
+        return self.session_active and self.security_level == SecurityLevel.SUPER
+
+    def create_user(self, username: str, password: str, full_name: str,
+                    tier: int, email: str = "", created_by: str = "",
+                    force_password_change: bool = True) -> tuple[bool, str]:
+        """Convenience alias for add_user using tier integer instead of enums.
+        Tier mapping: 1=FREE, 2=BASIC, 3=INTERMEDIATE, 4=PROFESSIONAL, 5=ADVANCED, 6=SUPER.
+        Only the SUPER user can create users."""
+        tier_map = {
+            1: SecurityLevel.BASIC,
+            2: SecurityLevel.STANDARD,
+            3: SecurityLevel.ADVANCED,
+            4: SecurityLevel.DEALER,
+            5: SecurityLevel.FACTORY,
+            6: SecurityLevel.SUPER,
+        }
+        role_map = {
+            1: UserRole.VIEWER,
+            2: UserRole.TECHNICIAN,
+            3: UserRole.SUPERVISOR,
+            4: UserRole.DEALER,
+            5: UserRole.FACTORY,
+            6: UserRole.SUPER_USER,
+        }
+        level = tier_map.get(tier, SecurityLevel.BASIC)
+        role = role_map.get(tier, UserRole.VIEWER)
+        return self.add_user(username, password, role, level, full_name, email, created_by, force_password_change)
 
     def get_audit_log(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get audit log entries"""
@@ -434,7 +545,8 @@ class EnhancedSecurityManager:
                 return False, "Invalid credentials"
 
             user_data = self.user_database[username]
-            expected_hash = self._hash_password(password, user_data['salt'])
+            hash_version = user_data.get('hash_version', 'v3')
+            expected_hash = self._hash_password(password, user_data['salt'], hash_version)
             if expected_hash != user_data['password_hash']:
                 return False, "Invalid credentials"
 
@@ -458,45 +570,57 @@ class EnhancedSecurityManager:
             return False, f"Elevation error: {e}"
 
     def add_user(self, username: str, password: str, role: UserRole,
-                 security_level: SecurityLevel, full_name: str) -> tuple[bool, str]:
-        """Add a new user (requires FACTORY level)"""
-        if not self.check_security_clearance(SecurityLevel.FACTORY):
-            return False, "Insufficient privileges"
+                 security_level: SecurityLevel, full_name: str,
+                 email: str = "", created_by: str = "",
+                 force_password_change: bool = True) -> tuple[bool, str]:
+        """Add a new user (requires SUPER level — DAC root only)."""
+        if not self.check_security_clearance(SecurityLevel.SUPER):
+            return False, "Insufficient privileges — only the DAC superuser can create users"
 
-        if username in self.user_database:
+        if security_level == SecurityLevel.SUPER:
+            return False, "Cannot create additional SUPER accounts — root is unique"
+
+        normalized = username.strip().lower()
+        if not normalized:
+            return False, "Username cannot be empty"
+        if normalized in self.user_database:
             return False, "Username already exists"
 
-        # Validate password strength
-        valid, message = self.validate_password_strength(password)
-        if not valid:
-            return False, message
+        # SUPER bypasses password strength rules — no holdbacks for root
+        if not self.is_super_user:
+            valid, message = self.validate_password_strength(password)
+            if not valid:
+                return False, message
 
-        # Create user
         salt = self._generate_salt()
-        self.user_database[username] = {
-            "password_hash": self._hash_password(password, salt, "v2"),
+        self.user_database[normalized] = {
+            "password_hash": self._hash_password(password, salt, "v3"),
             "salt": salt,
-            "hash_version": "v2",
+            "hash_version": "v3",
             "security_level": security_level,
             "role": role,
             "full_name": full_name,
+            "email": email,
+            "created_by": created_by or self.current_user,
             "failed_attempts": 0,
             "locked_until": None,
             "last_login": None,
-            "created_at": time.time()
+            "created_at": time.time(),
+            "force_password_change": force_password_change,
         }
-        
-        self._save_users_to_file()
 
-        self._log_audit_event('user_created', self.current_user, {'new_user': username})
+        self._save_users_to_file()
+        self._log_audit_event('user_created', self.current_user, {'new_user': normalized})
         return True, f"User {username} created successfully"
 
     def change_password(self, username: str, old_password: str, new_password: str) -> tuple[bool, str]:
-        """Change user password"""
-        if username not in self.user_database:
+        """Change user password. Username lookup is case-insensitive."""
+        # Normalize to lowercase — matches authenticate_user() behavior
+        normalized = username.lower()
+        if normalized not in self.user_database:
             return False, "User not found"
 
-        user_data = self.user_database[username]
+        user_data = self.user_database[normalized]
 
         # Verify old password (skip if force password change)
         if not user_data.get('force_password_change', False):
@@ -517,10 +641,11 @@ class EnhancedSecurityManager:
         user_data['hash_version'] = "v3"
         user_data['failed_attempts'] = 0  # Reset failed attempts
         user_data['force_password_change'] = False  # Reset force change flag
-        
+
         self._save_users_to_file()
 
-        self._log_audit_event('password_changed', username)
+        self._log_audit_event('password_changed', normalized)
+        logger.info(f"Password changed for user '{normalized}'")
         return True, "Password changed successfully"
 
     def validate_password_strength(self, password: str) -> tuple[bool, str]:
@@ -545,9 +670,9 @@ class EnhancedSecurityManager:
         return True, "Password strength acceptable"
 
     def reset_user_lockout(self, username: str) -> tuple[bool, str]:
-        """Reset user lockout (requires FACTORY level)"""
-        if not self.check_security_clearance(SecurityLevel.FACTORY):
-            return False, "Insufficient privileges"
+        """Reset user lockout (requires SUPER level — DAC root only)."""
+        if not self.check_security_clearance(SecurityLevel.SUPER):
+            return False, "Insufficient privileges — only the DAC superuser can reset lockouts"
 
         if username not in self.user_database:
             return False, "User not found"
@@ -565,10 +690,11 @@ class EnhancedSecurityManager:
         """Get all users for management display"""
         users_list = []
         for username, data in self.user_database.items():
+            sec_level = data.get('security_level', SecurityLevel.BASIC)
             users_list.append({
                 'username': username,
                 'full_name': data.get('full_name', ''),
-                'tier': data.get('security_level', SecurityLevel.BASIC).name if isinstance(data.get('security_level'), SecurityLevel) else data.get('security_level', 'BASIC'),
+                'tier': self._LEVEL_TO_TIER.get(sec_level, 'BASIC') if isinstance(sec_level, SecurityLevel) else 'BASIC',
                 'status': 'LOCKED' if data.get('locked_until') and time.time() < data.get('locked_until') else 'ACTIVE',
                 'created_at': datetime.fromtimestamp(data.get('created_at', 0)).strftime('%Y-%m-%d %H:%M:%S'),
                 'last_login': datetime.fromtimestamp(data.get('last_login')).strftime('%Y-%m-%d %H:%M:%S') if data.get('last_login') else "Never",
@@ -577,15 +703,18 @@ class EnhancedSecurityManager:
         return users_list
 
     def delete_user(self, username: str, requestor: str) -> bool:
-        """Delete a user (requires FACTORY level)"""
-        if not self.check_security_clearance(SecurityLevel.FACTORY):
+        """Delete a user (requires SUPER level — DAC root only)."""
+        if not self.check_security_clearance(SecurityLevel.SUPER):
             return False
 
         if username not in self.user_database:
             return False
-            
+
+        if username == 'supernova':
+            return False  # Root is permanent
+
         if username == requestor:
-            return False # Cannot delete yourself
+            return False  # Cannot delete yourself
 
         del self.user_database[username]
         self._save_users_to_file()
@@ -593,8 +722,8 @@ class EnhancedSecurityManager:
         return True
 
     def update_user_details(self, username: str, full_name: str, email: str, tier_name: str, status: str, requestor: str) -> bool:
-        """Update user details (requires FACTORY/ADMIN)"""
-        if not self.check_security_clearance(SecurityLevel.FACTORY):
+        """Update user details (requires SUPER level — DAC root only)."""
+        if not self.check_security_clearance(SecurityLevel.SUPER):
             return False
 
         if username not in self.user_database:
@@ -603,26 +732,10 @@ class EnhancedSecurityManager:
         user_data = self.user_database[username]
         user_data['full_name'] = full_name
         user_data['email'] = email
-        
-        # Update tier/security level
-        if tier_name:
-            try:
-                # Map Tier names to SecurityLevel/Role
-                # This is a simplification; ideally Tier and Role are separate or mapped explicitly
-                if tier_name == "PROFESSIONAL":
-                    user_data['security_level'] = SecurityLevel.DEALER
-                    user_data['role'] = UserRole.DEALER
-                elif tier_name == "ADVANCED":
-                    user_data['security_level'] = SecurityLevel.ADVANCED
-                    user_data['role'] = UserRole.SUPERVISOR
-                elif tier_name == "STANDARD":
-                    user_data['security_level'] = SecurityLevel.STANDARD
-                    user_data['role'] = UserRole.TECHNICIAN
-                elif tier_name == "BASIC":
-                    user_data['security_level'] = SecurityLevel.BASIC
-                    user_data['role'] = UserRole.VIEWER
-            except:
-                pass
+
+        # Update tier/security level using canonical map
+        if tier_name and tier_name in self._TIER_MAP:
+            user_data['security_level'], user_data['role'] = self._TIER_MAP[tier_name]
 
         # Update status (Lock/Unlock)
         if status == "LOCKED":
@@ -637,7 +750,7 @@ class EnhancedSecurityManager:
 
     def force_password_reset(self, username: str, requestor: str) -> bool:
         """Force a user to reset their password on next login"""
-        if not self.check_security_clearance(SecurityLevel.FACTORY):
+        if not self.check_security_clearance(SecurityLevel.SUPER):
             return False
 
         if username not in self.user_database:

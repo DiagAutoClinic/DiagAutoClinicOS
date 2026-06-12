@@ -72,3 +72,35 @@ LIKELY CAUSES:
 - Theme stylesheet application
 - Blocking VCI scan in GUI thread
 ==================================================
+
+================================================================================
+CRASH at 2026-05-30 21:44:01
+Exception: AttributeError
+Message: type object 'ApplicationAttribute' has no attribute 'AA_UseHighDpiPixmaps'
+Traceback:
+Traceback (most recent call last):
+  File "/home/maxor/DiagAutoClinicOS/AutoDiag/main.py", line 1591, in <module>
+    main()
+    ~~~~^^
+  File "/home/maxor/DiagAutoClinicOS/AutoDiag/main.py", line 1513, in main
+    app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, False)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'ApplicationAttribute' has no attribute 'AA_UseHighDpiPixmaps'
+
+================================================================================
+
+================================================================================
+CRASH at 2026-05-30 22:05:56
+Exception: AttributeError
+Message: type object 'ApplicationAttribute' has no attribute 'AA_UseHighDpiPixmaps'
+Traceback:
+Traceback (most recent call last):
+  File "/home/maxor/DiagAutoClinicOS/AutoDiag/main.py", line 1591, in <module>
+    main()
+    ~~~~^^
+  File "/home/maxor/DiagAutoClinicOS/AutoDiag/main.py", line 1513, in main
+    app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, False)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'ApplicationAttribute' has no attribute 'AA_UseHighDpiPixmaps'
+
+================================================================================

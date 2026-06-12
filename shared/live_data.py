@@ -5,7 +5,6 @@ Uses real automotive parameters from .REF files and VCI hardware
 """
 
 import logging
-import random
 import time
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -46,7 +45,7 @@ class LiveDataGenerator:
             if success:
                 logger.info(f"Real CAN data loaded for {brand}")
             else:
-                logger.info(f"Using mock data for {brand} (no CAN data available)")
+                logger.warning(f"No CAN data available for {brand} — live data disabled until VCI connects")
     
     def start_stream(self):
         """Start live data streaming"""
@@ -89,22 +88,26 @@ class LiveDataGenerator:
             return real_data
 
         try:
-            # Check if we have real CAN data for this brand
-            available_brands = self.can_bus_manager.get_available_brands()
-            if self.current_brand not in available_brands:
-                logger.warning(f"Brand {self.current_brand} not available in CAN database")
+            # Get live CAN messages directly from the VCI hardware layer
+            if not hasattr(self.can_bus_manager, 'read_live_messages'):
+                logger.error("CAN bus manager has no read_live_messages — cannot stream live data")
                 return real_data
 
-            # Get real CAN messages from hardware (in real implementation)
-            # For now, simulate realistic CAN messages based on database
-            simulated_messages = self._simulate_can_messages()
+            live_messages = self.can_bus_manager.read_live_messages()
+            if not live_messages:
+                logger.debug("No CAN messages from hardware")
+                return real_data
 
-            # Get real-time parameters from CAN data
+            # Check if we have a DBC decoder for this brand
+            available_brands = self.can_bus_manager.get_available_brands()
+            if self.current_brand not in available_brands:
+                logger.warning(f"Brand {self.current_brand} not in CAN database — cannot decode frames")
+                return real_data
+
             real_parameters = self.can_bus_manager.get_real_time_data(
-                self.current_brand, simulated_messages
+                self.current_brand, live_messages
             )
 
-            # Convert to tuple format
             for param_name, param_data in real_parameters.items():
                 real_data.append((
                     param_name,
@@ -113,73 +116,28 @@ class LiveDataGenerator:
                 ))
 
             if real_data:
-                logger.debug(f"Retrieved {len(real_data)} real CAN parameters for {self.current_brand}")
-            else:
-                logger.warning(f"No CAN parameters retrieved for {self.current_brand}")
+                logger.debug(f"Retrieved {len(real_data)} CAN parameters for {self.current_brand}")
 
         except Exception as e:
             logger.error(f"Error retrieving real CAN data: {e}")
 
         return real_data
     
-    
-    def _simulate_can_messages(self):
-        """Simulate CAN messages (placeholder for real hardware integration)"""
-        # In real implementation, this would come from actual CAN hardware
-        # For now, generate realistic CAN message patterns
-        
-        import random
-        from shared.can_bus_data import CANMessage
-        
-        messages = []
-        
-        # Common automotive CAN IDs and realistic data
-        can_patterns = [
-            (0x100, [0x00, random.randint(50, 250), random.randint(0, 255), 0x00, 0x00, 0x00, 0x00, 0x00]),  # Engine data
-            (0x200, [random.randint(0, 200), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),  # Vehicle speed
-            (0x300, [random.randint(80, 110), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),  # Coolant temp
-            (0x400, [random.randint(0, 100), 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),  # Throttle position
-        ]
-        
-        current_time = time.time()
-        
-        for can_id, data_bytes in can_patterns:
-            message = CANMessage(
-                timestamp=current_time,
-                can_id=can_id,
-                dlc=len(data_bytes),
-                data=bytes(data_bytes)
-            )
-            messages.append(message)
-        
-        return messages
-    
     def get_parameter_history(self, parameter_name: str, max_entries: int = 50) -> List[tuple]:
-        """Get historical data for specific parameter"""
-        # In a real implementation, this would query a database
-        # For now, return mock historical data
-        
-        history = []
-        base_time = time.time() - (max_entries * 5)  # 5 second intervals
-        
-        for i in range(max_entries):
-            timestamp = base_time + (i * 5)
-            
-            # Generate realistic historical values
-            if "RPM" in parameter_name:
-                value = random.randint(600, 7000)
-            elif "Speed" in parameter_name:
-                value = random.randint(0, 200)
-            elif "Temp" in parameter_name:
-                value = random.uniform(70, 110)
-            elif "Voltage" in parameter_name:
-                value = random.uniform(11.5, 14.8)
-            else:
-                value = random.uniform(0, 100)
-            
-            history.append((timestamp, value))
-        
-        return history
+        """Get historical data for a parameter from the recorded buffer"""
+        if not hasattr(self, '_history_buffer'):
+            return []
+        return list(self._history_buffer.get(parameter_name, []))[-max_entries:]
+
+    def record_parameter(self, parameter_name: str, value: float):
+        """Record a parameter value with timestamp for history"""
+        if not hasattr(self, '_history_buffer'):
+            from collections import deque
+            self._history_buffer = {}
+        if parameter_name not in self._history_buffer:
+            from collections import deque
+            self._history_buffer[parameter_name] = deque(maxlen=500)
+        self._history_buffer[parameter_name].append((time.time(), value))
     
     def export_live_data(self, filename: Optional[str] = None) -> bool:
         """Export current live data to file"""

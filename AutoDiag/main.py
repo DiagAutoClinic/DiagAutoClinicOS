@@ -13,6 +13,21 @@ import weakref
 from typing import Callable
 import argparse
 import gc
+
+# 1. First, fix the paths so Python can see 'drivers'
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# 2. Setup Logging so you can actually see what's happening
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("AutoDiag")
+
+# 3. VCI Manager will be injected into AutoDiagPro via constructor
+#    Initialize as None, will be set during AutoDiagPro initialization
+vci_manager = None
+
 # FIXED: Enhanced import path resolution for shared modules
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -36,21 +51,46 @@ try:
 except ImportError:
     print("Warning: Crash detection not available")
 # ELITE CRASH FIX: Global Exception Hook for Windows SEH Detection
-def global_except_hook(exctype, value):
+def global_except_hook(exctype, value, tb):
     """Global exception handler to capture unhandled exceptions before Qt6 native crashes"""
+    import traceback
     try:
-        print(f"FATAL UNHANDLED EXCEPTION: {exctype.__name__}: {value}")
-        # traceback_str = ''.join(traceback.format_exception(exctype, value, tb))
-        # print(traceback_str)
-        # Log to file for debugging - simple write
+        error_msg = f"FATAL UNHANDLED EXCEPTION: {exctype.__name__}: {value}"
+        print(error_msg)
+        
+        # Get full traceback
+        traceback_str = ''.join(traceback.format_exception(exctype, value, tb))
+        print(traceback_str)
+        
+        # Log to file for debugging with timestamp and full traceback
         try:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             with open('autodiag_crash_log.txt', 'a', encoding='utf-8') as f:
-                 f.write(f"\nCRASH: {exctype.__name__}: {value}\n")
+                f.write(f"\n{'='*80}\n")
+                f.write(f"CRASH at {timestamp}\n")
+                f.write(f"Exception: {exctype.__name__}\n")
+                f.write(f"Message: {value}\n")
+                f.write(f"Traceback:\n{traceback_str}\n")
+                f.write(f"{'='*80}\n")
+            print(f"✅ Crash logged to autodiag_crash_log.txt")
+        except Exception as log_err:
+            print(f"⚠️  Failed to write crash log: {log_err}")
+        
+        # Attempt graceful shutdown if Qt app exists
+        try:
+            from PyQt6.QtWidgets import QApplication
+            app = QApplication.instance()
+            if app:
+                app.quit()
         except:
             pass
+            
         sys.exit(1)
-    except:
+    except Exception as hook_err:
+        print(f"❌ Error in global_except_hook: {hook_err}")
         sys.exit(1)
+
 # Install the global exception hook BEFORE any other imports
 sys.excepthook = global_except_hook
 # ===== PERFORMANCE OPTIMIZED THREAD MANAGEMENT =====
@@ -283,12 +323,9 @@ if PYQT6_AVAILABLE:
             self.setMinimumHeight(130)
             self.setMaximumHeight(150)
             # Store current user information
-            self.current_user_info = current_user_info or {
-                'username': 'guest',
-                'full_name': 'Guest User',
-                'tier': 'BASIC',
-                'permissions': []
-            }
+            if not current_user_info:
+                raise ValueError("ResponsiveHeader requires authenticated user_info — no session active")
+            self.current_user_info = current_user_info
             self.main_layout = QHBoxLayout(self)
             self.main_layout.setContentsMargins(20, 15, 20, 15)
             self.main_layout.setSpacing(15)
@@ -333,8 +370,12 @@ if PYQT6_AVAILABLE:
             self.brand_layout = self.create_brand_selector()            
             # Theme selector (simplified - DACOS only)
             self.theme_layout = self.create_theme_selector()            
-            # Account management button (for super user)
-            self.account_btn = self.create_account_management_button()
+            # Account management button — created only for SUPERUSER
+            _is_super = (
+                self.current_user_info.get('role') == 'super_user' or
+                self.current_user_info.get('security_level') == 'SUPER'
+            )
+            self.account_btn = self.create_account_management_button() if _is_super else None
             # Logout button
             self.logout_btn = self.create_logout_button()
             # Initial layout setup
@@ -344,7 +385,7 @@ if PYQT6_AVAILABLE:
             user_section = QFrame()
             user_layout = QVBoxLayout(user_section)
             user_layout.setSpacing(2)            
-            self.user_name = QLabel("👤 Demo User")
+            self.user_name = QLabel("👤 …")
             self.user_name.setProperty("class", "section-title")            
             self.user_role = QLabel("🔐 BASIC • technician")
             self.user_role.setProperty("class", "subtitle")            
@@ -425,13 +466,16 @@ if PYQT6_AVAILABLE:
                     tier_display = "FACTORY"
                 self.user_role.setText(f"🔐 {tier_display} • {self.current_user_info['username']}")
             else:
-                self.user_name.setText("👤 Guest User")
-                self.user_role.setText("🔐 BASIC • guest")
+                raise RuntimeError("update_user_display called with no current_user_info")
         def open_account_management(self):
             """Open account management dialog (super user only)"""
-            if not self.current_user_info or 'user_management' not in self.current_user_info.get('permissions', []):
+            _is_super = (
+                self.current_user_info.get('role') == 'super_user' or
+                self.current_user_info.get('security_level') == 'SUPER'
+            )
+            if not _is_super:
                 QMessageBox.warning(self, "Access Denied",
-                                  "You do not have permission to access account management.")
+                                  "Account management is restricted to the DAC superuser.")
                 return
             dialog = AccountManagementDialog(self.current_user_info['username'], self)
             dialog.exec()
@@ -458,21 +502,20 @@ if PYQT6_AVAILABLE:
                 self.main_layout.addWidget(self.title_widget, 1)
                 self.main_layout.addLayout(self.brand_layout, 0)
                 self.main_layout.addLayout(self.theme_layout, 0)
-                # Add account management button if user has permission
-                if self.current_user_info and 'user_management' in self.current_user_info.get('permissions', []):
+                # Add account management button — SUPERUSER only
+                if self.account_btn is not None:
                     self.main_layout.addWidget(self.account_btn, 0)
                 self.main_layout.addWidget(self.logout_btn, 0)
 class AutoDiagPro(QMainWindow):
-    def __init__(self, current_user_info=None):
+    def __init__(self, current_user_info=None, vci_manager=None):
         super().__init__()
         logger.info("Initializing AutoDiagPro...")
         # Store current user information
-        self.current_user_info = current_user_info or {
-            'username': 'guest',
-            'full_name': 'Guest User',
-            'tier': 'BASIC',
-            'permissions': []
-        }
+        if not current_user_info:
+            raise ValueError("AutoDiagPro requires authenticated user_info — no session active")
+        self.current_user_info = current_user_info
+        # Store VCI manager instance (dependency injection)
+        self.vci_manager = vci_manager
         # Track loaded tabs to prevent recursion
         self._loaded_tabs = set()
         logger.info(f"User info: {self.current_user_info}")
@@ -521,7 +564,7 @@ class AutoDiagPro(QMainWindow):
         # Complete performance monitoring
         self._performance_monitor.end_timer("app_initialization")
     def _init_diagnostics_controller(self):
-        """Initialize the diagnostics controller with UI callbacks - LAZY INITIALIZATION"""
+        """Initialize the diagnostics controller with UI callbacks and VCI manager - LAZY INITIALIZATION"""
         try:
             logger.info("Starting diagnostics controller initialization")
             from AutoDiag.core.diagnostics import DiagnosticsController
@@ -540,7 +583,8 @@ class AutoDiagPro(QMainWindow):
                 'update_can_bus_data': self._update_can_bus_data
             }
             logger.debug("UI callbacks defined")
-            self.diagnostics_controller = DiagnosticsController(ui_callbacks)
+            # Pass the injected VCI manager to DiagnosticsController
+            self.diagnostics_controller = DiagnosticsController(ui_callbacks, vci_manager=self.vci_manager)
             logger.info("Diagnostics controller initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize diagnostics controller: {e}")
@@ -725,7 +769,7 @@ class AutoDiagPro(QMainWindow):
         # Define factories with local imports for TRUE lazy loading
         def create_vci_tab(parent):
             from AutoDiag.ui.vci_connection_tab import VCIConnectionTab
-            return VCIConnectionTab(parent)
+            return VCIConnectionTab(parent, vci_manager=self.vci_manager)
         def create_dashboard_tab(parent):
             from AutoDiag.ui.dashboard_tab import DashboardTab
             return DashboardTab(parent)
@@ -1301,10 +1345,9 @@ class HeadlessDiagnostics:
             # Check SocketCAN (though this is Linux-specific)
             try:
                 import socket
-                # This would be more complex in real implementation
                 self.logger.info("✓ SocketCAN base available")
             except ImportError:
-                self.logger.info("✓ SocketCAN base available (simulated)")
+                self.logger.error("✗ SocketCAN base unavailable — socket module missing")
             return True
         except Exception as e:
             self.logger.error(f"Device detection failed: {e}")
@@ -1410,14 +1453,34 @@ def main():
     parser.add_argument("--brand", default="Toyota",
                        help="Vehicle brand for diagnostics (default: Toyota)")
     args = parser.parse_args()
+    
+    # Setup logging early for diagnostics
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger(__name__)
+    
+    # === STRONG VCI MANAGER INITIALIZATION ===
+    def initialize_vci_manager():
+        try:
+            from AutoDiag.core.vci_manager import get_vci_manager
+            vci_mgr = get_vci_manager()
+            if vci_mgr is not None:
+                logger.info("✅ VCI manager initialized successfully")
+                return vci_mgr
+            else:
+                logger.error("❌ get_vci_manager() returned None")
+                return None
+        except ImportError as e:
+            logger.error(f"❌ Failed to import VCI manager: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"❌ VCI manager init exception: {e}")
+            return None
+    
     # Check if running in headless mode
     if args.headless or any([args.scan, args.dtc, args.health]):
-        # Setup logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
-        logger = logging.getLogger(__name__)
         logger.info("🔧 Starting AutoDiag Pro in headless mode - RELEASE VERSION")
         # Initialize headless diagnostics
         diagnostics = HeadlessDiagnostics()
@@ -1444,6 +1507,10 @@ def main():
         print("Or run the installer again to install dependencies automatically.")
         sys.exit(1)
     # GUI mode - create QApplication first before any PyQt operations
+    # Force XCB (X11) — avoids Wayland compositor zoom animation and scaling artefacts
+    os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+    os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "0")
+    os.environ.setdefault("QT_SCALE_FACTOR", "1")
     app = QApplication(sys.argv)
     app.setApplicationName("AutoDiag Pro")
     app.setApplicationVersion("0.0.2")
@@ -1462,17 +1529,28 @@ def main():
         if style_manager:
             style_manager.set_app(app)
             style_manager.ensure_theme()
+        # Use it
+        vci_manager = initialize_vci_manager()
+        if vci_manager is None:
+            logger.warning("⚠️ VCI manager not available - hardware features will be limited")
+        else:
+            logger.info("✅ VCI manager ready for hardware communication")
         # Show login dialog first
+        print("[DEBUG] main: creating LoginDialog...")
         login_dialog = LoginDialog()
+        print("[DEBUG] main: calling login_dialog.exec()...")
         result = login_dialog.exec()
+        print(f"[DEBUG] main: login_dialog.exec() returned {result} (Accepted={QDialog.DialogCode.Accepted})")
+        
         if result == QDialog.DialogCode.Accepted:
             # Login successful, show main window with user info
             user_info = getattr(login_dialog, 'user_info', None)
+            print(f"[DEBUG] main: login accepted, user_info={user_info}")
             logger.info(f"Login successful, user_info: {user_info}")
             try:
-                # Create main window
-                window = AutoDiagPro(current_user_info=user_info)
-                logger.info("AutoDiagPro window created successfully")                
+                # Create main window with VCI manager injection
+                window = AutoDiagPro(current_user_info=user_info, vci_manager=vci_manager)
+                logger.info("AutoDiagPro window created successfully with VCI manager injection")                
                 try:
                     logger.info("About to show window")
                     window.show()
@@ -1501,6 +1579,7 @@ def main():
                 sys.exit(1)
         else:
             # Login cancelled or failed
+            print(f"[DEBUG] main: login NOT accepted (result={result}), exiting")
             logger.info("Login cancelled or failed, exiting application")
             sys.exit(0)
     except Exception as e:

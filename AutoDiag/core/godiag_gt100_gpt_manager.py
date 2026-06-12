@@ -567,11 +567,10 @@ class GoDiagGT100GPTManager(QObject):
                     # Serial monitoring
                     input_voltage, output_voltage, current = self._read_serial_voltage_current()
                 else:
-                    # Simulated values for testing
-                    input_voltage = 24.0  # Simulated 24V input
-                    output_voltage = 12.4  # Simulated 12V output
-                    current = 0.15  # Simulated 150mA current
-                    
+                    logger.error("GT100 PLUS GPT: no USB/DoIP/serial interface available — cannot read voltage")
+                    self.voltage_monitoring_active = False
+                    break
+
                 # Update device information
                 self.connected_gt100.voltage_input = input_voltage
                 self.connected_gt100.voltage_output = output_voltage
@@ -598,35 +597,31 @@ class GoDiagGT100GPTManager(QObject):
                 break
 
     def _read_usb_voltage_current(self) -> Tuple[float, float, float]:
-        """Read voltage and current via USB"""
-        # This would require specific USB control transfers to GT100 PLUS GPT
-        # For now, return simulated values
-        return 24.0, 12.4, 0.15
+        """Read voltage and current via USB — USB control transfer protocol not yet implemented"""
+        raise NotImplementedError("USB voltage/current readback not implemented for GT100 PLUS GPT")
 
     def _read_doip_voltage_current(self) -> Tuple[float, float, float]:
-        """Read voltage and current via DOIP"""
-        # This would require DOIP requests for diagnostic data
-        # For now, return simulated values
-        return 24.0, 12.4, 0.15
+        """Read voltage and current via DoIP — DoIP diagnostic data request not yet implemented"""
+        raise NotImplementedError("DoIP voltage/current readback not implemented for GT100 PLUS GPT")
 
     def _read_serial_voltage_current(self) -> Tuple[float, float, float]:
-        """Read voltage and current via serial"""
+        """Read voltage and current via serial (ATCV command)"""
+        if not self.gpt_serial:
+            raise RuntimeError("Serial port not open")
         try:
-            if self.gpt_serial:
-                # Send voltage query command
-                self.gpt_serial.write(b"ATCV\r")  # Command to read voltage
-                time.sleep(0.1)
-                response = self.gpt_serial.read(50).decode('ascii', errors='ignore')
-                
-                # Parse voltage from response
-                # This is a simplified example - real parsing would be more complex
-                if "12." in response:
-                    return 24.0, 12.4, 0.15
-                    
+            self.gpt_serial.write(b"ATCV\r")
+            time.sleep(0.1)
+            response = self.gpt_serial.read(50).decode('ascii', errors='ignore').strip()
+            # Expected response format: "12.4V" or similar — parse first float found
+            import re
+            match = re.search(r'(\d+\.?\d*)', response)
+            if not match:
+                raise ValueError(f"Could not parse voltage from response: {repr(response)}")
+            voltage = float(match.group(1))
+            return voltage, 0.0, 0.0
         except Exception as e:
             logger.error(f"Serial voltage read failed: {e}")
-            
-        return 24.0, 12.4, 0.15
+            raise
 
     def enable_gpt_mode(self) -> bool:
         """Enable GPT (General Programming Tool) mode"""

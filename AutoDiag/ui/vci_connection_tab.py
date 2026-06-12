@@ -2,16 +2,18 @@
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel,
-    QPushButton, QTextEdit, QScrollArea, QMessageBox, QProgressBar
+    QPushButton, QTextEdit, QScrollArea, QMessageBox, QProgressBar,
+    QComboBox, QLineEdit
 )
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont
 import logging
+import sys
 
 logger = logging.getLogger(__name__)
 
 class VCIConnectionTab:
-    def __init__(self, parent_window):
+    def __init__(self, parent_window, vci_manager=None):
         self.parent = parent_window
         self.scan_btn = None
         self.connect_btn = None
@@ -19,11 +21,18 @@ class VCIConnectionTab:
         self.results_text = None
         self.status_label = None
         self.progress_bar = None
+        self.vci_manager = vci_manager
 
         # VCI scan state tracking
         self._scan_in_progress = False
         self._scan_timeout_timer = None
         self._last_scan_results = []
+
+        # Manual port widgets
+        self.port_combo = None
+        self.port_manual_input = None
+        self.port_connect_btn = None
+        self.port_refresh_btn = None
 
         # Connect to VCI manager signals if available
         self._connect_vci_signals()
@@ -116,6 +125,61 @@ class VCIConnectionTab:
 
         control_layout.addLayout(buttons_layout)
         layout.addWidget(control_frame)
+
+        # MANUAL PORT CONNECTION
+        manual_frame = QFrame()
+        manual_frame.setProperty("class", "glass-card")
+        manual_layout = QVBoxLayout(manual_frame)
+        manual_layout.setSpacing(10)
+        manual_layout.setContentsMargins(20, 15, 20, 15)
+
+        manual_title = QLabel("Manual Port Connection")
+        manual_title.setProperty("class", "section-title")
+        manual_layout.addWidget(manual_title)
+
+        manual_note = QLabel(
+            "Use this if auto-scan doesn't find your device. "
+            "Pair your HH OBD Advance via Bluetooth first, then select or type the port."
+        )
+        manual_note.setWordWrap(True)
+        manual_note.setProperty("class", "info-note")
+        manual_layout.addWidget(manual_note)
+
+        port_row = QHBoxLayout()
+        port_row.setSpacing(8)
+
+        self.port_combo = QComboBox()
+        self.port_combo.setFixedHeight(36)
+        self.port_combo.setMinimumWidth(180)
+        self.port_combo.setEditable(False)
+        self.port_combo.currentTextChanged.connect(self._on_port_combo_changed)
+        port_row.addWidget(self.port_combo)
+
+        self.port_manual_input = QLineEdit()
+        self.port_manual_input.setFixedHeight(36)
+        self.port_manual_input.setMinimumWidth(120)
+        self.port_manual_input.setPlaceholderText("or type: COM3  /dev/rfcomm0")
+        port_row.addWidget(self.port_manual_input)
+
+        self.port_refresh_btn = QPushButton("Refresh")
+        self.port_refresh_btn.setFixedHeight(36)
+        self.port_refresh_btn.setFixedWidth(75)
+        self.port_refresh_btn.clicked.connect(self._refresh_port_list)
+        port_row.addWidget(self.port_refresh_btn)
+
+        self.port_connect_btn = QPushButton("Connect to Port")
+        self.port_connect_btn.setProperty("class", "success")
+        self.port_connect_btn.setFixedHeight(36)
+        self.port_connect_btn.setMinimumWidth(130)
+        self.port_connect_btn.clicked.connect(self.connect_manual_port)
+        port_row.addWidget(self.port_connect_btn)
+
+        port_row.addStretch()
+        manual_layout.addLayout(port_row)
+        layout.addWidget(manual_frame)
+
+        # Populate port list on creation
+        self._refresh_port_list()
 
         # RESULTS AREA
         results_frame = QFrame()
@@ -442,3 +506,136 @@ class VCIConnectionTab:
 
         except Exception as e:
             logger.error(f"Error updating VCI status display: {e}")
+
+    def _refresh_port_list(self):
+        """Populate the port dropdown with available serial ports."""
+        if not self.port_combo:
+            return
+        try:
+            import serial.tools.list_ports
+            ports = serial.tools.list_ports.comports()
+            self.port_combo.clear()
+            self.port_combo.addItem("-- select port --")
+
+            for p in sorted(ports, key=lambda x: x.device):
+                desc = p.description or ""
+                label = f"{p.device}  {desc}".strip()
+                self.port_combo.addItem(label, userData=p.device)
+
+            # Linux: also add /dev/rfcomm* and /dev/ttyUSB* not caught by list_ports
+            if sys.platform != "win32":
+                import glob
+                extra = glob.glob("/dev/rfcomm*") + glob.glob("/dev/ttyUSB*")
+                existing = [self.port_combo.itemData(i)
+                            for i in range(self.port_combo.count())]
+                for dev in sorted(extra):
+                    if dev not in existing:
+                        self.port_combo.addItem(dev, userData=dev)
+
+            logger.info(f"Port list refreshed — {self.port_combo.count() - 1} port(s) found")
+        except Exception as e:
+            logger.warning(f"Port list refresh failed: {e}")
+
+    def _on_port_combo_changed(self, text):
+        """Sync manual input field when a port is selected from the dropdown."""
+        if not self.port_manual_input:
+            return
+        if self.port_combo and self.port_combo.currentIndex() > 0:
+            port = self.port_combo.currentData()
+            if port:
+                self.port_manual_input.clear()
+
+    def _resolve_port(self) -> str:
+        """Return the port to use: manual input takes priority over dropdown."""
+        manual = self.port_manual_input.text().strip() if self.port_manual_input else ""
+        if manual:
+            return manual
+        if self.port_combo and self.port_combo.currentIndex() > 0:
+            return self.port_combo.currentData() or ""
+        return ""
+
+    def connect_manual_port(self):
+        """Connect directly to a user-specified COM / serial port.
+
+        Auto-detects DACOS VCI (VID 0xDAC0/PID 0x2534) on the port;
+        falls back to HH OBD Advance (ELM327) for all other ports.
+        """
+        port = self._resolve_port()
+        if not port:
+            QMessageBox.warning(
+                None, "No Port Selected",
+                "Select a port from the dropdown or type one in the field.\n\n"
+                "Windows example:  COM3  (Bluetooth) or COM11 (DACOS VCI)\n"
+                "Linux example:    /dev/rfcomm0  or  /dev/ttyACM0 (DACOS VCI)"
+            )
+            return
+
+        try:
+            controller = getattr(self.parent, 'diagnostics_controller', None)
+            if not controller or not controller.vci_manager:
+                raise RuntimeError("VCI manager not available")
+
+            from AutoDiag.core.vci_manager import VCIDevice, VCITypes, VCIStatus
+
+            # Detect DACOS VCI by USB VID/PID on this port
+            _is_dacos_vci = False
+            try:
+                import serial.tools.list_ports
+                for p in serial.tools.list_ports.comports():
+                    if p.device == port and getattr(p, 'vid', None) == 0xDAC0:
+                        _is_dacos_vci = True
+                        break
+            except Exception:
+                pass
+
+            if _is_dacos_vci:
+                device = VCIDevice(
+                    device_type=VCITypes.BLUE_PILL_VCI,
+                    name=f"DACOS VCI ({port})",
+                    port=port,
+                    status=VCIStatus.DISCONNECTED,
+                )
+            else:
+                device = VCIDevice(
+                    device_type=VCITypes.HH_OBD_ADVANCE,
+                    name=f"HH OBD Advance ({port})",
+                    port=port,
+                    status=VCIStatus.DISCONNECTED,
+                )
+
+            self.update_status(f"Connecting to {port}...", "warning")
+            self.results_text.setPlainText(
+                f"🔗 Connecting to {port}\n"
+                "Please wait — this may take a few seconds..."
+            )
+            self.port_connect_btn.setEnabled(False)
+
+            success = controller.vci_manager.connect_to_device(device)
+
+            if success:
+                self.results_text.setPlainText(
+                    f"✅ Connected via manual port\n"
+                    f"{'=' * 35}\n\n"
+                    f"Device: {device.name}\n"
+                    f"Port:   {port}\n\n"
+                    f"The VCI device is ready for diagnostics."
+                )
+                self.update_status(f"✅ Connected: {device.name}", "success")
+                self.disconnect_btn.setEnabled(True)
+                self.connect_btn.setEnabled(False)
+            else:
+                self.results_text.setPlainText(
+                    f"❌ Connection failed on {port}\n\n"
+                    "Check:\n"
+                    "• Device is powered and paired via Bluetooth\n"
+                    "• Correct port selected (check Device Manager on Windows)\n"
+                    "• No other app (VCDS, serial monitor) is using the port"
+                )
+                self.update_status(f"❌ Failed on {port}", "error")
+
+        except Exception as e:
+            logger.error(f"Manual port connect error: {e}")
+            self.results_text.setPlainText(f"❌ Connection Error\n\n{e}")
+            self.update_status("Connection error", "error")
+        finally:
+            self.port_connect_btn.setEnabled(True)

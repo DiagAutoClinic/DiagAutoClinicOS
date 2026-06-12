@@ -43,11 +43,46 @@ Copilot should NOT:
 - invent files or commands that do not exist
 - change architecture boundaries
 - introduce hidden dependencies
-# GitHub Copilot Instructions — DiagAutoClinicOS (DACOS)
+- create alternate entry points — `launcher.py` is the **ONLY** entry point
 
-## 🧭 Project Overview
+## 🚪 Entry Point (CRITICAL)
 
-**DiagAutoClinicOS (DACOS)** is an open-source, modular automotive diagnostic desktop suite built by **Shaun Smit** and the DiagAutoClinic team. It targets independent automotive workshops, with a focus on the **South African market** (Ford and GM prominence).
+**`launcher.py` is the one and only entry point for DiagAutoClinicOS.** It handles:
+
+- User authentication (login dialog)
+- HWID verification
+- Launcher dashboard
+- Spawning child processes (`AutoDiag/main.py`, `AutoECU/main.py`, `AutoKey/main.py`)
+
+Copilot must NEVER:
+
+- Create `.bat`, `.vbs`, `.sh`, or shortcut files that bypass `launcher.py`
+- Create `__main__` blocks or direct `main.py` entry points that skip the launcher
+- Suggest running `AutoDiag/main.py` directly — it is a child process, not an entry point
+- Modify `launcher/AutoDiag.bat` or any compiler output scripts to call anything other than `launcher.py`
+
+The only valid launch commands are:
+
+```
+python launcher.py           # development
+DiagAutoClinicOS.bat         # production (repo root)
+```
+
+## 🔐 Local-Only Data (NEVER COMMIT / NEVER UPLOAD)
+
+The following data categories must remain strictly local. Copilot must NEVER suggest committing, pushing, or syncing them to any remote:
+
+| Category | Paths / Patterns | Reason |
+|---|---|---|
+| Charlemaine AI | `ai/`, `*charlemaine*`, `scripts/charlemaine.py`, `scripts/train_charlemaine_final.py` | Local AI agent, training data, and models |
+| AI training data | `ai_offline_training/`, `charlemaine_training_data/`, `training_data*/` | Proprietary training datasets |
+| CAN logs / captures | `can_log_*.txt`, `can_log_*.json`, `*.dbc` outputs | Vehicle-specific CAN data |
+| VIN data | `vin_for_dacos/`, `vin_storage*/`, `vin_truth_storage/` | Vehicle identification records |
+| PID databases | PID map files, sensor calibration data | Vehicle-specific parameter IDs |
+| Auth / credentials | `users.json`, `*.db`, `*.sqlite`, `credentials.json`, `*.env`, `auth.json`, `login.json` | User accounts and secrets |
+| DTC datasets | `dtc_faults_dataset.json`, `dtc_model_metadata_*.json` | Diagnostic trouble code models |
+
+All of the above are covered by `.gitignore`. If Copilot creates new files in any of these categories, they MUST be added to `.gitignore` immediately.
 
 The platform consists of three suites:
 
@@ -67,7 +102,7 @@ Licensed under **GPL-3.0**. All code must remain open-source compatible.
 | UI framework | PyQt6 (glassmorphic design) |
 | Hardware protocols | J2534, OBD-II, CAN bus, ISO-TP, ISO15765-11BIT |
 | Low-level comms | C / C++ (device drivers, protocol layers) |
-| Supported devices | GoDiag GD101, OBDLink MX+, HH OBD Advance, ScanMatik 2 Pro, GT100+GPT, ELM327 Bluetooth |
+| Supported devices | OBDLink MX+, HH OBD Advance, ScanMatik 2 Pro, GT100+GPT, ELM327 Bluetooth |
 | Cross-platform | Linux (Ubuntu primary), Windows (Alpha) |
 | VIN/DTC | Custom VIN decoder, DTC database with Ford/GM specifics |
 

@@ -8,14 +8,14 @@ import os
 import sys
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
-from PyQt6.QtCore import QTimer, pyqtSignal, QObject, QThread
+from PyQt6.QtCore import QTimer, pyqtSignal, QObject, QThread, pyqtSlot
 
 logger = logging.getLogger(__name__)
 
 class VehicleLoaderThread(QThread):
     """Background thread for loading vehicle list"""
     vehicles_loaded = pyqtSignal(list)
-    
+
     def run(self):
         try:
             if CAN_PARSER_AVAILABLE:
@@ -26,6 +26,29 @@ class VehicleLoaderThread(QThread):
         except Exception as e:
             logger.error(f"Error in vehicle loader thread: {e}")
             self.vehicles_loaded.emit([])
+
+
+class DiagnosticsWorker(QThread):
+    """Background thread for blocking VCI diagnostic operations.
+
+    Keeps UDS/KWP communication off the Qt main thread so the UI stays responsive.
+    Connect *operation* to a callable that takes no arguments and returns a dict.
+    The result is emitted via *finished*; errors via *error*.
+    """
+    finished = pyqtSignal(dict)
+    error    = pyqtSignal(str)
+
+    def __init__(self, operation, parent=None):
+        super().__init__(parent)
+        self._operation = operation
+
+    def run(self):
+        try:
+            result = self._operation()
+            self.finished.emit(result if isinstance(result, dict) else {"result": result})
+        except Exception as exc:
+            logger.error(f"DiagnosticsWorker error: {exc}")
+            self.error.emit(str(exc))
 
 # Import CAN bus REF parser
 try:
@@ -92,15 +115,20 @@ class DiagnosticsController(QObject):
     live_data_updated = pyqtSignal(list)
     scan_completed = pyqtSignal(dict)
     ecu_info_updated = pyqtSignal(dict)
+    pending_dtc_read = pyqtSignal(dict)
+    freeze_frame_read = pyqtSignal(dict)
+    readiness_read = pyqtSignal(dict)
 
-    def __init__(self, ui_callbacks: Optional[Dict[str, callable]] = None, charlemaine_agent=None):
+    def __init__(self, ui_callbacks: Optional[Dict[str, callable]] = None, charlemaine_agent=None, vci_manager=None):
         """Initialize diagnostics controller"""
         super().__init__()
         self.ui_callbacks = ui_callbacks or {}
+        self.vci_manager = vci_manager
         self.is_streaming = False
-        self.current_brand = "Toyota"
+        self.current_brand = None
         self.live_data_timer = None
         self.keep_alive_timer = None
+        self._acknowledged_brands = set()  # session-level cache — don't ask twice
 
         # AI Agent
         self.charlemaine = charlemaine_agent
@@ -332,8 +360,10 @@ class DiagnosticsController(QObject):
 
             self._update_status("📋 Reading DTCs...")
 
-            # No Mock: Execute directly
-            self._complete_dtc_read()
+            # Run blocking VCI I/O in a background thread
+            self._dtc_worker = DiagnosticsWorker(self._complete_dtc_read)
+            self._dtc_worker.error.connect(self._on_dtc_worker_error)
+            self._dtc_worker.start()
 
             return {"status": "started", "operation": "read_dtcs", "brand": self.current_brand}
 
@@ -343,43 +373,27 @@ class DiagnosticsController(QObject):
             return {"status": "error", "message": str(e)}
     
     def _complete_dtc_read(self):
-        """Complete DTC read operation using real VCI communication"""
-        try:
-            dtc_data = {
-                "timestamp": datetime.now().isoformat(),
-                "brand": self.current_brand,
-                "dtcs": [],
-                "total_count": 0
-            }
+        """Complete DTC read operation using real VCI communication.
+        Runs in DiagnosticsWorker thread — signals only, no direct Qt/callback calls.
+        """
+        dtc_data = {
+            "timestamp": datetime.now().isoformat(),
+            "brand": self.current_brand,
+            "dtcs": [],
+            "total_count": 0
+        }
 
-            # Try to read real DTCs from VCI device
-            if self.vci_manager and self.vci_manager.is_connected():
-                # Send UDS/KWP commands to read DTCs
-                real_dtcs = self._read_real_dtcs()
-                dtc_data["dtcs"] = real_dtcs
-                dtc_data["total_count"] = len(real_dtcs)
-                logger.info(f"Read {len(real_dtcs)} DTCs from VCI device")
-            else:
-                logger.warning("No VCI device connected - cannot read DTCs")
-                raise ConnectionError("No VCI device connected")
+        if not (self.vci_manager and self.vci_manager.is_connected()):
+            raise ConnectionError("No VCI device connected")
 
-            # Update UI
-            if 'dtc_btn' in self.ui_callbacks:
-                self.ui_callbacks['set_button_enabled']('dtc_btn', True)
+        real_dtcs = self._read_real_dtcs()
+        dtc_data["dtcs"] = real_dtcs
+        dtc_data["total_count"] = len(real_dtcs)
+        logger.info(f"Read {len(real_dtcs)} DTCs from VCI device")
 
-            self._update_status(f"✅ DTCs retrieved ({dtc_data['total_count']} found)")
-
-            # Format results text
-            results_text = self._format_dtc_results(dtc_data)
-            if 'set_results_text' in self.ui_callbacks:
-                self.ui_callbacks['set_results_text'](results_text)
-
-            # Emit signal
-            self.dtc_read.emit(dtc_data)
-
-        except Exception as e:
-            logger.error(f"Error completing DTC read: {e}")
-            self._show_error_message("DTC Read Error", f"Error completing DTC read: {e}")
+        self.status_changed.emit(f"✅ DTCs retrieved ({dtc_data['total_count']} found)")
+        self.dtc_read.emit(dtc_data)
+        return dtc_data
     
     def _format_dtc_results(self, dtc_data: Dict[str, Any]) -> str:
         """Format DTC data for display"""
@@ -443,66 +457,34 @@ class DiagnosticsController(QObject):
                 self.ui_callbacks['set_button_enabled']('clear_btn', False)
             
             self._update_status("🧹 Clearing DTCs...")
-            
-            # No Mock: Execute directly
-            self._complete_dtc_clear()
+
+            self._clear_worker = DiagnosticsWorker(self._complete_dtc_clear)
+            self._clear_worker.error.connect(self._on_clear_worker_error)
+            self._clear_worker.start()
             
         except Exception as e:
             logger.error(f"Error in DTC clear confirmation: {e}")
     
     def _complete_dtc_clear(self):
-        """Complete DTC clear operation using real VCI communication"""
-        try:
-            success = False
+        """Complete DTC clear operation using real VCI communication.
+        Runs in DiagnosticsWorker thread — signals only, no direct Qt/callback calls.
+        """
+        if not (self.vci_manager and self.vci_manager.is_connected()):
+            self.dtc_cleared.emit(False)
+            raise ConnectionError("No VCI device connected")
 
-            # Try to clear DTCs using real VCI device
-            if self.vci_manager and self.vci_manager.is_connected():
-                try:
-                    # Send UDS service 0x14 (Clear DTC)
-                    success = self._clear_real_dtcs()
-                    if success:
-                        logger.info("DTCs cleared successfully via VCI device")
-                    else:
-                        logger.error("Failed to clear DTCs via VCI device")
-                except Exception as e:
-                    logger.error(f"Real DTC clear failed: {e}")
-                    success = False
-            else:
-                logger.error("No VCI device connected - cannot clear DTCs")
-                success = False
+        success = self._clear_real_dtcs()
 
-            if success:
-                self._update_status("✅ DTCs cleared successfully")
+        if success:
+            logger.info("DTCs cleared successfully via VCI device")
+            self.status_changed.emit("✅ DTCs cleared successfully")
+            self.dtc_cleared.emit(True)
+        else:
+            logger.error("Failed to clear DTCs via VCI device")
+            self.status_changed.emit("❌ Failed to clear DTCs")
+            self.dtc_cleared.emit(False)
 
-                # Format clear results
-                results_text = (
-                    f"DTC Clearance Report - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                    "✅ All diagnostic trouble codes have been cleared\n"
-                    "✅ System memory reset\n"
-                    "✅ Ready for new diagnostics\n\n"
-                    "Note: Some codes may reappear if underlying issues persist."
-                )
-
-                if 'set_results_text' in self.ui_callbacks:
-                    self.ui_callbacks['set_results_text'](results_text)
-
-                # Update DTC card
-                if 'update_card_value' in self.ui_callbacks:
-                    self.ui_callbacks['update_card_value']('dtc_card', 0)
-
-                # Emit signal
-                self.dtc_cleared.emit(True)
-            else:
-                self._update_status("❌ Failed to clear DTCs")
-                self._show_error_message("DTC Clear Error", "Failed to clear diagnostic trouble codes. Ensure VCI device is connected.")
-
-            # Re-enable buttons
-            if 'clear_btn' in self.ui_callbacks:
-                self.ui_callbacks['set_button_enabled']('clear_btn', True)
-
-        except Exception as e:
-            logger.error(f"Error completing DTC clear: {e}")
-            self._show_error_message("DTC Clear Error", f"Error completing DTC clear: {e}")
+        return {"success": success}
     
     def start_live_stream(self, brand: Optional[str] = None) -> Dict[str, Any]:
         """Start live data streaming"""
@@ -548,26 +530,34 @@ class DiagnosticsController(QObject):
             return {"status": "error", "message": str(e)}
     
     def _update_live_data(self):
-        """Update live data values from real CAN sources with realtime monitoring"""
+        """Update live data values — prefers real PID polling, falls back to CAN DB."""
         try:
-            if self.is_streaming:
-                # Get live data from CAN database only
+            if not self.is_streaming:
+                return
+
+            live_data: List[Tuple[str, str, str]] = []
+
+            # ---- PATH A: Real OBD-II PID polling (primary) ----
+            try:
+                pid_data = self._get_live_pid_data()
+                if pid_data:
+                    live_data = pid_data
+                    logger.debug("Live data from real PID polling: %d values", len(live_data))
+            except Exception as e:
+                logger.warning("PID polling unavailable, falling back to CAN DB: %s", e)
+
+            # ---- PATH B: CAN database decoding (fallback) ----
+            if not live_data:
                 live_data = self._get_live_data_from_can_db()
 
-                # Update UI table
-                if 'update_live_data_table' in self.ui_callbacks:
-                    self.ui_callbacks['update_live_data_table'](live_data)
-
-                # Update CAN bus tab with realtime data if available
-                if 'update_can_bus_data' in self.ui_callbacks:
-                    can_data = self._get_realtime_can_data()
-                    self.ui_callbacks['update_can_bus_data'](can_data)
-
-                # Emit signal
+            # ---- Update UI ----
+            if live_data:
+                if "update_live_data_table" in self.ui_callbacks:
+                    self.ui_callbacks["update_live_data_table"](live_data)
                 self.live_data_updated.emit(live_data)
 
         except Exception as e:
-            logger.error(f"Error updating live data: {e}")
+            logger.error("Error updating live data: %s", e)
     
     def _get_live_data_from_can_db(self) -> List[Tuple[str, str, str]]:
         """Get live data from CAN database using realtime data"""
@@ -607,27 +597,265 @@ class DiagnosticsController(QObject):
         return live_data
 
     def _get_realtime_can_data(self) -> Dict[int, bytes]:
-        """Get realtime CAN data from VCI device if available"""
-        can_data = {}
+        """Read live CAN frames from the VCI device via active PID polling.
+
+        Returns a dict mapping CAN ID → raw data bytes suitable for
+        decoding by :meth:`_get_live_data_from_can_db`.
+        """
+        can_data: Dict[int, bytes] = {}
 
         try:
-            if self.vci_manager and self.vci_manager.is_connected():
-                # Get real CAN data from VCI device
-                device = self.vci_manager.get_connected_device()
-                if device and "can_bus" in device.capabilities:
-                    # In real implementation, this would capture real CAN messages
-                    # For now, return empty dict - hardware required for CAN data
-                    logger.warning("Real CAN data capture not implemented - hardware required")
-                else:
-                    logger.warning("Connected device does not support CAN bus monitoring")
-            else:
-                logger.warning("No VCI device connected - cannot capture CAN data")
+            if not self.vci_manager or not self.vci_manager.is_connected():
+                return can_data
+
+            # Standard OBD-II PIDs (Mode 01) for live dashboard
+            # Format: PID → (label, formula for human-readable value)
+            pids_to_read = [0x0C, 0x0D, 0x05, 0x0B, 0x0F, 0x11, 0x04]
+
+            results = self.vci_manager.read_pids_batch(pids_to_read)
+
+            for pid, raw in results.items():
+                if raw is None:
+                    continue
+                # Store under a synthetic CAN ID so the CAN-DB decoder path
+                # can still process these — or skip and use dedicated PID path
+                can_data[0x100 | pid] = raw
 
         except Exception as e:
-            logger.error(f"Error getting realtime CAN data: {e}")
+            logger.warning("Live PID polling failed: %s", e)
 
         return can_data
 
+    def _get_live_pid_data(self) -> List[Tuple[str, str, str]]:
+        """Read standard OBD-II PIDs and return (label, value, unit) tuples
+        for direct display — no CAN database required.
+        """
+        pid_map = {
+            0x0C: ("Engine RPM",     lambda b: int.from_bytes(b[:2], "big") * 0.25,   "rpm"),
+            0x0D: ("Vehicle Speed",  lambda b: int(b[0]),                               "km/h"),
+            0x05: ("Coolant Temp",   lambda b: int(b[0]) - 40,                          "°C"),
+            0x0B: ("Intake MAP",     lambda b: int(b[0]),                               "kPa"),
+            0x0F: ("Intake Air Temp",lambda b: int(b[0]) - 40,                          "°C"),
+            0x11: ("Throttle Pos.",  lambda b: int(b[0]) * 100.0 / 255.0,              "%"),
+            0x04: ("Engine Load",    lambda b: int(b[0]) * 100.0 / 255.0,              "%"),
+        }
+
+        try:
+            if not self.vci_manager or not self.vci_manager.is_connected():
+                return []
+        except Exception:
+            return []
+
+        pids = list(pid_map.keys())
+        results = self.vci_manager.read_pids_batch(pids)
+
+        live: List[Tuple[str, str, str]] = []
+        for pid, raw in results.items():
+            if raw is None:
+                continue
+            label, formula, unit = pid_map.get(pid, (None, None, None))
+            if label is None:
+                continue
+            try:
+                value = formula(raw)
+                live.append((label, f"{value:.1f}", unit))
+            except Exception:
+                continue
+
+        return live
+
+
+    def read_pending_dtcs(self, brand: Optional[str] = None) -> Dict[str, Any]:
+        """Read pending DTCs (Mode $07) — faults detected but not yet confirmed."""
+        if brand:
+            self.current_brand = brand
+
+        if not self._check_vci_connection():
+            return {"status": "error", "message": "No VCI device connected."}
+
+        self._update_status("🔍 Reading pending DTCs...")
+
+        def _do():
+            if not (self.vci_manager and self.vci_manager.is_connected()):
+                raise ConnectionError("No VCI device connected")
+
+            if self.vci_manager.get_elm327_driver() is not None:
+                raw_list = self.vci_manager.read_pending_dtcs_elm327()
+            else:
+                raw_response = self._send_uds_request(0x19, [0x0F, 0xFF])
+                raw_list = self._parse_dtc_response(raw_response) if raw_response else []
+
+            # Enrich with DTC DB descriptions
+            enriched = []
+            for item in raw_list:
+                if "error" in item:
+                    continue
+                code = item.get("code", "")
+                item["description"] = self._lookup_dtc_description(code) if code else ""
+                item["status"] = "Pending"
+                enriched.append(item)
+
+            result = {
+                "timestamp": datetime.now().isoformat(),
+                "brand": self.current_brand,
+                "pending_dtcs": enriched,
+                "total_count": len(enriched),
+            }
+            self.status_changed.emit(f"⚠️ Pending DTCs: {len(enriched)} found")
+            self.pending_dtc_read.emit(result)
+            return result
+
+        self._pending_worker = DiagnosticsWorker(_do)
+        self._pending_worker.error.connect(
+            lambda msg: self._show_error_message("Pending DTC Error", msg)
+        )
+        self._pending_worker.start()
+        return {"status": "started", "operation": "read_pending_dtcs"}
+
+    def read_freeze_frame(self, brand: Optional[str] = None) -> Dict[str, Any]:
+        """Read freeze frame snapshot (Mode $02) — sensor values at DTC trigger."""
+        if brand:
+            self.current_brand = brand
+
+        if not self._check_vci_connection():
+            return {"status": "error", "message": "No VCI device connected."}
+
+        self._update_status("❄️ Reading freeze frame...")
+
+        def _do():
+            if not (self.vci_manager and self.vci_manager.is_connected()):
+                raise ConnectionError("No VCI device connected")
+
+            if self.vci_manager.get_elm327_driver() is not None:
+                data = self.vci_manager.read_freeze_frame_elm327()
+            else:
+                data = {"error": "Freeze frame requires ELM327/HH OBD connection"}
+
+            result = {
+                "timestamp": datetime.now().isoformat(),
+                "brand": self.current_brand,
+                "freeze_frame": data,
+            }
+            if "error" not in data:
+                param_count = len(data.get("parameters", {}))
+                self.status_changed.emit(f"✅ Freeze frame: {param_count} parameters")
+            else:
+                self.status_changed.emit(f"⚠️ Freeze frame: {data['error']}")
+            self.freeze_frame_read.emit(result)
+            return result
+
+        self._ff_worker = DiagnosticsWorker(_do)
+        self._ff_worker.error.connect(
+            lambda msg: self._show_error_message("Freeze Frame Error", msg)
+        )
+        self._ff_worker.start()
+        return {"status": "started", "operation": "read_freeze_frame"}
+
+    def read_readiness_monitors(self, brand: Optional[str] = None) -> Dict[str, Any]:
+        """Read emission readiness monitors (Mode $01 PID $01)."""
+        if brand:
+            self.current_brand = brand
+
+        if not self._check_vci_connection():
+            return {"status": "error", "message": "No VCI device connected."}
+
+        self._update_status("📋 Reading readiness monitors...")
+
+        def _do():
+            if not (self.vci_manager and self.vci_manager.is_connected()):
+                raise ConnectionError("No VCI device connected")
+
+            if self.vci_manager.get_elm327_driver() is not None:
+                data = self.vci_manager.read_readiness_monitors_elm327()
+            else:
+                raw = self._send_uds_request(0x01, [0x01])
+                from drivers.hh_obd_advanced.obd_commands import OBDResponse, OBDResponseParser
+                resp = OBDResponse(hex_data=list(raw) if raw else [], success=bool(raw))
+                data = OBDResponseParser.parse_readiness_monitors(resp) if raw else {"error": "No response"}
+
+            result = {
+                "timestamp": datetime.now().isoformat(),
+                "brand": self.current_brand,
+                "readiness": data,
+            }
+            if "error" not in data:
+                mil = "ON" if data.get("mil") else "OFF"
+                complete = sum(
+                    1 for m in list(data.get("continuous", {}).values()) +
+                    list(data.get("non_continuous", {}).values())
+                    if m.get("complete")
+                )
+                total = sum(
+                    1 for m in list(data.get("continuous", {}).values()) +
+                    list(data.get("non_continuous", {}).values())
+                    if m.get("available", True)
+                )
+                self.status_changed.emit(f"✅ Readiness: MIL {mil} | {complete}/{total} complete")
+            else:
+                self.status_changed.emit(f"⚠️ Readiness: {data['error']}")
+            self.readiness_read.emit(result)
+            return result
+
+        self._readiness_worker = DiagnosticsWorker(_do)
+        self._readiness_worker.error.connect(
+            lambda msg: self._show_error_message("Readiness Error", msg)
+        )
+        self._readiness_worker.start()
+        return {"status": "started", "operation": "read_readiness_monitors"}
+
+    def _format_pending_dtc_results(self, data: Dict[str, Any]) -> str:
+        """Format pending DTC data for display."""
+        dtcs = data.get("pending_dtcs", [])
+        text = f"Pending DTCs — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        text += f"(Faults detected but not yet confirmed as stored)\n\n"
+        if not dtcs:
+            text += "✅ No pending DTCs found."
+        else:
+            for dtc in dtcs:
+                text += f"⚠️  {dtc['code']} — {dtc.get('description', 'Unknown')}\n"
+        text += f"\nTotal pending: {data.get('total_count', 0)}"
+        return text
+
+    def _format_freeze_frame(self, data: Dict[str, Any]) -> str:
+        """Format freeze frame data for display."""
+        ff = data.get("freeze_frame", {})
+        text = f"Freeze Frame — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        text += f"(Sensor snapshot captured at DTC trigger point)\n\n"
+        if "error" in ff:
+            text += f"❌ {ff['error']}"
+            return text
+        trigger = ff.get("trigger_dtc")
+        text += f"Trigger DTC : {trigger if trigger else 'Not available'}\n\n"
+        params = ff.get("parameters", {})
+        if params:
+            for name, v in params.items():
+                text += f"  {name:<20} {v['value']} {v['unit']}\n"
+        else:
+            text += "No freeze frame parameters available."
+        return text
+
+    def _format_readiness_monitors(self, data: Dict[str, Any]) -> str:
+        """Format readiness monitor data for display."""
+        rd = data.get("readiness", {})
+        text = f"Readiness Monitors — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        if "error" in rd:
+            text += f"❌ {rd['error']}"
+            return text
+        mil = "🔴 ON" if rd.get("mil") else "🟢 OFF"
+        text += f"MIL (Check Engine):  {mil}\n"
+        text += f"Stored DTC count  :  {rd.get('dtc_count', 0)}\n\n"
+        text += "── Continuous Monitors ─────────────────\n"
+        for name, info in rd.get("continuous", {}).items():
+            if info.get("available"):
+                status = "✅ Complete" if info.get("complete") else "⏳ Incomplete"
+                text += f"  {name:<20} {status}\n"
+            else:
+                text += f"  {name:<20} N/A\n"
+        text += "\n── Non-Continuous Monitors ─────────────\n"
+        for name, info in rd.get("non_continuous", {}).items():
+            status = "✅ Complete" if info.get("complete") else "⏳ Incomplete"
+            text += f"  {name:<20} {status}\n"
+        return text
 
     def run_quick_scan(self, brand: Optional[str] = None) -> Dict[str, Any]:
         """Run quick diagnostic scan"""
@@ -735,26 +963,25 @@ class DiagnosticsController(QObject):
             return {"status": "error", "message": str(e)}
     
     def read_vin(self) -> Optional[str]:
-        """Read VIN from vehicle using VCI or fallback"""
+        """Read VIN from vehicle — routes to ELM327 or UDS."""
         vin = None
-        
-        # 1. Try VCI
+
         if self.vci_manager and self.vci_manager.is_connected():
             try:
-                # Mode 09 PID 02 (VIN)
-                # Note: _send_uds_request might raise NotImplementedError if not supported
+                # PATH A: HH OBD Advance / ELM327
+                if self.vci_manager.get_elm327_driver() is not None:
+                    vin = self.vci_manager.read_vin_elm327()
+                    if vin:
+                        return vin
+
+                # PATH B: J2534 / UDS Mode 09 PID 02
                 response = self._send_uds_request(0x09, [0x02])
-                if response:
-                    # Parse VIN (skip first 3 bytes: 49 02 01... or similar)
-                    # Standard response: 49 02 01 [VIN bytes...]
-                    if len(response) > 3:
-                        # Attempt to decode
-                        vin = response[3:].decode('ascii', errors='ignore').strip()
-                        # Filter non-alphanumeric
-                        vin = ''.join(c for c in vin if c.isalnum())
+                if response and len(response) > 3:
+                    vin = response[3:].decode('ascii', errors='ignore').strip()
+                    vin = ''.join(c for c in vin if c.isalnum())
             except Exception as e:
                 logger.warning(f"Failed to read VIN from VCI: {e}")
-        
+
         return vin
 
     def analyze_vin(self, vin: str) -> Dict[str, Any]:
@@ -778,9 +1005,13 @@ class DiagnosticsController(QObject):
             self.current_brand = brand
             
         self._update_status("🔍 Running Full System Scan with Charlemaine AI...")
-        
-        # Start async scan
-        QTimer.singleShot(100, self._perform_full_scan_async)
+
+        self._scan_worker = DiagnosticsWorker(self._perform_full_scan_async)
+        self._scan_worker.finished.connect(lambda r: self.scan_completed.emit(r))
+        self._scan_worker.error.connect(
+            lambda msg: self._show_error_message("Scan Error", msg)
+        )
+        self._scan_worker.start()
         
         # Return success=True because the operation successfully STARTED
         return {
@@ -811,9 +1042,7 @@ class DiagnosticsController(QObject):
             rx_id = tx_id + 8
             module_name = module_names.get(tx_id, f"Unknown Module ({hex(tx_id)})")
             
-            # Update status
             self._update_status(f"Scanning {module_name}...")
-            QCoreApplication.processEvents() # Ensure UI updates
             
             try:
                 # Try to read DTCs from this module
@@ -910,65 +1139,16 @@ class DiagnosticsController(QObject):
                     results["ai_fault_prediction"] = {"error": str(e)}
             
             self._update_status("✅ Full scan completed")
-            self.scan_completed.emit(results)
-            
-            # Update UI text
-            if 'set_results_text' in self.ui_callbacks:
-                text = f"Full Scan Results ({self.current_brand})\n"
-                text += f"Timestamp: {results['timestamp']}\n\n"
-                
-                if results.get("vin"):
-                    text += f"VIN: {results['vin']}\n"
-                    
-                if results.get("vin_analysis") and "error" not in results["vin_analysis"]:
-                    va = results["vin_analysis"]
-                    text += "\n--- Charlemaine AI Analysis (Identity) ---\n"
-                    
-                    if "manufacturer" in va and isinstance(va["manufacturer"], dict):
-                        text += f"Manufacturer: {va['manufacturer'].get('name', 'Unknown')}\n"
-                    
-                    if "model" in va and isinstance(va["model"], dict):
-                        text += f"Model: {va['model'].get('name', 'Unknown')}\n"
-                         
-                    if "confidence_breakdown" in va:
-                        text += f"Confidence: {va.get('confidence_score', 'N/A')}\n"
-                    
-                    text += "------------------------------\n"
+            # Emit via signal (safe cross-thread call); DiagnosticsWorker.finished
+            # will also emit — deduplicate by not emitting here when run in worker.
+            # The signal is emitted by the worker's finished signal in run_full_scan().
 
-                # Add AI Fault Prediction Results
-                if results.get("ai_fault_prediction"):
-                    ai = results["ai_fault_prediction"]
-                    if "ai_analysis" in ai:
-                        text += "\n--- AI Fault Prediction (Prognostics) ---\n"
-                        preds = ai["ai_analysis"].get("fault_predictions", [])
-                        if preds:
-                            for p in preds:
-                                text += f"⚠️ {p['type'].upper()}: {p['description']} ({int(p['confidence']*100)}%)\n"
-                                text += f"   Action: {p['suggested_action']}\n"
-                        else:
-                            text += "✅ No specific faults predicted.\n"
-                        
-                        score = ai["ai_analysis"].get("health_score", 0.0)
-                        text += f"Health Score: {int(score*100)}/100\n"
-                        text += "------------------------------\n\n"
-                
-                # Add scan results
-                text += f"Modules Scanned: {len(modules_data)}\n"
-                text += f"Total DTCs Found: {len(all_dtcs)}\n\n"
-                
-                for module in modules_data:
-                    text += f"[{module['name']}] Status: {module['status']}\n"
-                    if module['dtcs']:
-                        for dtc in module['dtcs']:
-                            text += f"  - {dtc['code']}: {dtc['description']} ({dtc['status']})\n"
-                    text += "\n"
-                    
-                self.ui_callbacks['set_results_text'](text)
-                
+            return results
+
         except Exception as e:
             logger.error(f"Error in full scan: {e}")
             self._update_status("❌ Scan failed")
-            self.scan_completed.emit({"error": str(e)})
+            return {"error": str(e)}
             
     def populate_live_data_table(self) -> List[Tuple[str, str, str]]:
         """Populate live data table from CAN database"""
@@ -984,6 +1164,18 @@ class DiagnosticsController(QObject):
             logger.error(f"Failed to populate live data table: {e}")
             return []
     
+    @pyqtSlot(str)
+    def _on_dtc_worker_error(self, msg: str):
+        """Error handler for DTC read worker — runs in main thread (auto QueuedConnection)."""
+        self._show_error_message("DTC Read Error", msg)
+        self._update_ui_callback('set_button_enabled', 'dtc_btn', True)
+
+    @pyqtSlot(str)
+    def _on_clear_worker_error(self, msg: str):
+        """Error handler for DTC clear worker — runs in main thread (auto QueuedConnection)."""
+        self._show_error_message("DTC Clear Error", msg)
+        self._update_ui_callback('set_button_enabled', 'clear_btn', True)
+
     def _update_status(self, message: str):
         """Update status message"""
         self._update_ui_callback('set_status', message)
@@ -1002,11 +1194,22 @@ class DiagnosticsController(QObject):
         self._update_ui_callback('show_message', title, message, "error")
     
     def _show_confirmation_dialog(self, title: str, message: str, confirm_callback: callable):
-        """Show confirmation dialog"""
+        """Show a Yes/No confirmation dialog. Falls back to auto-confirm if no QApplication."""
         try:
-            # For now, auto-confirm in headless/testing mode
-            # In real implementation, this would show a dialog
-            confirm_callback()
+            from PyQt6.QtWidgets import QApplication, QMessageBox
+            if QApplication.instance() is None:
+                confirm_callback()
+                return
+
+            reply = QMessageBox.question(
+                None,
+                title,
+                message,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                confirm_callback()
         except Exception as e:
             logger.error(f"Error showing confirmation dialog: {e}")
     
@@ -1047,15 +1250,22 @@ class DiagnosticsController(QObject):
         """Get the user's current tier level"""
         return self.user_tier
 
+    # Operations that every tier (including FREE / The Observer) can always perform.
+    _FREE_OPERATIONS = {"read_dtcs", "clear_dtcs", "read_vin", "live_data"}
+
     def check_tier_access(self, brand_name: str, operation: str = None) -> Tuple[bool, str]:
         """
-        Check if user has tier access for a specific brand/operation
+        Check if user has tier access for a specific brand/operation.
 
-        Returns:
-            Tuple of (has_access, message)
+        DTC read/clear, VIN read, and live data are open on all tiers —
+        they are the core FREE / Observer capabilities.
         """
         if not TIER_SYSTEM_AVAILABLE:
             return True, "Tier system not available - access granted"
+
+        # FREE-tier operations are unrestricted regardless of brand
+        if operation in self._FREE_OPERATIONS:
+            return True, f"{operation} is available on all tiers"
 
         try:
             # Get required tier for this brand
@@ -1086,23 +1296,34 @@ class DiagnosticsController(QObject):
 
     def enforce_tier_access(self, brand_name: str, operation: str = None) -> bool:
         """
-        Enforce tier access for an operation
+        Enforce tier access for an operation.
+        On denial, shows the TierUpgradeDialog instead of a plain error box.
 
         Returns:
             True if access granted, False otherwise
         """
-        has_access, message = self.check_tier_access(brand_name, operation)
+        has_access, _ = self.check_tier_access(brand_name, operation)
 
         if not has_access:
-            self._show_error_message("Tier Access Denied", message)
+            try:
+                required_tier, _ = brand_database.get_brand_tier(brand_name)
+                from AutoDiag.ui.tier_upgrade_dialog import show_tier_upgrade
+                show_tier_upgrade(required_tier, self.user_tier, operation)
+            except Exception:
+                self._show_error_message(
+                    "Tier Access Denied",
+                    f"This operation requires a higher tier. Visit dacos.co.za to upgrade."
+                )
             return False
 
-        # Check if acknowledgement is required
+        # Access granted — check if acknowledgement is required (once per brand per session)
         required_tier, _ = brand_database.get_brand_tier(brand_name)
         if tier_system.requires_acknowledgement(required_tier):
-            if not self.show_tier_acknowledgement(required_tier, brand_name, operation):
-                logger.info(f"User declined tier {required_tier.value} acknowledgement")
-                return False
+            if brand_name not in self._acknowledged_brands:
+                if not self.show_tier_acknowledgement(required_tier, brand_name, operation):
+                    logger.info(f"User declined tier {required_tier.value} acknowledgement")
+                    return False
+                self._acknowledged_brands.add(brand_name)
 
         return True
     
@@ -1333,19 +1554,18 @@ class DiagnosticsController(QObject):
         return self.vci_manager.get_supported_devices()
 
     def _read_real_dtcs(self, tx_id: int = 0x7E0, rx_id: int = 0x7E8) -> List[Dict[str, Any]]:
-        """Read DTCs from real VCI device using UDS service 0x19"""
+        """Read DTCs from real VCI device — routes to ELM327 or J2534/UDS."""
         dtcs = []
 
-        # Send UDS service 0x19 (Read DTC Information)
-        # Sub-function 0x02: Report DTC by Status Mask
-        # Status mask 0xFF: All DTCs
-
         if not self.vci_manager or not self.vci_manager.is_connected():
-             raise ConnectionError("No VCI device connected")
+            raise ConnectionError("No VCI device connected")
 
-        # This will now raise if it fails
+        # PATH A: HH OBD Advance / ELM327
+        if self.vci_manager.get_elm327_driver() is not None:
+            return self.vci_manager.read_dtcs_elm327()
+
+        # PATH B: J2534 / UDS
         raw_response = self._send_uds_request(0x19, [0x02, 0xFF], tx_id=tx_id, rx_id=rx_id)
-
         if raw_response:
             dtcs = self._parse_dtc_response(raw_response)
             logger.info(f"Read {len(dtcs)} DTCs from module {hex(tx_id)}")
@@ -1447,18 +1667,16 @@ class DiagnosticsController(QObject):
         return f"Diagnostic Trouble Code {dtc_code}"
 
     def _clear_real_dtcs(self) -> bool:
-        """Clear DTCs using real VCI device via UDS service 0x14"""
+        """Clear DTCs using real VCI device — routes to ELM327 or UDS."""
         try:
             if self.vci_manager and self.vci_manager.is_connected():
+                # PATH A: HH OBD Advance / ELM327
+                if self.vci_manager.get_elm327_driver() is not None:
+                    return self.vci_manager.clear_dtcs_elm327()
+
                 device = self.vci_manager.get_connected_device()
-
-                # Check if device supports DTC clearing
                 if device and "dtc_clear" in device.capabilities:
-                    # Send UDS service 0x14 (Clear Diagnostic Information)
-                    # Group of DTC: FF FF FF (all DTCs)
                     response = self._send_uds_request(0x14, [0xFF, 0xFF, 0xFF])
-
-                    # Positive response is 0x54
                     if response and len(response) > 0 and response[0] == 0x54:
                         logger.info("DTCs cleared successfully via UDS service 0x14")
                         return True
@@ -1699,17 +1917,20 @@ class DiagnosticsController(QObject):
 
         if not self.vci_manager.is_connected():
             logger.warning("No VCI device connected - attempting auto-scan and connect")
-            # Try to auto-scan and connect to first available device
-            devices = self.vci_manager.scan_for_devices(timeout=5)
-            if devices:
-                for device in devices:
-                    if self.vci_manager.connect_to_device(device):
-                        logger.info(f"Auto-connected to {device.name}")
-                        return True
-                logger.error("Failed to auto-connect to any VCI device")
-                return False
-            else:
-                logger.error("No VCI devices found - hardware required for all operations")
-                return False
+            # scan_for_devices() is async and returns bool (scan started).
+            # Wait briefly for the scan to populate available_devices.
+            self.vci_manager.scan_for_devices(timeout=5)
+            import time
+            deadline = time.time() + 6
+            while time.time() < deadline:
+                if self.vci_manager.available_devices:
+                    break
+                time.sleep(0.2)
+            for device in self.vci_manager.available_devices:
+                if self.vci_manager.connect_to_device(device):
+                    logger.info(f"Auto-connected to {device.name}")
+                    return True
+            logger.error("No VCI devices found - hardware required for all operations")
+            return False
 
         return True

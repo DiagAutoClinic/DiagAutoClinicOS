@@ -3,6 +3,7 @@ DiagAutoClinicOS - Centralized Logging
 """
 import logging
 import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime
 
@@ -49,9 +50,11 @@ def setup_logging(log_level: str = "INFO", log_file: Path = None):
         logger.setLevel(getattr(logging, log_level))
         logger.addHandler(console_handler)
         
-        # File handler if specified
+        # File handler if specified — 5 MB per file, keep 5 backups
         if log_file:
-            file_handler = logging.FileHandler(log_file)
+            file_handler = RotatingFileHandler(
+                log_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding='utf-8'
+            )
             file_handler.setLevel(getattr(logging, log_level))
             file_handler.setFormatter(logging.Formatter(log_format))
             logger.addHandler(file_handler)

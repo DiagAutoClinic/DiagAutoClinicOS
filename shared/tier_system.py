@@ -16,6 +16,7 @@ class Tier(Enum):
     INTERMEDIATE = 3
     PROFESSIONAL = 4
     ADVANCED = 5
+    SUPERUSER = 6
 
 class RiskLevel(Enum):
     NEGLIGIBLE = "Negligible"
@@ -30,7 +31,7 @@ class TierSystem:
     TIER_DEFINITIONS = {
         Tier.FREE: {
             "name": "Free",
-            "description": "Observer",
+            "description": "The Observer",
             "price_zar": 0,
             "security_authority": "Generic OBD-II only, Read-only CAN frames, No ECU state mutation possible",
             "capabilities": [
@@ -91,6 +92,19 @@ class TierSystem:
             "risk_factor": RiskLevel.EXTREME,
             "user_acknowledgement": "Explicit & recurrent: Legal responsibility acceptance, Technical competence declaration, Jurisdiction compliance confirmation. Before every dangerous operation: 'I understand this action may permanently disable vehicle systems and accept all legal, financial, and safety consequences.'",
             "who_for": ["ECU engineers", "Security researchers", "Advanced coders", "People who know what a hex dump smells like"]
+        },
+        Tier.SUPERUSER: {
+            "name": "Superuser",
+            "description": "Root Authority",
+            "price_zar": 0,
+            "security_authority": "Full system access, All tiers unlocked, Internal-only account",
+            "capabilities": [
+                "All Advanced capabilities", "System configuration", "User management",
+                "Tier override", "Internal diagnostics"
+            ],
+            "risk_factor": RiskLevel.EXTREME,
+            "user_acknowledgement": "Internal account — no public acknowledgement flow. Password change enforced on first login via launcher.",
+            "who_for": ["Internal use only"]
         }
     }
 
@@ -186,6 +200,8 @@ class TierSystem:
     @staticmethod
     def validate_tier_access(user_tier: Tier, required_tier: Tier) -> bool:
         """Validate if user tier meets required tier"""
+        if user_tier == Tier.SUPERUSER:
+            return True
         return user_tier.value >= required_tier.value
 
     @staticmethod
